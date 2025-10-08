@@ -1,11 +1,11 @@
 {
-  "buildCommand": "cd \"Only You V3/pilates-app-v3-complete\" && npm run build",
-  "devCommand": "cd \"Only You V3/pilates-app-v3-complete\" && npm run dev",
-  "installCommand": "cd \"Only You V3/pilates-app-v3-complete\" && npm install",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
   "regions": ["iad1"],
   "functions": {
-    "Only You V3/pilates-app-v3-complete/app/api/**/*.ts": {
+    "app/api/**/*.ts": {
       "maxDuration": 30
     }
   },
