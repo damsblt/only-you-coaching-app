@@ -1,0 +1,32 @@
+{
+  "name": "only-you-coaching-cms",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CMS Strapi pour Only You Coaching",
+  "scripts": {
+    "build": "strapi build",
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "strapi": "strapi"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "@strapi/strapi": "4.25.24",
+    "@strapi/plugin-users-permissions": "4.25.24",
+    "@strapi/plugin-i18n": "4.25.24",
+    "@strapi/plugin-upload": "4.25.24",
+    "sqlite3": "5.1.6"
+  },
+  "author": {
+    "name": "Only You Coaching"
+  },
+  "strapi": {
+    "uuid": "only-you-coaching-cms"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=20.x.x",
+    "npm": ">=6.0.0"
+  },
+  "license": "MIT"
+}
+

@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  image         String?
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  bookings      Booking[]
+  favorites     Favorite[]
+  playlists     Playlist[]
+  sessions      Session[]
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Video {
+  id                  String         @id @default(cuid())
+  title               String
+  description         String?
+  detailedDescription String?
+  thumbnail           String?
+  videoUrl            String
+  duration            Int
+  difficulty          Difficulty
+  category            String
+  region              String?
+  muscleGroups        String[]
+  startingPosition    String?
+  movement            String?
+  intensity           String?
+  theme               String?
+  series              String?
+  constraints         String?
+  tags                String[]
+  isPublished         Boolean        @default(false)
+  videoType           VideoType      @default(MUSCLE_GROUPS)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  folder              String?
+  favorites           Favorite[]
+  playlistItems       PlaylistItem[]
+
+  @@map("videos")
+}
+
+model VideosNew {
+  id                  String         @id @default(cuid())
+  title               String
+  description         String?
+  thumbnail           String?
+  videoUrl            String
+  duration            Int
+  difficulty          Difficulty
+  category            String
+  region              String?
+  muscleGroups        String[]
+  startingPosition    String?
+  movement            String?
+  intensity           String?
+  theme               String?
+  series              String?
+  constraints         String?
+  tags                String[]
+  isPublished         Boolean        @default(false)
+  videoType           VideoType      @default(MUSCLE_GROUPS)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  folder              String?
+
+  @@map("videos_new")
+}
+
+model Audio {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  thumbnail     String?
+  audioUrl      String
+  duration      Int
+  category      String
+  tags          String[]
+  isPublished   Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  favorites     Favorite[]
+  playlistItems PlaylistItem[]
+
+  @@map("audios")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  videoId   String?
+  audioId   String?
+  createdAt DateTime @default(now())
+  audio     Audio?   @relation(fields: [audioId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@unique([userId, audioId])
+  @@map("favorites")
+}
+
+model Playlist {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  isPublic    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  items       PlaylistItem[]
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("playlists")
+}
+
+model PlaylistItem {
+  id         String   @id @default(cuid())
+  playlistId String
+  videoId    String?
+  audioId    String?
+  order      Int
+  createdAt  DateTime @default(now())
+  audio      Audio?   @relation(fields: [audioId], references: [id], onDelete: Cascade)
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  video      Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("playlist_items")
+}
+
+model Subscription {
+  id                     String             @id @default(cuid())
+  userId                 String
+  stripeCustomerId       String?            @unique
+  stripeSubscriptionId   String?            @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  status                 SubscriptionStatus @default(INACTIVE)
+  plan                   SubscriptionPlan
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  userId      String
+  sessionType SessionType
+  startTime   DateTime
+  endTime     DateTime
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  location    String?
+  meetingUrl  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bookings")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum VideoType {
+  MUSCLE_GROUPS
+  PROGRAMMES
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  YEARLY
+  LIFETIME
+}
+
+enum SessionType {
+  ONLINE
+  IN_PERSON
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}

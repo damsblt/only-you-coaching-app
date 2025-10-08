@@ -1,0 +1,341 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TikTok-style video feed scrolling */
+.video-feed-container {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.video-feed-item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+}
+
+/* Smooth scrolling for video feed */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar for video feed */
+.video-feed-container::-webkit-scrollbar {
+  display: none;
+}
+
+.video-feed-container {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ensure full-screen on all devices */
+@media (max-width: 768px) {
+  .video-feed-container {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
+    height: 100svh; /* Small viewport height for mobile browsers */
+  }
+  
+  .video-feed-item {
+    height: 100vh;
+    height: 100dvh;
+    height: 100svh;
+  }
+}
+
+/* Ensure proper spacing for mobile devices */
+@media (max-width: 768px) {
+  .video-feed-container {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Additional safety for bottom elements */
+.video-feed-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+/* Responsive video player for mobile */
+.video-feed-item video {
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: 100svh !important;
+  object-fit: cover !important;
+}
+
+/* Mobile-specific video sizing */
+@media (max-width: 768px) {
+  .video-feed-item video {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    height: 100svh !important;
+    object-fit: cover !important;
+    object-position: center !important;
+  }
+}
+
+/* For portrait videos on mobile, ensure proper centering */
+@media (max-width: 768px) and (orientation: portrait) {
+  .video-feed-item video {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    height: 100svh !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+  }
+}
+
+/* For landscape videos on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .video-feed-item video {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    height: 100svh !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+  }
+}
+
+/* Feed-specific video styling */
+.video-feed-item video {
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: 100svh !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  background: #000 !important;
+}
+
+/* Hide global chrome (header/footer) when a page enables feed mode */
+.hide-app-chrome header,
+.hide-app-chrome footer {
+  display: none !important;
+}
+
+/* Ensure proper mobile video display */
+@media (max-width: 768px) {
+  .video-feed-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  
+  .video-feed-item video {
+    min-width: 100vw !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+    min-height: 100svh !important;
+  }
+}
+
+/* Custom styles for the Pilates coaching app */
+.pilates-gradient {
+  background: linear-gradient(135deg, #F5E6E0 0%, #C8A0A0 100%);
+}
+
+.meditation-gradient {
+  background: linear-gradient(135deg, #C8A0A0 0%, #A65959 100%);
+}
+
+/* Wavy divider */
+.wave-divider {
+  position: relative;
+  background: transparent;
+  height: 80px;
+}
+
+.wave-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='%23F5E6E0'/%3E%3C/svg%3E") no-repeat;
+  background-size: cover;
+}
+
+.wave-divider-bottom {
+  position: relative;
+  background: transparent;
+  height: 200px;
+}
+
+.wave-divider-bottom::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 300' preserveAspectRatio='none'%3E%3Cpath d='M0,180L48,200C96,220,192,260,288,260C384,260,480,220,576,200C672,180,768,180,864,200C960,220,1056,260,1152,260C1248,260,1344,220,1392,200L1440,180L1440,300L1392,300C1344,300,1248,300,1152,300C1056,300,960,300,864,300C768,300,672,300,576,300C480,300,384,300,288,300C192,300,96,300,48,300L0,300Z' fill='white'/%3E%3C/svg%3E") no-repeat;
+  background-size: cover;
+}
+
+.dark .wave-divider-bottom::before {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 300' preserveAspectRatio='none'%3E%3Cpath d='M0,180L48,200C96,220,192,260,288,260C384,260,480,220,576,200C672,180,768,180,864,200C960,220,1056,260,1152,260C1248,260,1344,220,1392,200L1440,180L1440,300L1392,300C1344,300,1248,300,1152,300C1056,300,960,300,864,300C768,300,672,300,576,300C480,300,384,300,288,300C192,300,96,300,48,300L0,300Z' fill='%231F2937'/%3E%3C/svg%3E") no-repeat;
+}
+
+/* Curved Design Elements */
+.curved-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.curved-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: inherit;
+  border-radius: 0 0 50% 50% / 0 0 100px 100px;
+  z-index: 1;
+}
+
+.curved-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: inherit;
+  border-radius: 50% 50% 0 0 / 100px 100px 0 0;
+  z-index: 1;
+}
+
+/* Organic shapes */
+.organic-shape {
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  animation: wave 8s ease-in-out infinite;
+}
+
+.organic-shape-2 {
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  animation: wave 6s ease-in-out infinite reverse;
+}
+
+.organic-shape-3 {
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  animation: wave 10s ease-in-out infinite;
+}
+
+/* Floating elements */
+.floating-element {
+  animation: float 6s ease-in-out infinite;
+}
+
+.floating-element:nth-child(2) {
+  animation-delay: -2s;
+}
+
+.floating-element:nth-child(3) {
+  animation-delay: -4s;
+}
+
+/* Curved cards */
+.curved-card {
+  border-radius: 2rem 1rem 2rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.curved-card:hover {
+  border-radius: 1rem 2rem 1rem 2rem;
+  transform: translateY(-8px) rotate(1deg);
+}
+
+
+/* Curved buttons */
+.curved-button {
+  border-radius: 2rem 0.5rem 2rem 0.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.curved-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.curved-button:hover::before {
+  left: 100%;
+}
+
+.curved-button:hover {
+  border-radius: 0.5rem 2rem 0.5rem 2rem;
+  transform: translateY(-2px);
+}
+
+/* Organic text containers */
+.organic-text-container {
+  border-radius: 3rem 1rem 3rem 1rem;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.organic-text-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(249, 223, 212, 0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.video-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.video-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
