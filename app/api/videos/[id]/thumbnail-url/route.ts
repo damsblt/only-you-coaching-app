@@ -32,11 +32,19 @@ export async function GET(
     // Extract S3 key from thumbnail URL
     try {
       const thumbnailUrl = new URL(video.thumbnail)
+      
+      // If URL already has query parameters (signed URL), extract clean path
       const encodedPath = thumbnailUrl.pathname
       const decodedPath = decodeURIComponent(encodedPath)
       const s3Key = decodedPath.substring(1) // Remove leading slash
-
-      // Generate signed URL (valid for 24 hours)
+      
+      // If it's in the thumbnails folder, use public URL (thumbnails are public)
+      if (s3Key.startsWith('thumbnails/')) {
+        const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
+        return NextResponse.json({ url: publicUrl })
+      }
+      
+      // For non-thumbnail files, generate signed URL
       const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
 
       if (!signedUrlResult.success) {

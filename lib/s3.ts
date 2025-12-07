@@ -65,9 +65,11 @@ export async function getSignedVideoUrl(key: string, expiresIn: number = 3600) {
 
   try {
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn })
+    // Clean the URL to remove any potential newlines or whitespace issues
+    const cleanUrl = signedUrl.trim().replace(/\n/g, '').replace(/\r/g, '')
     return {
       success: true,
-      url: signedUrl,
+      url: cleanUrl,
     }
   } catch (error) {
     console.error('Error generating signed URL:', error)
