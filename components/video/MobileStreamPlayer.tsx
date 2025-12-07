@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Heart, Plus, Share2, Info, Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 
 interface Video {
@@ -52,10 +52,8 @@ export default function MobileStreamPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [isMuted, setIsMuted] = useState(muted)
   const [volume, setVolume] = useState(1)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
@@ -262,26 +260,13 @@ export default function MobileStreamPlayer({
       {/* Header - Mobile Optimized */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/70 to-transparent">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={onClose}
-              className="text-white hover:text-gray-300 transition-colors p-1"
-            >
-              <X className="w-6 h-6" />
-            </button>
-            <h1 className="text-white text-lg font-bold">Vidéos Pilates</h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-white text-sm">
-              {currentIndex + 1} / {totalVideos}
-            </span>
-            <button
-              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-              className="text-white hover:text-gray-300 transition-colors p-1"
-            >
-              <Info className="w-5 h-5" />
-            </button>
-          </div>
+          <h1 className="text-white text-lg font-bold">{video.title}</h1>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-300 transition-colors p-1"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
       </div>
 
@@ -346,66 +331,12 @@ export default function MobileStreamPlayer({
             </button>
           )}
 
-          {/* Action Buttons - Right Side (Based on Wireframe) */}
-          <div className="absolute right-4 bottom-32 flex flex-col space-y-4">
-            <button
-              onClick={() => setIsFavorite(!isFavorite)}
-              className={`bg-rose-500/20 backdrop-blur-sm rounded-full p-3 transition-colors ${
-                isFavorite ? 'bg-rose-500/40' : 'hover:bg-rose-500/40'
-              }`}
-            >
-              <Heart className={`w-6 h-6 text-white ${isFavorite ? 'fill-current' : ''}`} />
-            </button>
-            <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
-              <Plus className="w-6 h-6 text-white" />
-            </button>
-            <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
-              <Share2 className="w-6 h-6 text-white" />
-            </button>
-          </div>
         </div>
 
         {/* Video Controls - Bottom Overlay (Based on Wireframe) */}
         <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity duration-300 ${
           showControls || !isPlaying ? 'opacity-100' : 'opacity-0'
         }`}>
-          {/* Video Info */}
-          <div className="text-white mb-4">
-            <h2 className="text-xl font-bold mb-1">{video.title}</h2>
-            <div className="flex items-center space-x-3 mb-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                video.difficulty === 'BEGINNER' ? 'bg-green-500/20 text-green-300' :
-                video.difficulty === 'INTERMEDIATE' ? 'bg-yellow-500/20 text-yellow-300' :
-                'bg-red-500/20 text-red-300'
-              }`}>
-                {video.difficulty === 'BEGINNER' ? 'Débutant' :
-                 video.difficulty === 'INTERMEDIATE' ? 'Intermédiaire' : 'Avancé'}
-              </span>
-              <span className="text-gray-300 text-sm">{video.category}</span>
-              <span className="text-gray-300 text-sm">{formatDuration(duration)}</span>
-            </div>
-            
-            {/* Muscle Groups */}
-            {video.muscleGroups && video.muscleGroups.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {video.muscleGroups.slice(0, 3).map((muscle, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded text-xs"
-                  >
-                    {muscle}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Navigation Instructions */}
-            <div className="text-white/60 text-xs mb-3">
-              <div>Use arrow keys or swipe to navigate</div>
-              <div>Click dots to jump to specific video</div>
-            </div>
-          </div>
-
           {/* Progress Bar */}
           <div className="mb-3">
             <input
@@ -451,43 +382,6 @@ export default function MobileStreamPlayer({
           </div>
         </div>
       </div>
-
-      {/* Description Overlay - Based on Wireframe */}
-      {isDetailsOpen && (
-        <div className="absolute inset-0 bg-black/90 z-30 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full max-h-[80vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Description</h3>
-              <button
-                onClick={() => setIsDetailsOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <p className="text-gray-600 text-sm">{video.detailedDescription || video.description}</p>
-              
-              {video.muscleGroups && video.muscleGroups.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Muscles ciblés</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {video.muscleGroups.map((muscle, index) => (
-                      <span
-                        key={index}
-                        className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs"
-                      >
-                        {muscle}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

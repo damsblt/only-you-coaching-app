@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Use service role key for admin operations
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 // GET single video
 export async function GET(
@@ -8,11 +14,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const video = await prisma.video.findUnique({
-      where: { id }
-    })
+    const { data: video, error } = await supabaseAdmin
+      .from('videos_new')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-    if (!video) {
+    if (error || !video) {
+      console.error('Error fetching video:', error)
       return NextResponse.json({ error: 'Video not found' }, { status: 404 })
     }
 
@@ -51,23 +60,25 @@ export async function PUT(
       allowedFields.tags = []
     }
 
-    const video = await prisma.video.update({
-      where: { id },
-      data: allowedFields
-    })
+    const { data: video, error } = await supabaseAdmin
+      .from('videos_new')
+      .update(allowedFields)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating video:', error)
+      return NextResponse.json({ 
+        error: 'Failed to update video', 
+        details: error.message 
+      }, { status: 500 })
+    }
 
     console.log('API: Video updated successfully:', video)
     return NextResponse.json(video)
   } catch (error) {
     console.error('Error updating video:', error)
-    
-    // Provide more specific error messages
-    if (error.code === 'P2002') {
-      return NextResponse.json({ error: 'A video with this data already exists' }, { status: 400 })
-    }
-    if (error.code === 'P2025') {
-      return NextResponse.json({ error: 'Video not found' }, { status: 404 })
-    }
     
     return NextResponse.json({ 
       error: 'Failed to update video', 
@@ -83,9 +94,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    await prisma.video.delete({
-      where: { id }
-    })
+    const { error } = await supabaseAdmin
+      .from('videos_new')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting video:', error)
+      return NextResponse.json({ error: 'Failed to delete video' }, { status: 500 })
+    }
 
     return NextResponse.json({ message: 'Video deleted successfully' })
   } catch (error) {

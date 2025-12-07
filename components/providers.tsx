@@ -1,6 +1,6 @@
 "use client"
 
-import { SessionProvider } from "next-auth/react"
+import { SimpleAuthProvider } from "./providers/SimpleAuthProvider"
 import { ThemeProvider } from "./providers/ThemeProvider"
 import { ReactNode } from "react"
 
@@ -10,11 +10,11 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider>
+    <SimpleAuthProvider>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         {children}
       </ThemeProvider>
-    </SessionProvider>
+    </SimpleAuthProvider>
   )
 }
 

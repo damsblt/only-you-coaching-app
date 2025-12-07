@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { db } from '@/lib/db'
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
@@ -14,11 +14,16 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const video = await prisma.video.findUnique({
-      where: { id }
-    })
+    const { data: videos, error } = await db
+      .from('videos_new')
+      .select('*')
+      .eq('id', id)
+      .execute()
+    
+    const video = videos && videos.length > 0 ? videos[0] : null
 
-    if (!video) {
+    if (error || !video) {
+      console.error('Video not found:', error)
       return NextResponse.json({ error: 'Video not found' }, { status: 404 })
     }
 
@@ -72,10 +77,19 @@ export async function POST(
       const thumbnailUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${thumbnailS3Key}`
 
       // Update database with new thumbnail URL
-      const updatedVideo = await prisma.video.update({
-        where: { id: video.id },
-        data: { thumbnail: thumbnailUrl }
-      })
+      const { query } = await import('@/lib/db')
+      const updateResult = await query(
+        'UPDATE videos_new SET thumbnail = $1 WHERE id = $2 RETURNING *',
+        [thumbnailUrl, video.id]
+      )
+      
+      const updatedVideo = updateResult && updateResult.length > 0 ? updateResult[0] : null
+      const updateError = updatedVideo ? null : { message: 'Failed to update video' }
+
+      if (updateError) {
+        console.error('Error updating video thumbnail:', updateError)
+        return NextResponse.json({ error: 'Failed to update video thumbnail' }, { status: 500 })
+      }
 
       // Clean up local files
       try {

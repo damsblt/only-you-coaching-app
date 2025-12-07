@@ -1,14 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
+import { getSignedVideoUrl } from '@/lib/s3'
+import { sortVideosByProgramOrder } from '@/lib/program-orders'
+
+// Cache configuration - revalidate every 60 seconds
+export const revalidate = 60
+export const dynamic = 'force-dynamic' // Override if needed
+
+// Columns needed for video display - optimize query by selecting only needed fields
+const VIDEO_COLUMNS = 'id,title,description,thumbnail,videoUrl,duration,difficulty,category,region,muscleGroups,startingPosition,movement,intensity,theme,series,constraints,targeted_muscles,exo_title,videoType,isPublished,createdAt,updatedAt'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const muscleGroup = searchParams.get('muscleGroup')
-  const programme = searchParams.get('programme')
-  const difficulty = searchParams.get('difficulty')
-  const search = searchParams.get('search')
-  const videoType = searchParams.get('videoType')
+  // Top-level error handler to catch any unhandled errors
+  try {
+    console.log('📥 Videos API called:', request.url)
+    console.log('📥 DATABASE_URL exists:', !!process.env.DATABASE_URL)
+    console.log('📥 db client exists:', !!db)
+    
+    // Verify database connection exists
+    if (!db) {
+      console.error('❌ Database client is null or undefined')
+      return NextResponse.json({ 
+        error: 'Database connection error',
+        message: 'Database client is not initialized'
+      }, { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    // Check if DATABASE_URL is set
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL environment variable is not set')
+      return NextResponse.json({ 
+        error: 'Database configuration error',
+        message: 'DATABASE_URL environment variable is missing'
+      }, { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    }
+    
+    const { searchParams } = new URL(request.url)
+    const muscleGroup = searchParams.get('muscleGroup')
+    const programme = searchParams.get('programme')
+    const region = searchParams.get('region')
+    const difficulty = searchParams.get('difficulty')
+    const search = searchParams.get('search')
+    const videoType = searchParams.get('videoType')
+    const limit = parseInt(searchParams.get('limit') || '100') // Default limit instead of 1000
+    const offset = parseInt(searchParams.get('offset') || '0')
+    
+    console.log('📋 Parsed params:', { muscleGroup, programme, region, difficulty, search, videoType, limit, offset })
 
   // Build filter conditions (Prisma)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,6 +85,10 @@ export async function GET(request: NextRequest) {
     where.region = programme
   }
 
+  if (region && region !== 'all') {
+    where.region = region
+  }
+
   if (difficulty && difficulty !== 'all') {
     where.difficulty = { in: [difficulty] }
   }
@@ -56,22 +103,27 @@ export async function GET(request: NextRequest) {
     ]
   }
 
-  // Use Supabase REST as the primary path in production/serverless.
+  // Use Neon database
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('Supabase envs missing: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
-      return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 })
+    console.log('🔍 Fetching videos with params:', { videoType, region, difficulty, search, offset, limit })
+    
+    // Verify database connection is available
+    if (!db) {
+      console.error('❌ Database client is not initialized')
+      return NextResponse.json({ 
+        error: 'Database connection error',
+        message: 'Database client is not initialized',
+        details: 'Please check DATABASE_URL environment variable'
+      }, { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })
     }
+    
+    // Build query using Neon client
+    let query = db.from('videos_new').select(VIDEO_COLUMNS).order('title', { ascending: true })
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    })
-
-    let query = supabase.from('videos_new').select('*').order('title', { ascending: true })
-
-    // Apply filters equivalent to Prisma where
+    // Apply filters
     query = query.eq('isPublished', true)
 
     if (where.videoType) {
@@ -87,25 +139,195 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      const ilike = (col: string) => `${col}.ilike.%${search}%`
-      query = query.or([
-        ilike('title'),
-        ilike('description'),
-        ilike('startingPosition'),
-        ilike('movement'),
-        ilike('theme')
-      ].join(','))
+      // Temporarily disable OR search to test if it's causing the crash
+      // query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,startingPosition.ilike.%${search}%,movement.ilike.%${search}%,theme.ilike.%${search}%`)
+      // Use simple LIKE search instead
+      query = query.ilike('title', `%${search}%`)
     }
 
-    const { data, error } = await query.limit(1000)
+    // For programs with specific ordering, we need to fetch all videos first,
+    // then sort them, then apply pagination
+    // Check if this region has a custom order defined in program-orders.ts
+    const needsCustomOrdering = videoType === 'programmes' && region && 
+      ['machine', 'abdos', 'brule-graisse', 'cuisses-abdos', 'dos-abdos', 
+       'femmes', 'haute-intensite', 'jambes', 'rehabilitation-dos'].includes(region)
+    
+    console.log('📊 Executing query with filters:', { 
+      videoType: where.videoType, 
+      region: where.region, 
+      difficulty, 
+      search,
+      offset, 
+      limit,
+      needsCustomOrdering
+    })
+    
+    // If we need custom ordering, fetch all matching videos first (with a reasonable max limit)
+    // Otherwise, apply pagination at the database level
+    let queryToExecute = needsCustomOrdering 
+      ? query.limit(500)  // Fetch up to 500 videos for custom ordering (should be more than enough)
+      : query.range(offset, offset + limit - 1)
+    
+    console.log('🔍 About to execute query...')
+    
+    let data: any[] | null = null
+    let error: any = null
+    
+    try {
+      const result = await queryToExecute.execute()
+      data = result.data
+      error = result.error
+      console.log('✅ Query executed, result:', { 
+        dataCount: data?.length || 0, 
+        hasError: !!error,
+        errorMessage: error?.message || null,
+        errorCode: (error as any)?.code || null
+      })
+    } catch (executeError: any) {
+      console.error('❌ Query execution threw an error:', {
+        message: executeError?.message,
+        code: executeError?.code,
+        stack: executeError?.stack?.substring(0, 500),
+        fullError: executeError
+      })
+      error = executeError
+    }
+    
     if (error) {
-      console.error('Supabase query error:', error)
-      return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 })
+      // Better error logging
+      const errorDetails = {
+        message: error.message || (error as any).detail || (error as any)?.message || 'Unknown database error',
+        code: (error as any).code || (error as any)?.code || 'NO_CODE',
+        details: (error as any).detail || (error as any)?.hint || null,
+        hint: (error as any).hint || null,
+        originalError: String(error)
+      }
+      console.error('❌ Database query error:', errorDetails)
+      console.error('Query parameters:', { videoType, region, difficulty, search, offset, limit })
+      console.error('Full error object:', error)
+      
+      return NextResponse.json({ 
+        error: 'Failed to fetch videos',
+        message: errorDetails.message,
+        details: errorDetails.details || errorDetails.message,
+        code: errorDetails.code
+      }, { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
     }
 
-    return NextResponse.json(data ?? [])
-  } catch (error) {
-    console.error('Supabase path threw:', error)
-    return NextResponse.json({ error: 'Failed to fetch videos' }, { status: 500 })
+    // Apply custom ordering if needed (for machine program)
+    let sortedData = data || []
+    if (needsCustomOrdering && region) {
+      sortedData = sortVideosByProgramOrder(sortedData, region)
+      // Apply pagination after sorting
+      sortedData = sortedData.slice(offset, offset + limit)
+      console.log(`📋 Applied custom ordering for ${region} program: ${sortedData.length} videos after pagination`)
+    }
+
+    // Generate signed URLs for thumbnails if they're S3 URLs
+    // Process in batches of 10 to avoid overwhelming the system
+    const BATCH_SIZE = 10
+    const videosWithSignedThumbnails = []
+    
+    for (let i = 0; i < sortedData.length; i += BATCH_SIZE) {
+      const batch = sortedData.slice(i, i + BATCH_SIZE)
+      const processedBatch = await Promise.all(
+        batch.map(async (video) => {
+          if (!video.thumbnail) {
+            return video
+          }
+
+          // Check if thumbnail is an S3 URL
+          try {
+            const thumbnailUrl = new URL(video.thumbnail)
+            // Check if it's an S3 URL
+            if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
+              try {
+                const encodedPath = thumbnailUrl.pathname
+                const decodedPath = decodeURIComponent(encodedPath)
+                const s3Key = decodedPath.substring(1) // Remove leading slash
+
+                // Generate signed URL (valid for 24 hours)
+                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+
+                if (signedUrlResult.success) {
+                  return { ...video, thumbnail: signedUrlResult.url }
+                }
+              } catch (urlError) {
+                console.error('Error processing thumbnail URL for video', video.id, ':', urlError)
+                // Keep original URL if signed URL generation fails
+              }
+            }
+          } catch (urlError) {
+            // Not a valid URL, keep original thumbnail
+          }
+
+          return video
+        })
+      )
+      videosWithSignedThumbnails.push(...processedBatch)
+    }
+
+    // Add cache headers for better performance
+    return NextResponse.json(videosWithSignedThumbnails, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        'CDN-Cache-Control': 'public, s-maxage=60',
+        'Vary': 'Accept-Encoding',
+      },
+    })
+  } catch (error: any) {
+    // Better error logging
+    const errorDetails = {
+      message: error?.message || String(error) || 'Unknown error',
+      code: error?.code || 'NO_CODE',
+      name: error?.name || null,
+      stack: error?.stack || null,
+      originalError: String(error)
+    }
+    console.error('❌ Unexpected error in videos API (inner catch):', errorDetails)
+    console.error('Request parameters:', { videoType, region, difficulty, search, offset, limit })
+    console.error('Full error:', error)
+    
+    // Always return a proper JSON response
+    return NextResponse.json({ 
+      error: 'Failed to fetch videos',
+      message: errorDetails.message,
+      details: errorDetails.message,
+      code: errorDetails.code,
+      stack: process.env.NODE_ENV === 'development' ? errorDetails.stack : undefined
+    }, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+  }
+  } catch (outerError: any) {
+    // Catch any errors that escape the inner try-catch (e.g., during initialization)
+    console.error('❌ CRITICAL: Error in videos API (outer catch):', {
+      message: outerError?.message || String(outerError),
+      code: outerError?.code,
+      name: outerError?.name,
+      stack: outerError?.stack,
+      fullError: outerError
+    })
+    
+    // Always return a proper JSON response, never let Next.js return HTML error page
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: outerError?.message || String(outerError) || 'An unexpected error occurred',
+      details: 'The API route encountered an error before it could process the request',
+      code: outerError?.code || 'UNKNOWN_ERROR'
+    }, { 
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
   }
 }

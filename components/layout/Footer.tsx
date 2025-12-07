@@ -11,10 +11,11 @@ import {
 
 export function Footer() {
   return (
-    <footer className="relative bg-burgundy-gradient dark:bg-gradient-to-r dark:from-gray-800 dark:to-gray-900 text-white overflow-hidden transition-colors">
+    <footer className="relative text-white overflow-hidden transition-colors" style={{ backgroundColor: '#39334D' }}>
       {/* Smooth curved top edge using CSS clip-path */}
-      <div className="absolute top-0 left-0 w-full h-8 bg-burgundy-500 dark:bg-gray-800" 
+      <div className="absolute top-0 left-0 w-full h-8" 
            style={{
+             backgroundColor: '#4A4358',
              clipPath: 'ellipse(75% 100% at 50% 100%)',
              transform: 'translateY(-50%)'
            }}>
@@ -46,7 +47,7 @@ export function Footer() {
             <h3 className="text-lg font-semibold mb-4">Liens rapides</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/videos" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
+                <Link href="/bibliotheque-videos" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
                   Vidéos de Pilates
                 </Link>
               </li>
@@ -66,7 +67,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/subscriptions" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
+                <Link href="/souscriptions/personnalise" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
                   Abonnements
                 </Link>
               </li>
