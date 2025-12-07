@@ -1,7 +1,30 @@
 import { NextRequest } from 'next/server'
 import { uploadToS3, generateVideoKey, generateThumbnailKey } from './s3'
-import { prisma } from './prisma'
-import { Video, Difficulty } from '@prisma/client'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Use service role key for admin operations
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+// Define types locally since we're not using Prisma anymore
+type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
+
+interface Video {
+  id: string
+  title: string
+  description: string | null
+  videoUrl: string
+  thumbnail: string | null
+  duration: number
+  difficulty: Difficulty
+  category: string | null
+  tags: string[]
+  isPublished: boolean
+  createdAt: Date
+  updatedAt: Date
+}
 
 // Video upload handler
 export async function handleVideoUpload(
@@ -75,8 +98,9 @@ export async function handleVideoUpload(
     const duration = 0 // This would be calculated from video metadata
 
     // Save to database
-    const video = await prisma.video.create({
-      data: {
+    const { data: video, error } = await supabaseAdmin
+      .from('videos_new')
+      .insert({
         title,
         description,
         videoUrl: videoUpload.location!,
@@ -86,8 +110,14 @@ export async function handleVideoUpload(
         category,
         tags,
         isPublished: false, // Admin needs to approve
-      },
-    })
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating video:', error)
+      return { success: false, error: 'Failed to save video to database' }
+    }
 
     return { success: true, video }
   } catch (error) {
@@ -102,11 +132,14 @@ export async function handleVideoUpload(
 // Get video with signed URL for private access
 export async function getVideoWithSignedUrl(videoId: string, userId: string) {
   try {
-    const video = await prisma.video.findUnique({
-      where: { id: videoId },
-    })
+    const { data: video, error } = await supabaseAdmin
+      .from('videos_new')
+      .select('*')
+      .eq('id', videoId)
+      .single()
 
-    if (!video) {
+    if (error || !video) {
+      console.error('Video not found:', error)
       return { success: false, error: 'Video not found' }
     }
 

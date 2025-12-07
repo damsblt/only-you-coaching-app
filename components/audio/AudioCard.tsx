@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, Clock, Heart, Plus, Music } from "lucide-react"
+import { Play, Clock, Music } from "lucide-react"
 import { Audio } from "@/types"
 import { formatDuration } from "@/lib/utils"
 
@@ -26,7 +26,7 @@ export function AudioCard({ audio, onClick }: AudioCardProps) {
         {/* Play Button Overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
           <div className="w-16 h-16 bg-white bg-opacity-90 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <Play className="w-8 h-8 text-purple-600 ml-1" />
+            <Play className="w-8 h-8 ml-1" style={{ color: '#39334D' }} />
           </div>
         </div>
 
@@ -38,34 +38,15 @@ export function AudioCard({ audio, onClick }: AudioCardProps) {
 
         {/* Music Icon */}
         <div className="absolute top-3 left-3 w-8 h-8 bg-white bg-opacity-90 rounded-full flex items-center justify-center">
-          <Music className="w-4 h-4 text-purple-600" />
+          <Music className="w-4 h-4" style={{ color: '#39334D' }} />
         </div>
       </div>
 
       {/* Content */}
       <div className="p-6">
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-purple-600 transition-colors">
+        <h3 className="font-semibold text-gray-900 text-center line-clamp-2 group-hover:text-burgundy-600 transition-colors">
           {audio.title}
         </h3>
-        
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {audio.description}
-        </p>
-
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-purple-600 bg-purple-100 px-3 py-1 rounded-full font-medium">
-            {audio.category}
-          </span>
-          
-          <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-              <Heart className="w-4 h-4" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-purple-600 transition-colors">
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   )

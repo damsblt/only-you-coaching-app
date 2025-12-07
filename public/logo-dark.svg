@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="160" height="48" viewBox="0 0 160 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fond bleu #23203C -->
+  <rect x="0" y="0" width="160" height="48" rx="7.2" ry="7.2" fill="#23203C"/>
+  
+  <!-- Texte "Only You" -->
+  <text x="80" y="26" text-anchor="middle" fill="white" font-size="17" font-weight="700" font-family="Georgia, serif" letter-spacing="0.3px">
+    Only You
+  </text>
+  
+  <!-- Sous-texte "COACHING" -->
+  <text x="80" y="38" text-anchor="middle" fill="white" font-size="8" font-weight="400" font-family="Arial, sans-serif" letter-spacing="2px" opacity="0.9">
+    COACHING
+  </text>
+</svg>

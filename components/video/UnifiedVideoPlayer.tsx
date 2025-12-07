@@ -5,6 +5,7 @@ import { X, Heart, Plus, Share2, Info, ChevronLeft, ChevronRight } from "lucide-
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 // import { MediaPlayer, MediaOutlet, MediaCommunitySkin } from '@vidstack/react'
 import { useVideoPlayer } from '@/hooks/useVideoPlayer'
+import { Button } from '@/components/ui/Button'
 
 interface Video {
   id: string
@@ -38,6 +39,8 @@ interface UnifiedVideoPlayerProps {
   className?: string
   autoPlay?: boolean
   muted?: boolean
+  loop?: boolean
+  startTime?: number // Temps de début en secondes
   variant?: 'modal' | 'inline' | 'fullscreen'
   showDetails?: boolean
 }
@@ -52,6 +55,8 @@ export default function UnifiedVideoPlayer({
   className = "", 
   autoPlay = false, 
   muted = false,
+  loop = false,
+  startTime,
   variant = 'modal',
   showDetails = true
 }: UnifiedVideoPlayerProps) {
@@ -59,7 +64,8 @@ export default function UnifiedVideoPlayer({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [showOverlay, setShowOverlay] = useState(true)
-  const playerRef = useRef<HTMLDivElement>(null)
+  const [isVideoReady, setIsVideoReady] = useState(false)
+  const playerRef = useRef<HTMLVideoElement>(null)
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Use the video player hook
@@ -117,26 +123,33 @@ export default function UnifiedVideoPlayer({
           throw new Error('Video ID is missing')
         }
         
-        // First try the streaming API
-        const streamUrl = `/api/videos/${video.id}/stream`
-        
-        // Test if the streaming API is accessible
-        try {
-          const response = await fetch(streamUrl, { method: 'HEAD' })
-          if (response.ok) {
-            setVideoSrc(streamUrl)
-            console.log('✅ Using streaming API:', streamUrl)
-          } else {
-            throw new Error(`Streaming API returned ${response.status}`)
-          }
-        } catch (streamError) {
-          console.warn('Streaming API failed, trying direct URL:', streamError)
-          // Fallback to direct video URL if streaming API fails
-          if (video.videoUrl) {
-            setVideoSrc(video.videoUrl)
-            console.log('✅ Using direct video URL:', video.videoUrl)
-          } else {
-            throw new Error('No video URL available')
+        // Pour mobile avec startTime, utiliser l'URL directe avec fragment
+        if (variant === 'inline' && startTime && isMobile && video.videoUrl) {
+          const directUrl = `${video.videoUrl}#t=${startTime}`
+          setVideoSrc(directUrl)
+          console.log('📱 Mobile: Using direct S3 URL with start time:', directUrl)
+        } else {
+          // Toujours utiliser l'API de streaming pour une meilleure compatibilité
+          const streamUrl = `/api/videos/${video.id}/stream`
+          
+          // Test if the streaming API is accessible
+          try {
+            const response = await fetch(streamUrl, { method: 'HEAD' })
+            if (response.ok) {
+              setVideoSrc(streamUrl)
+              console.log('✅ Using streaming API:', streamUrl)
+            } else {
+              throw new Error(`Streaming API returned ${response.status}`)
+            }
+          } catch (streamError) {
+            console.warn('Streaming API failed, trying direct URL:', streamError)
+            // Fallback to direct video URL if streaming API fails
+            if (video.videoUrl) {
+              setVideoSrc(video.videoUrl)
+              console.log('✅ Using direct video URL:', video.videoUrl)
+            } else {
+              throw new Error('No video URL available')
+            }
           }
         }
       } catch (err) {
@@ -146,7 +159,46 @@ export default function UnifiedVideoPlayer({
     }
 
     loadVideo()
-  }, [video.id, video.videoUrl, setError])
+  }, [video.id, video.videoUrl, setError, variant, startTime])
+
+  // Pour le variant inline, marquer comme prêt immédiatement
+  useEffect(() => {
+    if (variant === 'inline' && startTime) {
+      setIsVideoReady(true)
+    } else {
+      setIsVideoReady(true)
+    }
+  }, [variant, startTime])
+
+  // Logique spécifique pour mobile - forcer le démarrage au bon moment
+  useEffect(() => {
+    if (variant === 'inline' && startTime && playerRef.current && isMobile) {
+      const video = playerRef.current
+      
+      const forceStartTime = () => {
+        if (video.duration && video.currentTime < startTime) {
+          video.currentTime = startTime
+          console.log('📱 Mobile: Video forced to start at:', startTime, 'seconds')
+        }
+      }
+      
+      // Forcer immédiatement
+      forceStartTime()
+      
+      // Forcer après un délai
+      const timeout = setTimeout(forceStartTime, 1000)
+      
+      // Forcer quand la vidéo est prête
+      video.addEventListener('canplay', forceStartTime)
+      video.addEventListener('loadeddata', forceStartTime)
+      
+      return () => {
+        clearTimeout(timeout)
+        video.removeEventListener('canplay', forceStartTime)
+        video.removeEventListener('loadeddata', forceStartTime)
+      }
+    }
+  }, [variant, startTime, isMobile, videoSrc])
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -185,18 +237,22 @@ export default function UnifiedVideoPlayer({
             <h2 className="text-xl font-bold text-gray-900 mb-2">Video Error</h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <div className="flex gap-2 justify-center">
-              <button
+              <Button
                 onClick={() => window.location.reload()}
-                className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-lg transition-colors"
+                variant="primary"
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-700"
               >
                 Retry
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={onClose}
-                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                variant="primary"
+                size="sm"
+                className="bg-gray-600 hover:bg-gray-700"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -220,22 +276,63 @@ export default function UnifiedVideoPlayer({
         onWheel={handleWheel}
         onClick={handleUserInteraction}
       >
-        {videoSrc ? (
+        {videoSrc && isVideoReady ? (
           <video
             ref={playerRef}
             src={videoSrc}
             poster={video.thumbnail}
             autoPlay={autoPlay}
             muted={muted || isMobile}
+            loop={loop}
             playsInline
-            onError={handleError}
-            onLoadedData={handleLoad}
-            onPlay={handlePlay}
+            onError={(e) => {
+              console.error('Video element error:', e)
+              console.error('Video src:', videoSrc)
+              console.error('Video element:', e.currentTarget)
+              handleError(e)
+            }}
+            onLoadedData={(e) => {
+              // Pour le variant inline, démarrer au bon moment
+              if (variant === 'inline' && startTime && e.currentTarget.duration) {
+                e.currentTarget.currentTime = startTime
+                console.log('🎯 Video started at:', startTime, 'seconds')
+              }
+              handleLoad(e)
+            }}
+            onPlay={(e) => {
+              // Vérifier que la vidéo est au bon moment quand elle commence à jouer
+              if (variant === 'inline' && startTime) {
+                if (e.currentTarget.currentTime < startTime) {
+                  e.currentTarget.currentTime = startTime
+                  console.log('🎯 Video corrected to start time on play:', startTime, 'seconds')
+                }
+                
+                // Sur mobile, forcer plusieurs fois pour être sûr
+                if (isMobile) {
+                  setTimeout(() => {
+                    if (e.currentTarget.currentTime < startTime) {
+                      e.currentTarget.currentTime = startTime
+                      console.log('📱 Mobile: Video re-corrected to start time:', startTime, 'seconds')
+                    }
+                  }, 500)
+                  
+                  setTimeout(() => {
+                    if (e.currentTarget.currentTime < startTime) {
+                      e.currentTarget.currentTime = startTime
+                      console.log('📱 Mobile: Video final correction to start time:', startTime, 'seconds')
+                    }
+                  }, 1500)
+                }
+              }
+              handlePlay()
+            }}
             onPause={handlePause}
-            className="w-full h-full"
+            className={`w-full h-full ${variant === 'inline' ? 'object-cover rounded-full' : ''}`}
             crossOrigin="anonymous"
-            controls
-            preload="metadata"
+            controls={variant !== 'inline'}
+            preload="none"
+            webkit-playsinline="true"
+            playsInline
           >
             <source src={videoSrc} type="video/mp4" />
             Your browser does not support the video tag.
@@ -257,24 +354,28 @@ export default function UnifiedVideoPlayer({
           <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/70 to-transparent">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <button
+                <Button
                   onClick={onClose}
-                  className="text-white hover:text-gray-300 transition-colors p-1"
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:text-gray-300 p-1"
                 >
                   <X className="w-6 h-6" />
-                </button>
+                </Button>
                 <h1 className="text-white text-lg font-bold">Vidéos Pilates</h1>
               </div>
               <div className="flex items-center space-x-2">
                 <span className="text-white text-sm">
                   {currentIndex + 1} / {totalVideos}
                 </span>
-                <button
+                <Button
                   onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-                  className="text-white hover:text-gray-300 transition-colors p-1"
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:text-gray-300 p-1"
                 >
                   <Info className="w-5 h-5" />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -282,39 +383,53 @@ export default function UnifiedVideoPlayer({
 
           {/* Navigation Arrows */}
           {onPrevious && (
-            <button
+            <Button
               onClick={onPrevious}
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 text-white hover:bg-white/40 transition-colors z-10"
+              variant="ghost"
+              size="sm"
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 text-white hover:bg-white/40 z-10"
             >
               <ChevronLeft className="w-6 h-6" />
-            </button>
+            </Button>
           )}
 
           {onNext && (
-            <button
+            <Button
               onClick={onNext}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 text-white hover:bg-white/40 transition-colors z-10"
+              variant="ghost"
+              size="sm"
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-3 text-white hover:bg-white/40 z-10"
             >
               <ChevronRight className="w-6 h-6" />
-            </button>
+            </Button>
           )}
 
           {/* Action Buttons - Right Side */}
           <div className="absolute right-4 bottom-32 flex flex-col space-y-4 z-10">
-            <button
+            <Button
               onClick={() => setIsFavorite(!isFavorite)}
-              className={`bg-rose-500/20 backdrop-blur-sm rounded-full p-3 transition-colors ${
+              variant="ghost"
+              size="sm"
+              className={`bg-rose-500/20 backdrop-blur-sm rounded-full p-3 ${
                 isFavorite ? 'bg-rose-500/40' : 'hover:bg-rose-500/40'
               }`}
             >
               <Heart className={`w-6 h-6 text-white ${isFavorite ? 'fill-current' : ''}`} />
-            </button>
-            <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40"
+            >
               <Plus className="w-6 h-6 text-white" />
-            </button>
-            <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40"
+            >
               <Share2 className="w-6 h-6 text-white" />
-            </button>
+            </Button>
           </div>
 
           {/* Video Info Overlay */}
@@ -357,24 +472,28 @@ export default function UnifiedVideoPlayer({
         <div className="absolute top-0 left-0 right-0 z-20 p-4 bg-gradient-to-b from-black/70 to-transparent">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <button
+              <Button
                 onClick={onClose}
-                className="text-white hover:text-gray-300 transition-colors p-1"
+                variant="ghost"
+                size="sm"
+                className="text-white hover:text-gray-300 p-1"
               >
                 <X className="w-6 h-6" />
-              </button>
+              </Button>
               <h1 className="text-white text-lg font-bold">Vidéos Pilates</h1>
             </div>
             <div className="flex items-center space-x-2">
               <span className="text-white text-sm">
                 {currentIndex + 1} / {totalVideos}
               </span>
-              <button
+              <Button
                 onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-                className="text-white hover:text-gray-300 transition-colors p-1"
+                variant="ghost"
+                size="sm"
+                className="text-white hover:text-gray-300 p-1"
               >
                 <Info className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -401,7 +520,7 @@ export default function UnifiedVideoPlayer({
 
   // Inline variant
   return (
-    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
+    <div className={`relative w-full bg-black overflow-hidden ${variant === 'inline' ? 'aspect-square rounded-full' : 'aspect-video rounded-lg'}`}>
       {playerContent}
       
       {/* Description Overlay */}
@@ -410,12 +529,14 @@ export default function UnifiedVideoPlayer({
           <div className="bg-white rounded-xl max-w-sm w-full max-h-[80vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900">Description</h3>
-              <button
+              <Button
                 onClick={() => setIsDetailsOpen(false)}
+                variant="ghost"
+                size="sm"
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X className="w-5 h-5" />
-              </button>
+              </Button>
             </div>
             
             <div className="space-y-4">

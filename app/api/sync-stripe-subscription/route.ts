@@ -1,0 +1,161 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { getStripe } from '@/lib/stripe'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Use service role key for admin operations
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+
+export async function POST(request: NextRequest) {
+  try {
+    const stripe = getStripe()
+  try {
+    const { email } = await request.json()
+    
+    if (!email) {
+      return NextResponse.json({ error: 'Email parameter required' }, { status: 400 })
+    }
+
+    console.log('🔄 Synchronisation de l\'abonnement pour:', email)
+    
+    // Trouver l'utilisateur dans notre DB
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
+
+    if (userError || !user) {
+      console.error('User not found:', userError)
+      return NextResponse.json({ error: 'User not found in database' }, { status: 404 })
+    }
+
+    // Rechercher les abonnements dans Stripe
+    const customers = await stripe.customers.list({
+      email: email,
+      limit: 10
+    })
+
+    if (customers.data.length === 0) {
+      return NextResponse.json({ error: 'No Stripe customer found' }, { status: 404 })
+    }
+
+    const customer = customers.data[0]
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'all',
+      limit: 10
+    })
+
+    const activeSubscriptions = subscriptions.data.filter(sub => 
+      sub.status === 'active' && sub.current_period_end > Math.floor(Date.now() / 1000)
+    )
+
+    if (activeSubscriptions.length === 0) {
+      return NextResponse.json({ error: 'No active Stripe subscriptions found' }, { status: 404 })
+    }
+
+    const subscription = activeSubscriptions[0]
+    const priceId = subscription.items.data[0]?.price?.id
+
+    if (!priceId) {
+      return NextResponse.json({ error: 'No price ID found in subscription' }, { status: 400 })
+    }
+
+    // Déterminer le plan ID à partir du price ID
+    // Pour l'instant, on va déterminer le plan basé sur le prix
+    // Le price_id "price_1SFtNZRnELGaRIkTI51JSCso" correspond probablement au plan Essentiel (69 CHF)
+    let planId = 'essentiel' // Par défaut pour le plan 69 CHF
+    
+    // Logique de mapping basée sur le price ID
+    if (priceId.includes('essentiel') || priceId === 'price_1SFtNZRnELGaRIkTI51JSCso') {
+      planId = 'essentiel'
+    } else if (priceId.includes('avance')) {
+      planId = 'avance'
+    } else if (priceId.includes('premium')) {
+      planId = 'premium'
+    } else if (priceId.includes('starter')) {
+      planId = 'starter'
+    } else if (priceId.includes('pro')) {
+      planId = 'pro'
+    } else if (priceId.includes('expert')) {
+      planId = 'expert'
+    }
+
+    // Vérifier si l'abonnement existe déjà
+    const { data: existingSubscription, error: existingError } = await supabaseAdmin
+      .from('subscriptions')
+      .select('*')
+      .eq('userId', user.id)
+      .eq('stripeSubscriptionId', subscription.id)
+      .single()
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('Error checking existing subscription:', existingError)
+      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    }
+
+    if (existingSubscription) {
+      // Mettre à jour l'abonnement existant
+      const { data: updatedSubscription, error: updateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          status: 'ACTIVE',
+          planId: planId,
+          stripePriceId: priceId,
+          stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', existingSubscription.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Error updating subscription:', updateError)
+        return NextResponse.json({ error: 'Failed to update subscription' }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Subscription updated',
+        subscription: updatedSubscription
+      })
+    } else {
+      // Créer un nouvel abonnement
+      const { data: newSubscription, error: createError } = await supabaseAdmin
+        .from('subscriptions')
+        .insert({
+          userId: user.id,
+          status: 'ACTIVE',
+          plan: 'MONTHLY', // Type d'abonnement (monthly/yearly/lifetime)
+          planId: planId, // Ajouter le planId
+          stripePriceId: priceId,
+          stripeCustomerId: customer.id,
+          stripeSubscriptionId: subscription.id,
+          stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString()
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating subscription:', createError)
+        return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 })
+      }
+
+      console.log(`✅ Subscription synced for user ${user.id} with planId: ${planId}`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Subscription created',
+        subscription: newSubscription
+      })
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la synchronisation:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}

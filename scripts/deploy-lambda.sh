@@ -12,19 +12,27 @@ REGION="eu-north-1"
 ROLE_NAME="only-you-coaching-lambda-role"
 POLICY_NAME="only-you-coaching-lambda-policy"
 
-# Supabase credentials (replace with your actual values)
-SUPABASE_URL="https://otqyrsmxdtcvhueriwzp.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im90cXlyc214ZHRjdmh1ZXJpd3pwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODAyMzQ3MCwiZXhwIjoyMDczNTk5NDcwfQ.tvlTfPDszMRjsr7mFMekZ2_sD0-qNDz3NYkbbyT7Okw"
+# Neon Database URL (from environment or .env.local)
+# This should be set in your environment or passed as a parameter
+DATABASE_URL="${DATABASE_URL:-${STORAGE_DATABASE_URL}}"
 
-echo "🚀 Deploying Lambda function for S3 -> Thumbnail -> Supabase automation"
+if [ -z "$DATABASE_URL" ]; then
+  echo "❌ DATABASE_URL or STORAGE_DATABASE_URL must be set"
+  echo "   Load from .env.local or set as environment variable"
+  exit 1
+fi
+
+echo "🚀 Deploying Lambda function for S3 -> Thumbnail -> Neon automation"
 echo "=================================================================="
 
 # 1. Create deployment package
 echo "📦 Creating deployment package..."
 cd lambda
-npm init -y
-npm install @aws-sdk/client-s3 @supabase/supabase-js --legacy-peer-deps
-zip -r ../lambda-deployment.zip .
+if [ ! -f "package.json" ]; then
+  npm init -y
+fi
+npm install @aws-sdk/client-s3 @neondatabase/serverless --legacy-peer-deps
+zip -r ../lambda-deployment.zip . -x "*.git*" "node_modules/.cache/*"
 cd ..
 
 # 2. Create IAM role for Lambda
@@ -92,8 +100,8 @@ aws lambda create-function \
   --memory-size 1024 \
   --environment Variables="{
     S3_BUCKET_NAME=$BUCKET_NAME,
-    SUPABASE_URL=$SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
+    AWS_REGION=$REGION,
+    DATABASE_URL=$DATABASE_URL
   }" \
   --query 'FunctionArn' \
   --output text

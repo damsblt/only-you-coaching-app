@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { handleVideoUpload } from '@/lib/video-upload'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { supabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
+    // Check authentication using Supabase
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+    
+    if (error || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -15,8 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle video upload
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await handleVideoUpload(request, (session.user as any).id)
+    const result = await handleVideoUpload(request, user.id)
     
     if (!result.success) {
       return NextResponse.json(

@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Heart, Plus, Share2, Info, Play, Pause, Volume2, VolumeX } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
+import { Button } from "@/components/ui/Button"
 
 interface Video {
   id: string
@@ -16,6 +18,7 @@ interface Video {
   category: string
   region?: string
   muscleGroups: string[]
+  exo_title?: string
   startingPosition?: string
   movement?: string
   intensity?: string
@@ -29,6 +32,7 @@ interface Video {
 interface SimpleVideoPlayerProps {
   video: Video
   onClose?: () => void
+  onVideoCompleted?: () => void
   className?: string
   showDetails?: boolean
   autoPlay?: boolean
@@ -37,7 +41,8 @@ interface SimpleVideoPlayerProps {
 
 export default function SimpleVideoPlayer({ 
   video, 
-  onClose, 
+  onClose,
+  onVideoCompleted,
   className = "", 
   showDetails = true, 
   autoPlay = false, 
@@ -46,14 +51,79 @@ export default function SimpleVideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [isMuted, setIsMuted] = useState(muted)
   const [volume, setVolume] = useState(1)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
+  const [showControls, setShowControls] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  const lastSaveTimeRef = useRef<number>(0)
+  const hasMarkedCompletedRef = useRef<boolean>(false)
+  const { user } = useSimpleAuth()
+
+  // Function to save progress
+  const saveProgress = async (progressSeconds: number, completed: boolean): Promise<void> => {
+    if (!user || !video.id) {
+      console.log('⚠️ Cannot save progress: missing user or video.id', { hasUser: !!user, hasVideoId: !!video.id })
+      return
+    }
+    
+    // Throttle saves to avoid too many API calls (but always save if completed)
+    const now = Date.now()
+    if (!completed && now - lastSaveTimeRef.current < 5000) {
+      return // Only save every 5 seconds for non-completed videos
+    }
+    lastSaveTimeRef.current = now
+    
+    console.log('💾 Saving progress to database:', { 
+      videoId: video.id, 
+      userId: user.id, 
+      completed, 
+      progressSeconds,
+      timestamp: new Date().toISOString()
+    })
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/progress`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          completed,
+          progressSeconds
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Error saving progress - API returned error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          url: `/api/videos/${video.id}/progress`
+        })
+        return
+      }
+      
+      const data = await response.json()
+      console.log('✅ Progress saved successfully in database:', {
+        success: data.success,
+        progress: data.progress,
+        videoId: video.id
+      })
+    } catch (error) {
+      console.error('❌ Error saving progress (network/exception):', error)
+    }
+  }
+
+  // Reset completion flag when video changes
+  useEffect(() => {
+    hasMarkedCompletedRef.current = false
+  }, [video.id])
 
   // Load video source when component mounts
   useEffect(() => {
@@ -107,14 +177,62 @@ export default function SimpleVideoPlayer({
       console.log('Video metadata loaded, duration:', videoElement.duration)
       setDuration(videoElement.duration)
       setIsLoading(false)
+      // Don't show controls automatically on load
     }
 
     const handleTimeUpdate = () => {
       setCurrentTime(videoElement.currentTime)
+      
+      // Auto-save progress regularly
+      if (user && videoElement.currentTime > 0 && videoElement.duration > 0) {
+        const progressSeconds = Math.floor(videoElement.currentTime)
+        const duration = Math.floor(videoElement.duration)
+        const progressPercent = (videoElement.currentTime / videoElement.duration) * 100
+        
+        // Mark as completed if watched at least 1 second (for program mode progression)
+        if (progressSeconds >= 1 && !hasMarkedCompletedRef.current) {
+          console.log(`📊 Video watched ${progressSeconds} second(s) - marking as completed for program progression`)
+          hasMarkedCompletedRef.current = true
+          saveProgress(duration, true).then(() => {
+            console.log('✅ Video marked as completed after 1 second, calling onVideoCompleted callback')
+            // Call the onVideoCompleted callback if provided
+            if (onVideoCompleted) {
+              onVideoCompleted()
+            }
+          }).catch((error) => {
+            console.error('❌ Error in saveProgress promise:', error)
+          })
+        } else if (progressSeconds > 0 && progressSeconds % 5 === 0 && !hasMarkedCompletedRef.current) {
+          // Save progress every 5 seconds (even if just 5% watched) - but only if not already completed
+          console.log(`📊 Saving progress: ${progressPercent.toFixed(1)}% (${progressSeconds}s / ${duration}s)`)
+          saveProgress(progressSeconds, false)
+        }
+      }
     }
 
     const handleEnded = () => {
+      console.log('🎬 Video ended! Duration:', videoElement.duration)
       setIsPlaying(false)
+      
+      // Mark video as completed when it ends (only if not already marked after 1 second)
+      if (user && !hasMarkedCompletedRef.current) {
+        const duration = Math.floor(videoElement.duration)
+        console.log('💾 Marking video as completed at end:', { videoId: video.id, duration })
+        hasMarkedCompletedRef.current = true
+        saveProgress(duration, true).then(() => {
+          console.log('✅ Video marked as completed at end, calling onVideoCompleted callback')
+          // Call the onVideoCompleted callback if provided
+          if (onVideoCompleted) {
+            onVideoCompleted()
+          }
+        }).catch((error) => {
+          console.error('❌ Error in saveProgress promise:', error)
+        })
+      } else if (hasMarkedCompletedRef.current) {
+        console.log('✅ Video already marked as completed after 1 second, skipping end handler')
+      } else {
+        console.warn('⚠️ Cannot mark video as completed: no user')
+      }
     }
 
     const handleError = (e: Event) => {
@@ -227,9 +345,21 @@ export default function SimpleVideoPlayer({
       }
       
       // If we're already using the direct URL and still getting errors, it's likely a CORS issue
-      if (videoElement?.src?.includes('s3.eu-north-1.amazonaws.com')) {
+      if (videoElement?.src?.includes('s3.eu-north-1.amazonaws.com') || videoElement?.src?.includes('amazonaws.com')) {
+        console.error('[VideoPlayer] S3 direct access failed. This could be due to:')
+        console.error('  - CORS configuration issues on S3 bucket')
+        console.error('  - Bucket permissions not allowing public read')
+        console.error('  - Incorrect bucket name or region in environment variables')
+        console.error('  - Network connectivity issues')
         errorMessage = 'Video cannot be loaded. This is likely due to S3 configuration issues. Please contact support or try refreshing the page.'
         shouldTryFallback = false // Don't try fallback again
+      } else if (videoElement?.src?.includes('/api/videos/')) {
+        // If streaming API fails, provide more context
+        console.error('[VideoPlayer] Streaming API failed. This could be due to:')
+        console.error('  - Missing AWS environment variables (AWS_S3_BUCKET_NAME, AWS_REGION)')
+        console.error('  - API route error')
+        console.error('  - Database connection issues')
+        errorMessage = 'Video cannot be loaded. The streaming service may be experiencing issues. Please try refreshing the page.'
       }
       
       console.error('Final error message:', errorMessage)
@@ -261,7 +391,16 @@ export default function SimpleVideoPlayer({
       videoElement.removeEventListener('loadstart', handleLoadStart)
       videoElement.removeEventListener('canplay', handleCanPlay)
     }
-  }, [videoSrc])
+  }, [videoSrc, user, video.id])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const togglePlay = () => {
     const videoElement = videoRef.current
@@ -310,6 +449,21 @@ export default function SimpleVideoPlayer({
     videoElement.currentTime = Math.max(0, Math.min(duration, videoElement.currentTime + seconds))
   }
 
+  const showControlsTemporarily = () => {
+    setShowControls(true)
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current)
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false)
+    }, 3000)
+  }
+
+  const handleVideoClick = () => {
+    showControlsTemporarily()
+    togglePlay()
+  }
+
   if (error) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
@@ -344,30 +498,18 @@ export default function SimpleVideoPlayer({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900">{video.title}</h2>
-            <div className={`px-2 py-1 rounded-md text-sm font-medium text-white ${getDifficultyColor(video.difficulty)}`}>
-              {getDifficultyLabel(video.difficulty)}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Détails"
-            >
-              <Info className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
+          <h2 className="text-xl font-bold text-gray-900">{video.exo_title || video.title}</h2>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="sm"
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </Button>
         </div>
 
         <div className="flex">
@@ -380,7 +522,7 @@ export default function SimpleVideoPlayer({
                   src={videoSrc}
                   className={`w-full h-full ${className}`}
                   poster={video.thumbnail}
-                  onClick={togglePlay}
+                  onClick={handleVideoClick}
                   preload="metadata"
                   autoPlay={autoPlay}
                   muted={muted}
@@ -404,7 +546,7 @@ export default function SimpleVideoPlayer({
               {!isPlaying && !isLoading && !error && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <button
-                    onClick={togglePlay}
+                    onClick={handleVideoClick}
                     className="bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full p-6 transition-all duration-200 transform hover:scale-110"
                   >
                     <Play className="w-12 h-12 text-rose-600" fill="currentColor" />
@@ -413,35 +555,25 @@ export default function SimpleVideoPlayer({
               )}
 
               {/* Controls */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                </div>
-
+              <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 transition-opacity duration-300 ${
+                showControls ? 'opacity-100' : 'opacity-0'
+              }`}>
                 {/* Control Buttons */}
                 <div className="flex items-center justify-between text-white">
                   <div className="flex items-center gap-4">
-                    <button onClick={togglePlay} className="hover:text-rose-400 transition-colors">
+                    <Button onClick={togglePlay} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                       {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                    </button>
-                    <button onClick={() => skip(-10)} className="hover:text-rose-400 transition-colors">
-                      <span className="text-sm">-10s</span>
-                    </button>
-                    <button onClick={() => skip(10)} className="hover:text-rose-400 transition-colors">
-                      <span className="text-sm">+10s</span>
-                    </button>
+                    </Button>
+                    <Button onClick={() => skip(-10)} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
+                      <SkipBack className="w-5 h-5" />
+                    </Button>
+                    <Button onClick={() => skip(10)} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
+                      <SkipForward className="w-5 h-5" />
+                    </Button>
                     <div className="flex items-center gap-2">
-                      <button onClick={toggleMute} className="hover:text-rose-400 transition-colors">
+                      <Button onClick={toggleMute} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                      </button>
+                      </Button>
                       <input
                         type="range"
                         min="0"
@@ -457,129 +589,10 @@ export default function SimpleVideoPlayer({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsFavorite(!isFavorite)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isFavorite ? 'text-rose-500 bg-rose-100' : 'hover:bg-gray-700'
-                      }`}
-                    >
-                      <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                    </button>
-                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                      <Plus className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                      <Share2 className="w-5 h-5" />
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Details Panel */}
-          {isDetailsOpen && (
-            <div className="w-80 bg-gray-50 p-6 overflow-y-auto max-h-[70vh]">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Détails de l&apos;exercice</h3>
-              
-              {/* Description */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                <p className="text-gray-600 text-sm">{video.detailedDescription || video.description}</p>
-              </div>
-
-              {/* Category & Region */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Catégorie</h4>
-                <div className="flex flex-wrap gap-2">
-                  <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-sm">
-                    {video.category}
-                  </span>
-                  {video.region && (
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-                      {video.region}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Muscle Groups */}
-              {video.muscleGroups.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Muscles ciblés</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {video.muscleGroups.map((muscle, index) => (
-                      <span
-                        key={index}
-                        className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm"
-                      >
-                        {muscle}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Starting Position */}
-              {video.startingPosition && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Position de départ</h4>
-                  <p className="text-gray-600 text-sm">{video.startingPosition}</p>
-                </div>
-              )}
-
-              {/* Movement */}
-              {video.movement && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Mouvement</h4>
-                  <p className="text-gray-600 text-sm">{video.movement}</p>
-                </div>
-              )}
-
-              {/* Series & Intensity */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Séries & Intensité</h4>
-                <div className="space-y-2">
-                  {video.series && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{video.series}</span>
-                    </div>
-                  )}
-                  {video.intensity && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{video.intensity}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Constraints */}
-              {video.constraints && video.constraints !== "Aucune" && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Contraintes</h4>
-                  <p className="text-gray-600 text-sm">{video.constraints}</p>
-                </div>
-              )}
-
-              {/* Tags */}
-              {video.tags.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {video.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

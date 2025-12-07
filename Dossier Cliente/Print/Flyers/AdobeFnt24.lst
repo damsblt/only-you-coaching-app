@@ -1,0 +1,283 @@
+%!Adobe-FontList 1.24
+%Locale:0x409
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Invalid
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/AdobeFnt24.lst
+FileLength:6907
+FileModTime:769983666
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:LibreBaskerville-Bold
+FamilyName:Libre Baskerville
+StyleName:Bold
+MenuName:Libre Baskerville
+StyleBits:2
+WeightClass:700
+WidthClass:5
+AngleClass:0
+FullName:Libre Baskerville Bold
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/LibreBaskerville-Bold.ttf
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:155428
+FileModTime:747184280
+NameArray:0,Win,1,Libre Baskerville
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:Type1
+FontName:MinionPro-Regular
+FamilyName:Minion Pro
+StyleName:Regular
+MenuName:Minion Pro
+StyleBits:0
+WeightClass:400
+WidthClass:5
+AngleClass:0
+FullName:Minion Pro
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/MinionPro-Regular.otf
+DataFormat:sfntData
+UsesStandardEncoding:yes
+isCFF:yes
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:218640
+FileModTime:767974161
+DesignSize:110
+NameArray:0,Mac,4,Minion Pro
+NameArray:0,Win,1,Minion Pro
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Montserrat-ThinItalic
+FamilyName:Montserrat
+StyleName:Thin Italic
+MenuName:Montserrat Thin
+FamilyPrefix:MontserratItalic
+StyleBits:1
+WeightClass:100
+WidthClass:5
+AngleClass:1
+FullName:Montserrat Thin Italic
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Montserrat-Italic-VariableFont_wght.ttf
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:TrueTypeVariableFont
+FileLength:404112
+FileModTime:716423238
+NameArray:0,Win,1,Montserrat Thin
+NameArray:0,Win,16,Montserrat
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Montserrat-Thin
+FamilyName:Montserrat
+StyleName:Thin
+MenuName:Montserrat Thin
+FamilyPrefix:MontserratRoman
+StyleBits:0
+WeightClass:100
+WidthClass:5
+AngleClass:0
+FullName:Montserrat Thin
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Montserrat-VariableFont_wght.ttf
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:TrueTypeVariableFont
+FileLength:394140
+FileModTime:716423238
+NameArray:0,Win,1,Montserrat Thin
+NameArray:0,Win,16,Montserrat
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica
+FamilyName:Helvetica
+StyleName:Regular
+MenuName:Helvetica
+StyleBits:0
+WeightClass:400
+WidthClass:5
+AngleClass:0
+FullName:Helvetica
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:48
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,18,Helvetica
+NameArray:0,Mac,4,Helvetica
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica-Bold
+FamilyName:Helvetica
+StyleName:Bold
+MenuName:Helvetica
+StyleBits:2
+WeightClass:700
+WidthClass:5
+AngleClass:0
+FullName:Helvetica Bold
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:380
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,4,Helvetica Bold
+NameArray:0,Mac,4,Helvetica lihava
+NameArray:0,Mac,4,Helvetica Gras
+NameArray:0,Mac,4,Helvetica Fett
+NameArray:0,Mac,4,Helvetica grassetto
+NameArray:0,Mac,4,Helvetica vet
+NameArray:0,Mac,4,Helvetica Fet
+NameArray:0,Mac,4,Helvetica Negrita
+NameArray:0,Mac,4,Helvetica Carregado
+NameArray:0,Mac,4,Helvetica Halvfet
+NameArray:0,Mac,18,Helvetica Bold
+NameArray:4,Mac,4,Helvetica‭ ‬أسود
+NameArray:4,Mac,4,Helvetica‭ ‬برجسته
+NameArray:5,Mac,4,Helvetica‭ ‬עבה
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica-BoldOblique
+FamilyName:Helvetica
+StyleName:Bold Oblique
+MenuName:Helvetica
+StyleBits:3
+WeightClass:700
+WidthClass:5
+AngleClass:0
+FullName:Helvetica Bold Oblique
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:1028
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,18,Helvetica Bold Oblique
+NameArray:0,Mac,4,Helvetica Bold Oblique
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica-Light
+FamilyName:Helvetica
+StyleName:Light
+MenuName:Helvetica
+StyleBits:0
+WeightClass:300
+WidthClass:5
+AngleClass:0
+FullName:Helvetica Light
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:1344
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,18,Helvetica Light
+NameArray:0,Mac,4,Helvetica Light
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica-LightOblique
+FamilyName:Helvetica
+StyleName:Light Oblique
+MenuName:Helvetica
+StyleBits:1
+WeightClass:300
+WidthClass:5
+AngleClass:1
+FullName:Helvetica Light Oblique
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:1644
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,18,Helvetica Light Oblique
+NameArray:0,Mac,4,Helvetica Light Oblique
+%EndFont
+
+%BeginFont
+Handler:DirectoryHandler
+FontType:TrueType
+FontName:Helvetica-Oblique
+FamilyName:Helvetica
+StyleName:Oblique
+MenuName:Helvetica
+StyleBits:1
+WeightClass:400
+WidthClass:5
+AngleClass:1
+FullName:Helvetica Oblique
+WritingScript:Roman
+OutlineFileName:/Users/agencechamyca/Dropbox/_Agence_CHAMYCA/Agence_CHAMYCA/CLIENTS/OnlyYouCoaching/DIGITAL_COM/Dossier Flyer-OnlyYouCoaching/Document fonts/Helvetica.ttc
+TTCOffset:696
+DataFormat:sfntData
+hasSVG:no
+hasSBIX:no
+hasCOLR:no
+VariableFontType:NonVariableFont
+FileLength:2369592
+FileModTime:768029962
+NameArray:0,Mac,18,Helvetica Oblique
+NameArray:0,Mac,4,Helvetica Oblique
+%EndFont
+
