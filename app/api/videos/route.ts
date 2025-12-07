@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
       })
     }
     
-    const { searchParams } = new URL(request.url)
+    // Use nextUrl.searchParams to avoid dynamic server usage warning
+    const searchParams = request.nextUrl.searchParams
     const muscleGroup = searchParams.get('muscleGroup')
     const programme = searchParams.get('programme')
     const region = searchParams.get('region')
@@ -53,97 +54,70 @@ export async function GET(request: NextRequest) {
     
     console.log('📋 Parsed params:', { muscleGroup, programme, region, difficulty, search, videoType, limit, offset })
 
-  // Build filter conditions (Prisma)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = {
-    isPublished: true
-  }
+    // Use Neon database
+    try {
+      console.log('🔍 Fetching videos with params:', { videoType, region, difficulty, search, offset, limit })
+      
+      // Verify database connection is available
+      if (!db) {
+        console.error('❌ Database client is not initialized')
+        return NextResponse.json({ 
+          error: 'Database connection error',
+          message: 'Database client is not initialized',
+          details: 'Please check DATABASE_URL environment variable'
+        }, { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      
+      // Build query using Neon client
+      let query = db.from('videos_new').select(VIDEO_COLUMNS).order('title', { ascending: true })
 
-  if (videoType === 'muscle-groups') {
-    where.videoType = 'MUSCLE_GROUPS'
-  } else if (videoType === 'programmes') {
-    where.videoType = 'PROGRAMMES'
-  }
+      // Apply filters
+      query = query.eq('isPublished', true)
 
-  if (muscleGroup && muscleGroup !== 'all') {
-    const muscleGroupMap: { [key: string]: string } = {
-      'Abdos': 'abdos',
-      'Bande': 'bande',
-      'Biceps': 'biceps',
-      'Cardio': 'cardio',
-      'Dos': 'dos',
-      'Fessiers et jambes': 'fessiers-jambes',
-      'Streching': 'streching',
-      'Triceps': 'triceps'
-    }
-    if (muscleGroupMap[muscleGroup]) {
-      where.region = muscleGroupMap[muscleGroup]
-    }
-  }
+      // Handle videoType filter
+      if (videoType === 'muscle-groups') {
+        query = query.eq('videoType', 'MUSCLE_GROUPS')
+      } else if (videoType === 'programmes') {
+        query = query.eq('videoType', 'PROGRAMMES')
+      }
 
-  if (programme && programme !== 'all') {
-    where.region = programme
-  }
+      // Handle region filter (priority: region > programme > muscleGroup)
+      let finalRegion: string | null = null
+      if (region && region !== 'all') {
+        finalRegion = region
+      } else if (programme && programme !== 'all') {
+        finalRegion = programme
+      } else if (muscleGroup && muscleGroup !== 'all') {
+        const muscleGroupMap: { [key: string]: string } = {
+          'Abdos': 'abdos',
+          'Bande': 'bande',
+          'Biceps': 'biceps',
+          'Cardio': 'cardio',
+          'Dos': 'dos',
+          'Fessiers et jambes': 'fessiers-jambes',
+          'Streching': 'streching',
+          'Triceps': 'triceps'
+        }
+        if (muscleGroupMap[muscleGroup]) {
+          finalRegion = muscleGroupMap[muscleGroup]
+        }
+      }
 
-  if (region && region !== 'all') {
-    where.region = region
-  }
+      if (finalRegion) {
+        query = query.eq('region', finalRegion)
+      }
 
-  if (difficulty && difficulty !== 'all') {
-    where.difficulty = { in: [difficulty] }
-  }
+      if (difficulty && difficulty !== 'all') {
+        query = query.eq('difficulty', difficulty)
+      }
 
-  if (search) {
-    where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
-      { startingPosition: { contains: search, mode: 'insensitive' } },
-      { movement: { contains: search, mode: 'insensitive' } },
-      { theme: { contains: search, mode: 'insensitive' } }
-    ]
-  }
-
-  // Use Neon database
-  try {
-    console.log('🔍 Fetching videos with params:', { videoType, region, difficulty, search, offset, limit })
-    
-    // Verify database connection is available
-    if (!db) {
-      console.error('❌ Database client is not initialized')
-      return NextResponse.json({ 
-        error: 'Database connection error',
-        message: 'Database client is not initialized',
-        details: 'Please check DATABASE_URL environment variable'
-      }, { 
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      })
-    }
-    
-    // Build query using Neon client
-    let query = db.from('videos_new').select(VIDEO_COLUMNS).order('title', { ascending: true })
-
-    // Apply filters
-    query = query.eq('isPublished', true)
-
-    if (where.videoType) {
-      query = query.eq('videoType', where.videoType)
-    }
-
-    if (where.region) {
-      query = query.eq('region', where.region)
-    }
-
-    if (difficulty && difficulty !== 'all') {
-      query = query.eq('difficulty', difficulty)
-    }
-
-    if (search) {
-      // Temporarily disable OR search to test if it's causing the crash
-      // query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%,startingPosition.ilike.%${search}%,movement.ilike.%${search}%,theme.ilike.%${search}%`)
-      // Use simple LIKE search instead
-      query = query.ilike('title', `%${search}%`)
-    }
+      if (search) {
+        // Use simple ILIKE search for now
+        query = query.ilike('title', `%${search}%`)
+      }
 
     // For programs with specific ordering, we need to fetch all videos first,
     // then sort them, then apply pagination
