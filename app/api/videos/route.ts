@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
       console.log(`📋 Applied custom ordering for ${region} program: ${sortedData.length} videos after pagination`)
     }
 
-    // Generate signed URLs for thumbnails if they're S3 URLs
+    // Process thumbnails - use public URLs for thumbnails folder, signed URLs for others
     // Process in batches of 10 to avoid overwhelming the system
     const BATCH_SIZE = 10
     const videosWithSignedThumbnails = []
@@ -246,24 +246,49 @@ export async function GET(request: NextRequest) {
             const thumbnailUrl = new URL(video.thumbnail)
             // Check if it's an S3 URL
             if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
-              try {
+              // If URL already has query parameters (signed URL), clean it up
+              if (thumbnailUrl.search) {
+                // Extract the S3 key from the pathname (ignore query params)
                 const encodedPath = thumbnailUrl.pathname
                 const decodedPath = decodeURIComponent(encodedPath)
                 const s3Key = decodedPath.substring(1) // Remove leading slash
-
-                // Generate signed URL (valid for 24 hours)
-                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-
-                if (signedUrlResult.success) {
-                  return { ...video, thumbnail: signedUrlResult.url }
+                
+                // If it's in the thumbnails folder, use public URL
+                if (s3Key.startsWith('thumbnails/')) {
+                  const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
+                  return { ...video, thumbnail: publicUrl }
                 }
-              } catch (urlError) {
-                console.error('Error processing thumbnail URL for video', video.id, ':', urlError)
-                // Keep original URL if signed URL generation fails
+                
+                // For non-thumbnail files, generate a new signed URL
+                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                if (signedUrlResult.success) {
+                  // Ensure the URL is properly formatted (no newlines)
+                  const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                  return { ...video, thumbnail: cleanUrl }
+                }
+              } else {
+                // No query params - it's already a public URL
+                // If it's in thumbnails folder, keep it as is
+                const encodedPath = thumbnailUrl.pathname
+                const decodedPath = decodeURIComponent(encodedPath)
+                const s3Key = decodedPath.substring(1)
+                
+                if (s3Key.startsWith('thumbnails/')) {
+                  // Already a public URL, keep it
+                  return video
+                }
+                
+                // For non-thumbnail files, generate signed URL
+                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                if (signedUrlResult.success) {
+                  const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                  return { ...video, thumbnail: cleanUrl }
+                }
               }
             }
           } catch (urlError) {
-            // Not a valid URL, keep original thumbnail
+            // Not a valid URL or error processing, keep original thumbnail
+            console.error('Error processing thumbnail URL for video', video.id, ':', urlError)
           }
 
           return video
