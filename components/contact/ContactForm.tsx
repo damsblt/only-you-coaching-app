@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Mail, Phone, MapPin, Send, CheckCircle } from "lucide-react"
+import { Button } from "@/components/ui/Button"
 
 interface FormData {
   name: string
@@ -55,12 +56,12 @@ export function ContactForm() {
 
   if (isSubmitted) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center border border-gray-100 dark:border-gray-700">
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-        <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+        <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
           Message envoyé !
         </h3>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           Merci pour votre message. Marie-Line vous répondra dans les plus brefs délais.
         </p>
       </div>
@@ -68,12 +69,12 @@ export function ContactForm() {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8">
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-100 dark:border-gray-700">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
           Contactez Marie-Line
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           Avez-vous des questions sur le Pilates ? Besoin d'aide pour choisir un programme ? 
           N'hésitez pas à nous contacter !
         </p>
@@ -82,7 +83,7 @@ export function ContactForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Nom complet *
             </label>
             <input
@@ -92,12 +93,12 @@ export function ContactForm() {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-colors"
               placeholder="Votre nom complet"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Email *
             </label>
             <input
@@ -107,7 +108,7 @@ export function ContactForm() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-colors"
               placeholder="votre@email.com"
             />
           </div>
@@ -115,7 +116,7 @@ export function ContactForm() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Téléphone
             </label>
             <input
@@ -124,12 +125,12 @@ export function ContactForm() {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-colors"
               placeholder="+41 XX XXX XX XX"
             />
           </div>
           <div>
-            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Sujet *
             </label>
             <select
@@ -138,7 +139,7 @@ export function ContactForm() {
               value={formData.subject}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-colors"
             >
               <option value="">Sélectionnez un sujet</option>
               <option value="question">Question générale</option>
@@ -151,7 +152,7 @@ export function ContactForm() {
         </div>
 
         <div>
-          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Message *
           </label>
           <textarea
@@ -161,15 +162,17 @@ export function ContactForm() {
             onChange={handleChange}
             required
             rows={6}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors resize-none"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-accent-500 focus:border-transparent transition-colors resize-none"
             placeholder="Décrivez votre question ou votre demande..."
           />
         </div>
 
-        <button
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+          fullWidth
+          variant="primary"
+          className="py-4 px-6 flex items-center justify-center space-x-2"
         >
           {isSubmitting ? (
             <>
@@ -182,7 +185,7 @@ export function ContactForm() {
               <span>Envoyer le message</span>
             </>
           )}
-        </button>
+        </Button>
       </form>
     </div>
   )
@@ -191,55 +194,55 @@ export function ContactForm() {
 export function ContactInfo() {
   return (
     <div className="space-y-8">
-      <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl p-6 border border-primary-200">
-        <h3 className="text-xl font-semibold text-primary-900 mb-4">
+      <div className="bg-gradient-to-br from-accent-50 dark:from-accent-900/20 to-accent-100 dark:to-accent-900/30 rounded-xl p-6 border border-accent-200 dark:border-accent-800/50">
+        <h3 className="text-xl font-semibold text-accent-900 dark:text-accent-100 mb-4">
           Informations de contact
         </h3>
         <div className="space-y-4">
           <div className="flex items-start space-x-3">
-            <Mail className="w-5 h-5 text-primary-600 mt-1 flex-shrink-0" />
+            <Mail className="w-5 h-5 text-accent-600 dark:text-accent-400 mt-1 flex-shrink-0" />
             <div>
-              <p className="text-primary-800 font-medium">Email</p>
+              <p className="text-accent-800 dark:text-accent-200 font-medium">Email</p>
               <a 
                 href="mailto:info@only-you-coaching.com" 
-                className="text-primary-600 hover:text-primary-700 transition-colors"
+                className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition-colors"
               >
                 info@only-you-coaching.com
               </a>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <Phone className="w-5 h-5 text-primary-600 mt-1 flex-shrink-0" />
+            <Phone className="w-5 h-5 text-accent-600 dark:text-accent-400 mt-1 flex-shrink-0" />
             <div>
-              <p className="text-primary-800 font-medium">Téléphone</p>
+              <p className="text-accent-800 dark:text-accent-200 font-medium">Téléphone</p>
               <a 
                 href="tel:+41762508024" 
-                className="text-primary-600 hover:text-primary-700 transition-colors"
+                className="text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition-colors"
               >
                 +41 (0)76 250 80 24
               </a>
             </div>
           </div>
           <div className="flex items-start space-x-3">
-            <MapPin className="w-5 h-5 text-primary-600 mt-1 flex-shrink-0" />
+            <MapPin className="w-5 h-5 text-accent-600 dark:text-accent-400 mt-1 flex-shrink-0" />
             <div>
-              <p className="text-primary-800 font-medium">Localisation</p>
-              <p className="text-primary-600">Suisse</p>
+              <p className="text-accent-800 dark:text-accent-200 font-medium">Localisation</p>
+              <p className="text-accent-600 dark:text-accent-400">Suisse</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-secondary-50 to-secondary-100 rounded-xl p-6 border border-secondary-200">
-        <h3 className="text-xl font-semibold text-secondary-900 mb-4">
+      <div className="bg-gradient-to-br from-gray-50 dark:from-gray-800 to-white dark:to-gray-700 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
           Horaires de réponse
         </h3>
-        <div className="space-y-2 text-secondary-800">
+        <div className="space-y-2 text-gray-700 dark:text-gray-300">
           <p><span className="font-medium">Lundi - Vendredi:</span> 9h00 - 18h00</p>
           <p><span className="font-medium">Samedi:</span> 9h00 - 12h00</p>
           <p><span className="font-medium">Dimanche:</span> Fermé</p>
         </div>
-        <p className="text-sm text-secondary-600 mt-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
           Nous nous efforçons de répondre à tous les messages dans les 24 heures.
         </p>
       </div>

@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 import { getSignedVideoUrl } from '@/lib/s3'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: videoId } = params
-    console.log('[stream] incoming id:', videoId)
+    const { id: videoId } = await params
+    const { searchParams } = new URL(request.url)
+    const startTime = searchParams.get('t') // Paramètre de temps de début
+    console.log('[stream] incoming id:', videoId, 'startTime:', startTime)
 
     // Validate video ID
     if (!videoId || typeof videoId !== 'string') {
@@ -16,30 +18,30 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid video ID' }, { status: 400 })
     }
 
-    // Get video from database via Supabase (server-side)
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!supabaseUrl || !serviceRoleKey) {
-      console.error('[stream] missing envs:', { supabaseUrl: !!supabaseUrl, serviceRoleKey: !!serviceRoleKey })
-      return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 })
+    // Get video from database via Neon (server-side)
+    if (!db) {
+      console.error('[stream] database client not initialized')
+      return NextResponse.json({ error: 'Database connection error' }, { status: 500 })
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    })
-
     // Fetch video data with more fields for better error handling
-    const { data: video, error } = await supabase
+    const result = await db
       .from('videos_new')
       .select('videoUrl, title, isPublished')
       .eq('id', videoId)
-      .maybeSingle()
+      .single()
 
-    if (error) {
-      console.error('[stream] database error:', error.message, 'for id:', videoId)
-      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    if (result.error) {
+      // Check if it's a "not found" error
+      if (result.error.code === 'PGRST116' || result.error.message?.includes('No rows returned')) {
+        console.error('[stream] video not found for id:', videoId)
+        return NextResponse.json({ error: 'Video not found' }, { status: 404 })
+      }
+      console.error('[stream] database error:', result.error.message || result.error, 'for id:', videoId)
+      return NextResponse.json({ error: 'Database error', details: result.error.message || String(result.error) }, { status: 500 })
     }
 
+    const video = result.data
     if (!video) {
       console.error('[stream] video not found for id:', videoId)
       return NextResponse.json({ error: 'Video not found' }, { status: 404 })
@@ -63,7 +65,9 @@ export async function GET(
       const videoUrl = new URL(video.videoUrl)
       // Extract key from S3 URL (remove bucket name and region)
       // URL format: https://only-you-coaching.s3.eu-north-1.amazonaws.com/Video/groupes-musculaires/abdos/video-name-mp4
-      s3Key = videoUrl.pathname.substring(1) // Remove leading slash
+      // The pathname may be URL-encoded, so decode it to get the original key
+      const decodedPath = decodeURIComponent(videoUrl.pathname)
+      s3Key = decodedPath.substring(1) // Remove leading slash
       console.log('[stream] extracted S3 key:', s3Key)
       
       // Validate that we have a proper S3 key
@@ -72,15 +76,36 @@ export async function GET(
         return NextResponse.json({ error: 'Invalid video key format' }, { status: 500 })
       }
     } catch (urlError) {
-      console.error('[stream] invalid video URL:', video.videoUrl)
+      console.error('[stream] invalid video URL:', video.videoUrl, 'error:', urlError)
       return NextResponse.json({ error: 'Invalid video URL' }, { status: 500 })
     }
 
-    // Generate public URL for S3 access (videos are now publicly accessible)
+    // Generate signed URL for S3 access (videos require authentication)
     try {
-      const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
-      console.log('[stream] generated public URL for key:', s3Key)
+      console.log('[stream] Generating signed URL for S3 key:', s3Key)
       
+      // Generate a signed URL (valid for 1 hour)
+      const signedUrlResult = await getSignedVideoUrl(s3Key, 3600)
+      
+      if (!signedUrlResult.success) {
+        console.error('[stream] Failed to generate signed URL:', signedUrlResult.error)
+        return NextResponse.json({ 
+          error: 'Failed to generate video access URL', 
+          details: signedUrlResult.error || 'S3 configuration error'
+        }, { status: 500 })
+      }
+      
+      let finalUrl = signedUrlResult.url
+      
+      // Add start time parameter if specified (for video timestamp)
+      if (startTime) {
+        // For signed URLs, append the time fragment
+        finalUrl = `${finalUrl}#t=${startTime}`
+        console.log('[stream] added start time to signed URL:', startTime)
+      }
+      
+      console.log('[stream] Generated signed URL (length:', finalUrl.length, 'chars)')
+    
       // Set appropriate headers for video streaming
       const headers = new Headers()
       headers.set('Cache-Control', 'public, max-age=3600') // Cache for 1 hour
@@ -97,8 +122,8 @@ export async function GET(
         return new NextResponse(null, { status: 200, headers })
       }
 
-      // Redirect to the public URL
-      return NextResponse.redirect(publicUrl, { headers })
+      // Redirect to the signed URL (307 preserves method, better for video elements)
+      return NextResponse.redirect(finalUrl, 307)
     } catch (urlError) {
       console.error('[stream] error generating public URL:', urlError)
       return NextResponse.json({ error: 'Failed to generate video access URL' }, { status: 500 })
@@ -115,7 +140,7 @@ export async function GET(
 // Handle HEAD requests for video preloading
 export async function HEAD(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   return GET(request, { params })
 }
@@ -123,7 +148,7 @@ export async function HEAD(
 // Handle OPTIONS requests for CORS
 export async function OPTIONS(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const headers = new Headers()
   headers.set('Access-Control-Allow-Origin', '*')

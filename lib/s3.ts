@@ -132,3 +132,32 @@ export async function objectExistsInS3(key: string): Promise<boolean> {
     return false
   }
 }
+
+// Generate a unique key for audio files
+export function generateAudioKey(filename: string): string {
+  const timestamp = Date.now()
+  const extension = filename.split('.').pop()
+  return `Audio/${timestamp}-${filename.replace(/[^a-zA-Z0-9.-]/g, '_')}.${extension}`
+}
+
+// Get signed URL for audio files
+export async function getSignedAudioUrl(key: string, expiresIn: number = 3600) {
+  const command = new GetObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+  })
+
+  try {
+    const signedUrl = await getSignedUrl(s3Client, command, { expiresIn })
+    return {
+      success: true,
+      url: signedUrl,
+    }
+  } catch (error) {
+    console.error('Error generating signed audio URL:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}

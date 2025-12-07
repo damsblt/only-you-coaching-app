@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { createClient } from '@supabase/supabase-js'
 
 interface Video {
   id: string
@@ -42,61 +41,39 @@ export function useVideos(options: UseVideosOptions = {}) {
         setIsLoading(true)
         setError(null)
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-        let query = supabase.from('videos_new').select('*').order('title', { ascending: true })
-
-        // Only published
-        query = query.eq('isPublished', true)
-
-        if (options.videoType === 'muscle-groups') {
-          query = query.eq('videoType', 'MUSCLE_GROUPS')
-        } else if (options.videoType === 'programmes') {
-          query = query.eq('videoType', 'PROGRAMMES')
+        // Build query params for API
+        const params = new URLSearchParams()
+        
+        if (options.videoType) {
+          params.set('videoType', options.videoType)
         }
-
+        
         if (options.muscleGroup && options.muscleGroup !== 'all') {
-          const muscleGroupMap: { [key: string]: string } = {
-            'Abdos': 'abdos',
-            'Bande': 'bande',
-            'Biceps': 'biceps',
-            'Cardio': 'cardio',
-            'Dos': 'dos',
-            'Fessiers et jambes': 'fessiers-jambes',
-            'Streching': 'streching',
-            'Triceps': 'triceps'
-          }
-          const region = muscleGroupMap[options.muscleGroup]
-          if (region) query = query.eq('region', region)
+          params.set('muscleGroup', options.muscleGroup)
         }
 
         if (options.programme && options.programme !== 'all') {
-          query = query.eq('region', options.programme)
+          params.set('programme', options.programme)
         }
 
         if (options.difficulty && options.difficulty !== 'all') {
-          query = query.eq('difficulty', options.difficulty)
+          params.set('difficulty', options.difficulty)
         }
 
         if (options.search) {
-          const s = options.search
-          const ilike = (col: string) => `${col}.ilike.%${s}%`
-          query = query.or([
-            ilike('title'),
-            ilike('description'),
-            ilike('startingPosition'),
-            ilike('movement'),
-            ilike('theme')
-          ].join(','))
+          params.set('search', options.search)
         }
 
-        const { data, error } = await query.limit(1000)
-        if (error) throw new Error(error.message)
+        // Use API endpoint which generates signed URLs for thumbnails
+        const response = await fetch(`/api/videos?${params.toString()}`)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch videos: ${response.statusText}`)
+        }
+        
+        const data = await response.json()
         setVideos(data || [])
       } catch (err) {
-        console.error('Error fetching videos (client supabase):', err)
+        console.error('Error fetching videos:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch videos')
       } finally {
         setIsLoading(false)

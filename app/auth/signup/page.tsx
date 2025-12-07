@@ -1,12 +1,110 @@
-import { Metadata } from 'next'
+'use client'
+
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
+import { Button } from '@/components/ui/Button'
 
-export const metadata: Metadata = {
-  title: 'Inscription - Marie-Line Pilates',
-  description: 'Créez votre compte pour accéder à tous nos cours de Pilates',
-}
+function SignupForm() {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const { signUp } = useSimpleAuth()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-export default function SignupPage() {
+  const planId = searchParams.get('planId')
+  const callbackUrl = searchParams.get('callbackUrl')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    // Validation
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caractères')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const { success: signUpSuccess, error: signUpError } = await signUp(email, password, `${firstName} ${lastName}`, planId || undefined)
+      
+      if (signUpSuccess) {
+        // Wait a moment for the auth state to be properly set
+        setTimeout(() => {
+          if (planId) {
+            // New user with planId - redirect to checkout
+            console.log('New user with planId, redirecting to checkout:', `/checkout?planId=${planId}`)
+            router.push(`/checkout?planId=${planId}`)
+          } else {
+            setSuccess(true)
+            setError('')
+            // Clear form
+            setFirstName('')
+            setLastName('')
+            setEmail('')
+            setPassword('')
+            setConfirmPassword('')
+          }
+        }, 500) // Small delay to ensure auth state is updated
+      } else {
+        setError(signUpError || 'Erreur lors de la création du compte')
+      }
+    } catch (err: any) {
+      setError('Une erreur est survenue. Veuillez réessayer.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-neutral-50 to-secondary-50 flex items-center justify-center py-12">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold mb-4" style={{ color: '#39334D' }}>
+              Compte créé avec succès !
+            </h1>
+            <p className="text-gray-600 mb-6">
+              Un email de confirmation a été envoyé à <strong>{email}</strong>. 
+              Veuillez cliquer sur le lien dans l'email pour confirmer votre compte.
+            </p>
+            {planId && (
+              <p className="text-sm text-gray-500 mb-4">
+                Une fois votre compte confirmé, vous pourrez finaliser votre abonnement au plan sélectionné.
+              </p>
+            )}
+            <Link 
+              href="/auth/signin" 
+              className="inline-block bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Se connecter
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-neutral-50 to-secondary-50 flex items-center justify-center py-12">
       <div className="max-w-md w-full mx-4">
@@ -18,9 +116,14 @@ export default function SignupPage() {
             <p className="text-gray-600">
               Rejoignez la communauté Marie-Line Pilates
             </p>
+            {planId && (
+              <p className="text-sm text-primary-600 mt-2">
+                Vous vous inscrivez pour le plan sélectionné
+              </p>
+            )}
           </div>
 
-          <form className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
                 Prénom
@@ -28,7 +131,8 @@ export default function SignupPage() {
               <input
                 type="text"
                 id="firstName"
-                name="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Votre prénom"
@@ -42,7 +146,8 @@ export default function SignupPage() {
               <input
                 type="text"
                 id="lastName"
-                name="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="Votre nom"
@@ -56,7 +161,8 @@ export default function SignupPage() {
               <input
                 type="email"
                 id="email"
-                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="votre@email.com"
@@ -70,7 +176,8 @@ export default function SignupPage() {
               <input
                 type="password"
                 id="password"
-                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="••••••••"
@@ -84,7 +191,8 @@ export default function SignupPage() {
               <input
                 type="password"
                 id="confirmPassword"
-                name="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="••••••••"
@@ -95,7 +203,6 @@ export default function SignupPage() {
               <input
                 type="checkbox"
                 id="terms"
-                name="terms"
                 required
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
@@ -111,18 +218,31 @@ export default function SignupPage() {
               </label>
             </div>
 
-            <button
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            <Button
               type="submit"
-              className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              disabled={loading}
+              fullWidth
+              variant="primary"
+              className="hover:opacity-90"
+              style={{ backgroundColor: '#A65959' }}
             >
-              Créer mon compte
-            </button>
+              {loading ? 'Création du compte...' : 'Créer mon compte'}
+            </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Déjà un compte ?{' '}
-              <Link href="/auth/signin" className="text-primary-600 hover:text-primary-500 font-semibold">
+              <Link 
+                href={`/auth/signin${planId ? `?planId=${planId}&callbackUrl=${encodeURIComponent(callbackUrl || '/souscriptions/personnalise')}` : ''}`} 
+                className="text-blue-600 hover:text-blue-700 font-semibold underline"
+              >
                 Se connecter
               </Link>
             </p>
@@ -130,5 +250,30 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-neutral-50 to-secondary-50 flex items-center justify-center py-12">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="animate-pulse">
+              <div className="h-8 bg-gray-200 rounded mb-6"></div>
+              <div className="space-y-4">
+                <div className="h-12 bg-gray-200 rounded"></div>
+                <div className="h-12 bg-gray-200 rounded"></div>
+                <div className="h-12 bg-gray-200 rounded"></div>
+                <div className="h-12 bg-gray-200 rounded"></div>
+                <div className="h-12 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   )
 }

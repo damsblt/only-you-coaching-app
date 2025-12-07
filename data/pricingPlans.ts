@@ -4,9 +4,11 @@ export const pricingPlans = {
     title: "Plan Coaching personnalisé et accompagnement",
     plans: [
       {
+        id: "essentiel",
         name: "Essentiel",
-        price: "69 CHF",
-        duration: "3 MOIS",
+        price: "69 CHF/mois",
+        duration: "Engagement 3 mois",
+        totalPrice: "207 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à \"mes recettes\"",
@@ -18,9 +20,11 @@ export const pricingPlans = {
         ]
       },
       {
+        id: "avance",
         name: "Avancé",
-        price: "109 CHF",
-        duration: "3 MOIS",
+        price: "109 CHF/mois",
+        duration: "Engagement 3 mois",
+        totalPrice: "327 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à \"mes recettes\"",
@@ -35,9 +39,11 @@ export const pricingPlans = {
         ]
       },
       {
+        id: "premium",
         name: "Premium",
-        price: "149 CHF",
-        duration: "3 MOIS",
+        price: "149 CHF/mois",
+        duration: "Engagement 3 mois",
+        totalPrice: "447 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à \"mes recettes\"",
@@ -58,9 +64,11 @@ export const pricingPlans = {
     title: "Plan Autonomie en ligne",
     plans: [
       {
+        id: "starter",
         name: "Starter",
-        price: "35 CHF",
-        duration: "2 MOIS",
+        price: "35 CHF/mois",
+        duration: "Engagement 2 mois",
+        totalPrice: "70 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à la bibliothèque d'audios guidés",
@@ -68,9 +76,11 @@ export const pricingPlans = {
         ]
       },
       {
+        id: "pro",
         name: "Pro",
-        price: "30 CHF",
-        duration: "4 MOIS",
+        price: "30 CHF/mois",
+        duration: "Engagement 4 mois",
+        totalPrice: "120 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",
@@ -79,9 +89,11 @@ export const pricingPlans = {
         ]
       },
       {
+        id: "expert",
         name: "Expert",
-        price: "25 CHF",
-        duration: "6 MOIS",
+        price: "25 CHF/mois",
+        duration: "Engagement 6 mois",
+        totalPrice: "150 CHF",
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",

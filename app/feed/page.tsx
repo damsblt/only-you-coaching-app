@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Video } from '@prisma/client'
+import { Video } from '@/types'
 import { getVideoPositioning, getResponsiveVideoStyles, VideoPositioning } from '@/lib/video-positioning'
+import { Button } from '@/components/ui/Button'
 
 interface VideoFeedProps {
   videos: Video[]
@@ -280,25 +281,25 @@ export default function VideoFeed() {
             {/* Action Buttons */}
             <div className="absolute right-4 bottom-32 flex flex-col space-y-4">
               {/* Like Button */}
-              <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
+              <Button variant="ghost" size="sm" className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
-              </button>
+              </Button>
 
               {/* Add to Playlist Button */}
-              <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
+              <Button variant="ghost" size="sm" className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-              </button>
+              </Button>
 
               {/* Share Button */}
-              <button className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40 transition-colors">
+              <Button variant="ghost" size="sm" className="bg-rose-500/20 backdrop-blur-sm rounded-full p-3 hover:bg-rose-500/40">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                 </svg>
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -306,10 +307,12 @@ export default function VideoFeed() {
 
       {/* Navigation Buttons */}
       <div className="absolute top-1/2 left-4 transform -translate-y-1/2 z-10">
-        <button
+        <Button
           onClick={goToPrevious}
           disabled={currentVideoIndex === 0}
-          className={`p-3 rounded-full transition-all ${
+          variant="ghost"
+          size="sm"
+          className={`p-3 rounded-full ${
             currentVideoIndex === 0 
               ? 'bg-white/20 text-white/40 cursor-not-allowed' 
               : 'bg-white/20 text-white hover:bg-white/40 hover:scale-110'
@@ -319,14 +322,16 @@ export default function VideoFeed() {
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       <div className="absolute top-1/2 right-4 transform -translate-y-1/2 z-10">
-        <button
+        <Button
           onClick={goToNext}
           disabled={currentVideoIndex === videos.length - 1}
-          className={`p-3 rounded-full transition-all ${
+          variant="ghost"
+          size="sm"
+          className={`p-3 rounded-full ${
             currentVideoIndex === videos.length - 1 
               ? 'bg-white/20 text-white/40 cursor-not-allowed' 
               : 'bg-white/20 text-white hover:bg-white/40 hover:scale-110'
@@ -336,17 +341,19 @@ export default function VideoFeed() {
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       {/* Progress Indicator */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <div className="flex space-x-2">
           {videos.map((_, index) => (
-            <button
+            <Button
               key={index}
               onClick={() => setCurrentVideoIndex(index)}
-              className={`w-2 h-2 rounded-full transition-all hover:scale-125 ${
+              variant="ghost"
+              size="sm"
+              className={`w-2 h-2 rounded-full p-0 min-w-0 hover:scale-125 ${
                 index === currentVideoIndex ? 'bg-white' : 'bg-white/30 hover:bg-white/50'
               }`}
             />

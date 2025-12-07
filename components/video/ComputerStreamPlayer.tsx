@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Heart, Plus, Share2, Info, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Settings } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Settings } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 
 interface Video {
@@ -52,10 +52,8 @@ export default function ComputerStreamPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [isMuted, setIsMuted] = useState(muted)
   const [volume, setVolume] = useState(1)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
@@ -313,26 +311,13 @@ export default function ComputerStreamPlayer({
             showControls ? 'opacity-100' : 'opacity-0'
           }`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={onClose}
-                  className="text-white hover:text-gray-300 transition-colors p-2"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-                <h1 className="text-white text-xl font-bold">Vidéos Pilates</h1>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-white text-sm">
-                  {currentIndex + 1} / {totalVideos}
-                </span>
-                <button
-                  onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-                  className="text-white hover:text-gray-300 transition-colors p-2"
-                >
-                  <Info className="w-5 h-5" />
-                </button>
-              </div>
+              <h1 className="text-white text-xl font-bold">{video.title}</h1>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-gray-300 transition-colors p-2"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
           </div>
 
@@ -340,42 +325,6 @@ export default function ComputerStreamPlayer({
           <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 transition-opacity duration-300 ${
             showControls ? 'opacity-100' : 'opacity-0'
           }`}>
-            {/* Video Info */}
-            <div className="text-white mb-4">
-              <h2 className="text-2xl font-bold mb-2">{video.title}</h2>
-              <div className="flex items-center space-x-4 mb-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  video.difficulty === 'BEGINNER' ? 'bg-green-500/20 text-green-300' :
-                  video.difficulty === 'INTERMEDIATE' ? 'bg-yellow-500/20 text-yellow-300' :
-                  'bg-red-500/20 text-red-300'
-                }`}>
-                  {video.difficulty === 'BEGINNER' ? 'Débutant' :
-                   video.difficulty === 'INTERMEDIATE' ? 'Intermédiaire' : 'Avancé'}
-                </span>
-                <span className="text-gray-300 text-sm">{video.category}</span>
-                <span className="text-gray-300 text-sm">{formatDuration(duration)}</span>
-              </div>
-              
-              {/* Muscle Groups */}
-              {video.muscleGroups && video.muscleGroups.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {video.muscleGroups.slice(0, 4).map((muscle, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded text-sm"
-                    >
-                      {muscle}
-                    </span>
-                  ))}
-                  {video.muscleGroups.length > 4 && (
-                    <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded text-sm">
-                      +{video.muscleGroups.length - 4}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
             {/* Progress Bar */}
             <div className="mb-4">
               <input
@@ -452,20 +401,6 @@ export default function ComputerStreamPlayer({
                 >
                   <Maximize2 className="w-5 h-5" />
                 </button>
-                <button
-                  onClick={() => setIsFavorite(!isFavorite)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isFavorite ? 'text-rose-500 bg-rose-100' : 'hover:bg-gray-700'
-                  }`}
-                >
-                  <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                </button>
-                <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                  <Plus className="w-5 h-5" />
-                </button>
-                <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                  <Share2 className="w-5 h-5" />
-                </button>
               </div>
             </div>
           </div>
@@ -490,55 +425,6 @@ export default function ComputerStreamPlayer({
           )}
         </div>
       </div>
-
-      {/* Description Sidebar - Based on Wireframe */}
-      {isDetailsOpen && (
-        <div className="w-80 bg-gray-900 p-6 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Description</h3>
-            <button
-              onClick={() => setIsDetailsOpen(false)}
-              className="text-gray-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="space-y-6">
-            <p className="text-gray-300 text-sm">{video.detailedDescription || video.description}</p>
-            
-            {video.muscleGroups && video.muscleGroups.length > 0 && (
-              <div>
-                <h4 className="font-medium text-white mb-2">Muscles ciblés</h4>
-                <div className="flex flex-wrap gap-2">
-                  {video.muscleGroups.map((muscle, index) => (
-                    <span
-                      key={index}
-                      className="bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-sm"
-                    >
-                      {muscle}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {video.startingPosition && (
-              <div>
-                <h4 className="font-medium text-white mb-2">Position de départ</h4>
-                <p className="text-gray-300 text-sm">{video.startingPosition}</p>
-              </div>
-            )}
-
-            {video.movement && (
-              <div>
-                <h4 className="font-medium text-white mb-2">Mouvement</h4>
-                <p className="text-gray-300 text-sm">{video.movement}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

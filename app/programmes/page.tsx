@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { createClient } from '@supabase/supabase-js'
-import { Search, Filter, Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight } from "lucide-react"
-import EnhancedVideoCard from "@/components/video/EnhancedVideoCard"
-import SimpleVideoPlayer from "@/components/video/SimpleVideoPlayer"
+import { useState, useEffect } from "react"
+import { Play, Users, Target, Zap, ArrowRight } from "lucide-react"
 import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
-import { getVideoPositioning, getResponsiveVideoStyles, VideoPositioning } from '@/lib/video-positioning'
+import ProtectedContent from "@/components/ProtectedContent"
+import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
+import Link from "next/link"
 
 interface Video {
   id: string
@@ -33,456 +32,317 @@ interface Video {
   updatedAt: string
 }
 
+interface RegionCard {
+  id: string
+  name: string
+  displayName: string
+  description: string
+  icon: React.ReactNode
+  color: string
+  videoCount: number
+  thumbnail: string
+}
+
 export default function ProgrammesPage() {
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all")
-  const [selectedProgramme, setSelectedProgramme] = useState<string>("all")
-  const [videos, setVideos] = useState<Video[]>([])
+  const [regions, setRegions] = useState<RegionCard[]>([])
   const [loading, setLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'grid' | 'feed'>('grid')
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
-  const [isScrolling, setIsScrolling] = useState(false)
-  const [startY, setStartY] = useState(0)
-  const [currentY, setCurrentY] = useState(0)
-  const [screenWidth, setScreenWidth] = useState(0)
-  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null)
-  const [loadingVideoId, setLoadingVideoId] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Use the auth context instead of direct auth calls
+  const { user, loading: authLoading } = useSimpleAuth()
 
-  const difficulties = ["all", "BEGINNER", "INTERMEDIATE", "ADVANCED"]
-  const programmes = ["all", "abdos", "brule-graisse", "haute-intensite", "machine", "pectoraux", "rehabilitation-dos", "special-femme", "cuisses-abdos-fessiers", "dos-abdos", "femmes", "homme", "jambes", "cuisses-abdos"]
+  // Define region cards with their metadata
+  const regionCards: RegionCard[] = [
+    {
+      id: "abdos",
+      name: "abdos",
+      displayName: "Abdos",
+      description: "Renforcez vos abdominaux avec des exercices ciblés",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-blue-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "brule-graisse",
+      name: "brule-graisse", 
+      displayName: "Brûle Graisse",
+      description: "Programme intensif pour brûler les graisses",
+      icon: <Zap className="h-8 w-8" />,
+      color: "bg-red-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "haute-intensite",
+      name: "haute-intensite",
+      displayName: "Haute Intensité", 
+      description: "Entraînements cardio haute intensité",
+      icon: <Zap className="h-8 w-8" />,
+      color: "bg-orange-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "machine",
+      name: "machine",
+      displayName: "Machine",
+      description: "Exercices avec machines spécialisées",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-purple-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "pectoraux",
+      name: "pectoraux",
+      displayName: "Pectoraux",
+      description: "Développez votre poitrine et vos pectoraux",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-green-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "rehabilitation-dos",
+      name: "rehabilitation-dos",
+      displayName: "Réhabilitation du Dos",
+      description: "Exercices thérapeutiques pour le dos",
+      icon: <Users className="h-8 w-8" />,
+      color: "bg-teal-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "cuisses-abdos-fessiers",
+      name: "cuisses-abdos-fessiers",
+      displayName: "Cuisses, Abdos, Fessiers",
+      description: "Tonifiez le bas du corps",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-indigo-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "dos-abdos",
+      name: "dos-abdos",
+      displayName: "Dos & Abdos",
+      description: "Renforcez le tronc complet",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-cyan-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "femmes",
+      name: "femmes",
+      displayName: "Femmes",
+      description: "Programmes spécialement conçus pour les femmes",
+      icon: <Users className="h-8 w-8" />,
+      color: "bg-rose-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "homme",
+      name: "homme",
+      displayName: "Homme",
+      description: "Programmes adaptés aux hommes",
+      icon: <Users className="h-8 w-8" />,
+      color: "bg-slate-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "jambes",
+      name: "jambes",
+      displayName: "Jambes",
+      description: "Renforcez et tonifiez vos jambes",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-emerald-500",
+      videoCount: 0,
+      thumbnail: ""
+    },
+    {
+      id: "cuisses-abdos",
+      name: "cuisses-abdos",
+      displayName: "Cuisses & Abdos",
+      description: "Ciblez cuisses et abdominaux",
+      icon: <Target className="h-8 w-8" />,
+      color: "bg-violet-500",
+      videoCount: 0,
+      thumbnail: ""
+    }
+  ]
 
-  // Fetch videos from Supabase directly on client (PROGRAMMES)
+  // Fetch video counts and thumbnails for each region
   useEffect(() => {
-    async function fetchVideos() {
+    async function fetchVideoData() {
       try {
         setLoading(true)
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-        const supabase = createClient(supabaseUrl, supabaseAnonKey)
-
-        let query = supabase.from('videos_new').select('*').order('title', { ascending: true })
-        query = query.eq('isPublished', true).eq('videoType', 'PROGRAMMES')
-
-        if (selectedProgramme && selectedProgramme !== 'all') {
-          query = query.eq('region', selectedProgramme)
-        }
-
-        if (selectedDifficulty && selectedDifficulty !== 'all') {
-          query = query.eq('difficulty', selectedDifficulty)
-        }
-
-        if (searchTerm) {
-          const ilike = (col: string) => `${col}.ilike.%${searchTerm}%`
-          query = query.or([
-            ilike('title'),
-            ilike('description'),
-            ilike('startingPosition'),
-            ilike('movement'),
-            ilike('theme')
-          ].join(','))
-        }
-
-        const { data, error } = await query.limit(1000)
-        if (error) {
-          console.error('Supabase programmes fetch error:', error)
-          setVideos([])
-        } else {
-          setVideos(data || [])
-        }
+        
+        const updatedRegions = await Promise.all(
+          regionCards.map(async (region) => {
+            try {
+              const response = await fetch(`/api/videos?videoType=programmes&region=${region.name}`)
+              if (response.ok) {
+                const videos = await response.json()
+                // Get the first video's thumbnail as the region thumbnail
+                const thumbnail = videos.length > 0 ? videos[0].thumbnail : ""
+                return { ...region, videoCount: videos.length, thumbnail }
+              }
+            } catch (error) {
+              console.error(`Error fetching videos for ${region.name}:`, error)
+            }
+            return { ...region, videoCount: 0, thumbnail: "" }
+          })
+        )
+        
+        setRegions(updatedRegions)
       } catch (error) {
-        console.error('Error fetching programmes videos:', error)
-        setVideos([])
+        console.error('Error fetching video data:', error)
+        setRegions(regionCards)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchVideos()
-  }, [selectedProgramme, selectedDifficulty, searchTerm])
-
-  const filteredVideos = videos
-
-  // Track screen width for responsive positioning
-  useEffect(() => {
-    const updateScreenWidth = () => {
-      setScreenWidth(window.innerWidth)
-    }
-    
-    updateScreenWidth()
-    window.addEventListener('resize', updateScreenWidth)
-    return () => window.removeEventListener('resize', updateScreenWidth)
+    fetchVideoData()
   }, [])
 
-  // Handle touch events for swipe gestures (mobile only)
-  const handleTouchStart = (e: React.TouchEvent) => {
-    // Only handle touch events, not mouse events
-    if (e.type === 'touchstart') {
-      e.preventDefault()
-      setStartY(e.touches[0].clientY)
-      setCurrentY(e.touches[0].clientY)
-      setIsScrolling(true)
-    }
-  }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isScrolling || e.type !== 'touchmove') return
-    e.preventDefault()
-    setCurrentY(e.touches[0].clientY)
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isScrolling || e.type !== 'touchend') return
-    e.preventDefault()
-    setIsScrolling(false)
-    
-    const deltaY = startY - currentY
-    const threshold = 50
-
-    if (Math.abs(deltaY) > threshold) {
-      if (deltaY > 0 && currentVideoIndex < filteredVideos.length - 1) {
-        // Swipe up - next video
-        setCurrentVideoIndex(prev => prev + 1)
-      } else if (deltaY < 0 && currentVideoIndex > 0) {
-        // Swipe down - previous video
-        setCurrentVideoIndex(prev => prev - 1)
-      }
-    }
-  }
-
-  // Handle mouse events for desktop
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setStartY(e.clientY)
-    setCurrentY(e.clientY)
-    setIsScrolling(true)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isScrolling) return
-    e.preventDefault()
-    setCurrentY(e.clientY)
-  }
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    if (!isScrolling) return
-    e.preventDefault()
-    setIsScrolling(false)
-    
-    const deltaY = startY - currentY
-    const threshold = 50
-
-    if (Math.abs(deltaY) > threshold) {
-      if (deltaY > 0 && currentVideoIndex < filteredVideos.length - 1) {
-        // Swipe up - next video
-        setCurrentVideoIndex(prev => prev + 1)
-      } else if (deltaY < 0 && currentVideoIndex > 0) {
-        // Swipe down - previous video
-        setCurrentVideoIndex(prev => prev - 1)
-      }
-    }
-  }
-
-  const handleVideoClick = (videoId: string) => {
-    setLoadingVideoId(videoId)
-    const video = videos.find(v => v.id === videoId)
-    if (video) {
-      setSelectedVideo(video)
-      setPlayingVideoId(videoId)
-    }
-  }
-
-  const handleClosePlayer = () => {
-    setSelectedVideo(null)
-    setPlayingVideoId(null)
-    setLoadingVideoId(null)
-  }
-
-  const handleNextVideo = () => {
-    if (currentVideoIndex < filteredVideos.length - 1) {
-      setCurrentVideoIndex(prev => prev + 1)
-    }
-  }
-
-  const handlePrevVideo = () => {
-    if (currentVideoIndex > 0) {
-      setCurrentVideoIndex(prev => prev - 1)
-    }
-  }
-
-  // Hide global header/footer while in feed view
-  useEffect(() => {
-    if (viewMode === 'feed') {
-      document.body.classList.add('hide-app-chrome')
-    } else {
-      document.body.classList.remove('hide-app-chrome')
-    }
-
-    return () => {
-      document.body.classList.remove('hide-app-chrome')
-    }
-  }, [viewMode])
-
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des programmes...</p>
+      <Section gradient="soft" title="Programmes Prédéfinis" subtitle="Chargement de vos programmes...">
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
-      </div>
-    )
-  }
-
-  if (selectedVideo) {
-    return (
-        <SimpleVideoPlayer
-          video={selectedVideo}
-          onClose={handleClosePlayer}
-        />
+      </Section>
     )
   }
 
   return (
-    <Section gradient="neutral">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b rounded-2xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Programmes Prédéfinis</h1>
-              <p className="mt-2 text-gray-600">
-                Découvrez nos programmes d&apos;entraînement spécialisés
-              </p>
-            </div>
-            
-            {/* View Mode Toggle */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg ${
-                  viewMode === 'grid' 
-                    ? 'bg-purple-100 text-purple-600' 
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <Grid className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setViewMode('feed')}
-                className={`p-2 rounded-lg ${
-                  viewMode === 'feed' 
-                    ? 'bg-purple-100 text-purple-600' 
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                <List className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white/80 backdrop-blur-sm border-b rounded-2xl mt-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-wrap gap-4 items-center">
-            {/* Search */}
-            <div className="relative flex-1 min-w-64">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Rechercher un programme..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Difficulty Filter */}
-            <select
-              value={selectedDifficulty}
-              onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {difficulties.map((difficulty) => (
-                <option key={difficulty} value={difficulty}>
-                  {difficulty === "all" ? "Tous les niveaux" : 
-                   difficulty === "BEGINNER" ? "Débutant" :
-                   difficulty === "INTERMEDIATE" ? "Intermédiaire" : "Avancé"}
-                </option>
-              ))}
-            </select>
-
-            {/* Programme Filter */}
-            <select
-              value={selectedProgramme}
-              onChange={(e) => setSelectedProgramme(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              {programmes.map((programme) => {
-                const displayNames: { [key: string]: string } = {
-                  "all": "Tous les programmes",
-                  "abdos": "Abdos",
-                  "brule-graisse": "Brûle graisse",
-                  "haute-intensite": "Haute intensité",
-                  "machine": "Machine",
-                  "pectoraux": "Pectoraux",
-                  "rehabilitation-dos": "Réhabilitation du dos",
-                  "special-femme": "Spécial femme",
-                  "cuisses-abdos-fessiers": "Cuisses, Abdos, Fessiers",
-                  "dos-abdos": "Dos & Abdos",
-                  "femmes": "Femmes",
-                  "homme": "Homme",
-                  "jambes": "Jambes",
-                  "cuisses-abdos": "Cuisses & Abdos"
-                }
-                return (
-                  <option key={programme} value={programme}>
-                    {displayNames[programme] || programme}
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Results Count */}
-      <div className="mb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <p className="text-gray-600">
-            {filteredVideos.length} programme{filteredVideos.length !== 1 ? 's' : ''} trouvé{filteredVideos.length !== 1 ? 's' : ''}
+    <>
+      <Section 
+        gradient="soft" 
+        title="Programmes Prédéfinis" 
+        subtitle="Des entraînements complets en vidéo, conçus pour vous guider vers vos objectifs fitness, étape par étape."
+      >
+        {/* Introduction - Visible to all */}
+        <div className="mb-12 text-center">
+          <p className="text-lg text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
+            Le coaching en ligne est le moyen le plus efficace pour atteindre vos objectifs de perte de poids, remise en forme et santé. Déterminer votre moment et votre endroit pour pratiquer, et profiter d'un contact par email avec votre coach en cas de question.
           </p>
         </div>
-      </div>
 
-      {viewMode === 'grid' ? (
-        /* Grid View */
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {filteredVideos.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 mb-4">
-                <Filter className="h-12 w-12 mx-auto" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun programme trouvé</h3>
-              <p className="text-gray-500">Essayez de modifier vos filtres de recherche</p>
-            </div>
-          ) : (
+        <ProtectedContent 
+          feature="predefinedPrograms" 
+          userId={user?.id}
+        >
+          {/* Region Cards Grid */}
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-8 text-center">
+              Nos Programmes
+            </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredVideos.map((video) => (
-                <EnhancedVideoCard
-                  key={video.id}
-                  video={video}
-                  onPlay={() => handleVideoClick(video.id)}
-                />
+              {regions.map((region) => (
+                <Link
+                  key={region.id}
+                  href={`/programmes/${region.name}`}
+                  className="group block"
+                >
+                  <div className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    {/* Thumbnail with Play Button */}
+                    <div className="relative aspect-video bg-neutral-200 dark:bg-gray-700 overflow-hidden leading-none text-[0]">
+                      {region.thumbnail ? (
+                        <img 
+                          src={region.thumbnail} 
+                          alt={region.displayName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className={`${region.color} w-full h-full flex items-center justify-center relative`}>
+                          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                          <div className="relative z-10 p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                            {region.icon}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Video Count Badge */}
+                      <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-900 dark:text-white px-3 py-1.5 rounded-full text-xs font-semibold">
+                        {region.videoCount} vidéos
+                      </div>
+                      
+                      {/* Play Button Overlay on Hover */}
+                      <div className="absolute inset-0 bg-accent-500/0 group-hover:bg-accent-500/20 transition-all duration-300 flex items-center justify-center">
+                        <div className="w-14 h-14 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-floating">
+                          <Play className="w-6 h-6 text-secondary-500 ml-1" />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Card Content */}
+                    <div className="p-6">
+                      {/* Title */}
+                      <h3 className="font-semibold text-accent-500 dark:text-accent-400 mb-3 line-clamp-2 group-hover:text-secondary-500 dark:group-hover:text-secondary-400 transition-colors">
+                        {region.displayName}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4 line-clamp-2">
+                        {region.description}
+                      </p>
+                      
+                      {/* Action Button */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          window.location.href = `/programmes/${region.name}`
+                        }}
+                        className="w-full curved-button bg-gradient-to-r from-secondary-500 to-accent-500 dark:from-secondary-600 dark:to-accent-600 text-white font-semibold py-3 px-6 text-center block hover:shadow-floating transition-all flex items-center justify-center gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        Voir le programme
+                      </button>
+                    </div>
+                  </div>
+                </Link>
               ))}
             </div>
-          )}
-        </div>
-      ) : (
-        /* Feed View */
-        <div className="h-screen w-screen relative hide-app-chrome">
-          {/* Navigation Controls */}
-          <div className="absolute top-4 right-4 z-10 flex space-x-2">
-            <button
-              onClick={handlePrevVideo}
-              disabled={currentVideoIndex === 0}
-              className="p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={handleNextVideo}
-              disabled={currentVideoIndex === filteredVideos.length - 1}
-              className="p-3 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </button>
           </div>
+        </ProtectedContent>
 
-          {/* Video Counter */}
-          <div className="absolute top-4 left-4 z-10 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
-            {currentVideoIndex + 1} / {filteredVideos.length}
-          </div>
-
-          {/* Video Container */}
-          <div
-            ref={containerRef}
-            className="h-screen w-screen video-feed-container"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-          >
-        {filteredVideos.map((video, index) => (
-          <div
-            key={video.id}
-            className={`h-screen w-screen video-feed-item relative ${
-              index === currentVideoIndex ? 'block' : 'hidden'
-            }`}
-          >
-            {/* Video Player */}
-            <div className="h-screen w-screen relative overflow-hidden">
-        <video
-          className="w-full h-full object-cover"
-          style={getResponsiveVideoStyles(
-            getVideoPositioning({
-              title: video.title,
-              description: video.description,
-              category: video.category,
-              muscleGroups: video.muscleGroups
-            }),
-            screenWidth || window.innerWidth
-          )}
-          poster={video.thumbnail}
-          muted={false}
-          loop
-          playsInline
-          preload={currentVideoIndex === index ? "metadata" : "none"}
-          data-video-id={video.id}
-          onClick={() => handleVideoClick(video.id)}
-        >
-          <source src={`/api/videos/${video.id}/stream`} type="video/mp4" />
-          Your browser does not support the video tag.
-        </video>
-                
-                {/* Play/Pause Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none
-                  group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="bg-black bg-opacity-50 rounded-full p-4">
-                    <Play className="h-8 w-8 text-white" />
-                  </div>
-                </div>
-
-                {/* Video Info Overlay */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-6 text-white">
-                  <h3 className="text-xl font-bold mb-2">{video.title}</h3>
-                  <div className="flex items-center space-x-4 text-sm text-gray-300">
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-4 w-4" />
-                      <span>{Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-4 w-4" />
-                      <span>{video.difficulty}</span>
-                    </div>
-                    {video.muscleGroups && video.muscleGroups.length > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <span>{Array.isArray(video.muscleGroups) ? video.muscleGroups.join(', ') : ''}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+        {/* Free Trial CTA Section */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
+          <div className="relative bg-gradient-to-br from-accent-500 via-accent-600 to-burgundy-600 rounded-2xl shadow-2xl p-10 md:p-12 mb-12 overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+            
+            <div className="relative z-10 text-center">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                Découvrez plus avec notre essai gratuit
+              </h2>
+              
+              <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-3xl mx-auto mb-8">
+                Explorez une sélection de nos programmes, vidéos, audios et recettes premium pour vous donner un avant-goût de ce qui vous attend !
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button
+                  href="/essai-gratuit"
+                  variant="white"
+                  size="lg"
+                  className="group shadow-xl"
+                >
+                  Essayer gratuitement
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
               </div>
             </div>
-          ))}
           </div>
         </div>
-      )}
-    </Section>
+      </Section>
+    </>
   )
 }

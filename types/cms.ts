@@ -92,13 +92,24 @@ export interface Recipe {
   title: string;
   slug: string;
   description: string;
-  image: string;
-  category: 'breakfast' | 'lunch' | 'dinner' | 'snack';
-  prepTime: number;
+  image: string; // Image principale
+  images: string[]; // Galerie d'images (collection PNG)
+  pdfUrl?: string; // URL du PDF (optionnel - pour les recettes en format livret)
+  category: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'vegetarian';
+  prepTime: number; // en minutes
   servings: number;
   isVegetarian: boolean;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[]; // 'sans-gluten', 'vegan', 'protéines', etc.
   ingredients: string[];
   instructions: string;
+  nutritionInfo?: {
+    calories: number;
+    protein: number; // en grammes
+    carbs: number; // en grammes
+    fat: number; // en grammes
+  };
+  isPremium: boolean;
   publishedAt: string;
   updatedAt: string;
 }

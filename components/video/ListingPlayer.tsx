@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Heart, Plus, Share2, Info, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import { Button } from "@/components/ui/Button"
 
 interface Video {
   id: string
@@ -46,10 +47,8 @@ export default function ListingPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isFavorite, setIsFavorite] = useState(false)
   const [isMuted, setIsMuted] = useState(muted)
   const [volume, setVolume] = useState(1)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
@@ -110,7 +109,52 @@ export default function ListingPlayer({
 
     const handleError = (e: Event) => {
       console.error('Video error:', e)
-      setError('Failed to load video. Please try again.')
+      
+      // Get more details from the video element
+      const videoElement = e.target as HTMLVideoElement
+      if (videoElement) {
+        console.error('Video element error details:', {
+          error: videoElement.error,
+          errorCode: videoElement.error?.code,
+          errorMessage: videoElement.error?.message,
+          networkState: videoElement.networkState,
+          readyState: videoElement.readyState,
+          src: videoElement.src,
+          currentSrc: videoElement.currentSrc,
+        })
+        
+        // Provide more specific error messages
+        if (videoElement.error) {
+          switch (videoElement.error.code) {
+            case MediaError.MEDIA_ERR_ABORTED:
+              setError('Chargement de la vidéo annulé. Veuillez réessayer.')
+              break
+            case MediaError.MEDIA_ERR_NETWORK:
+              setError('Erreur réseau lors du chargement de la vidéo.')
+              break
+            case MediaError.MEDIA_ERR_DECODE:
+              setError('Format vidéo non supporté ou corrompu.')
+              break
+            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+              setError('Source vidéo non supportée. Essayons l\'URL directe...')
+              // Try fallback to direct URL
+              if (video.videoUrl && videoElement.src?.includes('/api/videos/')) {
+                console.log('🔄 Trying fallback to direct video URL:', video.videoUrl)
+                setVideoSrc(video.videoUrl)
+                setError(null)
+                return
+              }
+              break
+            default:
+              setError('Erreur lors du chargement de la vidéo. Veuillez réessayer.')
+          }
+        } else {
+          setError('Erreur lors du chargement de la vidéo. Veuillez réessayer.')
+        }
+      } else {
+        setError('Failed to load video. Please try again.')
+      }
+      
       setIsLoading(false)
     }
 
@@ -216,12 +260,14 @@ export default function ListingPlayer({
           </div>
           <h3 className="text-lg font-semibold text-red-900 mb-1">Video Error</h3>
           <p className="text-red-600 text-sm mb-3">{error}</p>
-          <button
+          <Button
             onClick={() => window.location.reload()}
-            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+            variant="primary"
+            size="sm"
+            className="bg-red-600 hover:bg-red-700"
           >
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -261,12 +307,14 @@ export default function ListingPlayer({
           {/* Play/Pause Overlay */}
           {!isPlaying && !isLoading && !error && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <button
+              <Button
                 onClick={handleVideoClick}
+                variant="ghost"
+                size="sm"
                 className="bg-white/20 backdrop-blur-sm rounded-full p-3 transition-all duration-200 transform hover:scale-110"
               >
                 <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
-              </button>
+              </Button>
             </div>
           )}
 
@@ -289,19 +337,19 @@ export default function ListingPlayer({
             {/* Control Buttons */}
             <div className="flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
-                <button onClick={togglePlay} className="hover:text-rose-400 transition-colors">
+                <Button onClick={togglePlay} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                </button>
-                <button onClick={() => skip(-10)} className="hover:text-rose-400 transition-colors text-xs">
+                </Button>
+                <Button onClick={() => skip(-10)} variant="ghost" size="sm" className="hover:text-rose-400 text-xs p-1">
                   -10s
-                </button>
-                <button onClick={() => skip(10)} className="hover:text-rose-400 transition-colors text-xs">
+                </Button>
+                <Button onClick={() => skip(10)} variant="ghost" size="sm" className="hover:text-rose-400 text-xs p-1">
                   +10s
-                </button>
+                </Button>
                 <div className="flex items-center gap-1">
-                  <button onClick={toggleMute} className="hover:text-rose-400 transition-colors">
+                  <Button onClick={toggleMute} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                     {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                  </button>
+                  </Button>
                   <input
                     type="range"
                     min="0"
@@ -317,43 +365,10 @@ export default function ListingPlayer({
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setIsFavorite(!isFavorite)}
-                  className={`p-1 rounded transition-colors ${
-                    isFavorite ? 'text-rose-500 bg-rose-100' : 'hover:bg-gray-700'
-                  }`}
-                >
-                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
-                </button>
-                <button className="p-1 hover:bg-gray-700 rounded transition-colors">
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button className="p-1 hover:bg-gray-700 rounded transition-colors">
-                  <Share2 className="w-4 h-4" />
-                </button>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Video Info */}
-        <div className="p-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">{video.title}</h3>
-          <p className="text-gray-600 text-sm mb-2 line-clamp-2">{video.description}</p>
-          
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getDifficultyColor(video.difficulty)}`}>
-              {getDifficultyLabel(video.difficulty)}
-            </span>
-            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              {video.category}
-            </span>
-            <span className="text-xs text-gray-500">
-              {formatDuration(duration)}
-            </span>
-          </div>
-        </div>
       </div>
     )
   }
@@ -364,27 +379,15 @@ export default function ListingPlayer({
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900">{video.title}</h2>
-            <div className={`px-2 py-1 rounded-md text-sm font-medium text-white ${getDifficultyColor(video.difficulty)}`}>
-              {getDifficultyLabel(video.difficulty)}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Détails"
-            >
-              <Info className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-          </div>
+          <h2 className="text-xl font-bold text-gray-900">{video.title}</h2>
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            size="sm"
+            className="p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </Button>
         </div>
 
         <div className="flex">
@@ -448,19 +451,19 @@ export default function ListingPlayer({
                 {/* Control Buttons */}
                 <div className="flex items-center justify-between text-white">
                   <div className="flex items-center gap-4">
-                    <button onClick={togglePlay} className="hover:text-rose-400 transition-colors">
+                    <Button onClick={togglePlay} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                       {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                    </button>
-                    <button onClick={() => skip(-10)} className="hover:text-rose-400 transition-colors">
+                    </Button>
+                    <Button onClick={() => skip(-10)} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                       <SkipBack className="w-5 h-5" />
-                    </button>
-                    <button onClick={() => skip(10)} className="hover:text-rose-400 transition-colors">
+                    </Button>
+                    <Button onClick={() => skip(10)} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                       <SkipForward className="w-5 h-5" />
-                    </button>
+                    </Button>
                     <div className="flex items-center gap-2">
-                      <button onClick={toggleMute} className="hover:text-rose-400 transition-colors">
+                      <Button onClick={toggleMute} variant="ghost" size="sm" className="hover:text-rose-400 p-0">
                         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                      </button>
+                      </Button>
                       <input
                         type="range"
                         min="0"
@@ -476,129 +479,10 @@ export default function ListingPlayer({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsFavorite(!isFavorite)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isFavorite ? 'text-rose-500 bg-rose-100' : 'hover:bg-gray-700'
-                      }`}
-                    >
-                      <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                    </button>
-                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                      <Plus className="w-5 h-5" />
-                    </button>
-                    <button className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-                      <Share2 className="w-5 h-5" />
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Details Panel */}
-          {isDetailsOpen && (
-            <div className="w-80 bg-gray-50 p-6 overflow-y-auto max-h-[70vh]">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Détails de l&apos;exercice</h3>
-              
-              {/* Description */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                <p className="text-gray-600 text-sm">{video.detailedDescription || video.description}</p>
-              </div>
-
-              {/* Category & Region */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Catégorie</h4>
-                <div className="flex flex-wrap gap-2">
-                  <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-sm">
-                    {video.category}
-                  </span>
-                  {video.region && (
-                    <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
-                      {video.region}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Muscle Groups */}
-              {video.muscleGroups.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Muscles ciblés</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {video.muscleGroups.map((muscle, index) => (
-                      <span
-                        key={index}
-                        className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm"
-                      >
-                        {muscle}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Starting Position */}
-              {video.startingPosition && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Position de départ</h4>
-                  <p className="text-gray-600 text-sm">{video.startingPosition}</p>
-                </div>
-              )}
-
-              {/* Movement */}
-              {video.movement && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Mouvement</h4>
-                  <p className="text-gray-600 text-sm">{video.movement}</p>
-                </div>
-              )}
-
-              {/* Series & Intensity */}
-              <div className="mb-6">
-                <h4 className="font-medium text-gray-900 mb-2">Séries & Intensité</h4>
-                <div className="space-y-2">
-                  {video.series && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{video.series}</span>
-                    </div>
-                  )}
-                  {video.intensity && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">{video.intensity}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Constraints */}
-              {video.constraints && video.constraints !== "Aucune" && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Contraintes</h4>
-                  <p className="text-gray-600 text-sm">{video.constraints}</p>
-                </div>
-              )}
-
-              {/* Tags */}
-              {video.tags.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {video.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
