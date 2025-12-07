@@ -3,6 +3,9 @@ import { db } from '@/lib/db'
 import { hasAccess } from '@/lib/access-control'
 import { getSignedAudioUrl } from '@/lib/s3'
 
+// Force dynamic rendering since we use searchParams
+export const dynamic = 'force-dynamic'
+
 // Cache configuration - revalidate every 60 seconds
 export const revalidate = 60
 
@@ -11,8 +14,8 @@ const AUDIO_COLUMNS = 'id,title,description,category,audioUrl,s3key,s3Key,thumbn
 
 export async function GET(request: NextRequest) {
   try {
-    // Get query parameters
-    const { searchParams } = new URL(request.url)
+    // Get query parameters - use nextUrl.searchParams to avoid dynamic server usage warning
+    const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search')
     const category = searchParams.get('category')
     const limit = parseInt(searchParams.get('limit') || '100') // Default limit instead of 1000
