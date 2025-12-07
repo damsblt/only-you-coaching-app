@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { supabase } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 
 // Plan configuration mapping - matches your Stripe product names
@@ -40,7 +40,6 @@ const PLANS_CONFIG = {
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe()
-  try {
     const { planId, userId, paymentIntentId } = await req.json()
     
     if (!userId || !paymentIntentId) {
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest) {
     let customer
     try {
       // Try to find existing customer by email
-      const { data: userData } = await supabase
+      const { data: userData } = await db
         .from('users')
         .select('email')
         .eq('id', userId)
@@ -152,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     // Update user subscription in database
     try {
-      const { error: dbError } = await supabase
+      const { error: dbError } = await db
         .from('users')
         .update({
           subscription_id: subscription.id,
