@@ -45,7 +45,6 @@ const PLANS_CONFIG = {
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe()
-  try {
     const { planId, userId } = await req.json()
     
     if (!userId) {

@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+
 
 // Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
 
 
 export async function POST(request: NextRequest) {
   try {
     const stripe = getStripe()
-  try {
     const { email } = await request.json()
     
     if (!email) {
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Synchronisation de l\'abonnement pour:', email)
     
     // Trouver l'utilisateur dans notre DB
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: user, error: userError } = await db
       .from('users')
       .select('*')
       .eq('email', email)
@@ -86,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier si l'abonnement existe déjà
-    const { data: existingSubscription, error: existingError } = await supabaseAdmin
+    const { data: existingSubscription, error: existingError } = await db
       .from('subscriptions')
       .select('*')
       .eq('userId', user.id)
@@ -100,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     if (existingSubscription) {
       // Mettre à jour l'abonnement existant
-      const { data: updatedSubscription, error: updateError } = await supabaseAdmin
+      const { data: updatedSubscription, error: updateError } = await db
         .from('subscriptions')
         .update({
           status: 'ACTIVE',
@@ -125,7 +124,7 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Créer un nouvel abonnement
-      const { data: newSubscription, error: createError } = await supabaseAdmin
+      const { data: newSubscription, error: createError } = await db
         .from('subscriptions')
         .insert({
           userId: user.id,
