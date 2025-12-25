@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
-import { db } from '@/lib/db'
+import { db, update, insert } from '@/lib/db'
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
 const AWS_REGION = process.env.AWS_REGION || 'eu-north-1'
@@ -63,10 +63,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Initialize Supabase client
-    
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
     // Database is already initialized via db from '@/lib/db'
 
     // List all objects in the recettes/ folder
@@ -153,36 +149,39 @@ export async function POST(request: NextRequest) {
         const description = `Collection de recettes: ${title}`
         
         // Check if recipe already exists by slug OR by main image URL (to avoid duplicates)
-        const { data: existingRecipeBySlug } = await db
+        const { data: recipesBySlug } = await db
           .from('recipes')
           .select('id, slug, title, image')
           .eq('slug', slug)
-          .maybeSingle()
+          .execute()
 
         // Also check by image URL to catch duplicates with different slugs
-        const { data: existingRecipeByImage } = await db
+        const { data: recipesByImage } = await db
           .from('recipes')
           .select('id, slug, title, image')
           .eq('image', mainImage)
-          .maybeSingle()
+          .execute()
 
-        const existingRecipe = existingRecipeBySlug || existingRecipeByImage
+        const existingRecipe = (recipesBySlug && recipesBySlug.length > 0) 
+          ? recipesBySlug[0] 
+          : (recipesByImage && recipesByImage.length > 0) 
+            ? recipesByImage[0] 
+            : null
 
         const now = new Date().toISOString()
         
         if (existingRecipe) {
           // Update existing recipe with new images
-          const { data: updatedRecipe, error: updateError } = await db
-            .from('recipes')
-            .update({
+          const { data: updatedRecipe, error: updateError } = await update(
+            'recipes',
+            {
               image: mainImage,
               images: imageUrls,
               pdf_url: pdfUrl,
               updated_at: now,
-            })
-            .eq('id', existingRecipe.id)
-            .select()
-            .single()
+            },
+            { id: existingRecipe.id }
+          )
 
           if (updateError) {
             console.error(`Error updating recipe ${existingRecipe.slug}:`, updateError)
@@ -194,31 +193,27 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Create new recipe - published by default
-          const { data: newRecipe, error: insertError } = await db
-            .from('recipes')
-            .insert({
-              title,
-              slug,
-              description,
-              image: mainImage,
-              images: imageUrls,
-              pdf_url: pdfUrl,
-              category,
-              prep_time: 30, // Default
-              servings: 4, // Default
-              is_vegetarian: category === 'vegetarian',
-              difficulty: 'medium', // Default
-              tags: [category, 'recettes'],
-              ingredients: [],
-              instructions: '',
-              is_premium: false,
-              is_published: true, // Published by default
-              published_at: now,
-              created_at: now,
-              updated_at: now,
-            })
-            .select()
-            .single()
+          const { data: newRecipe, error: insertError } = await insert('recipes', {
+            title,
+            slug,
+            description,
+            image: mainImage,
+            images: imageUrls,
+            pdf_url: pdfUrl,
+            category,
+            prep_time: 30, // Default
+            servings: 4, // Default
+            is_vegetarian: category === 'vegetarian',
+            difficulty: 'medium', // Default
+            tags: [category, 'recettes'],
+            ingredients: [],
+            instructions: '',
+            is_premium: false,
+            is_published: true, // Published by default
+            published_at: now,
+            created_at: now,
+            updated_at: now,
+          })
 
           if (insertError) {
             console.error(`Error creating recipe ${slug}:`, insertError)

@@ -339,3 +339,35 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Partners Carousel Animation */
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.partners-scroll {
+  animation: scroll 40s linear infinite;
+  display: flex;
+  width: fit-content;
+}
+
+.partners-scroll:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partners-scroll {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .partners-scroll {
+    animation-duration: 30s;
+  }
+}

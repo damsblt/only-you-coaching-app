@@ -168,7 +168,7 @@ function SignInForm() {
               fullWidth
               variant="primary"
               className="hover:opacity-90"
-              style={{ backgroundColor: '#A65959' }}
+              style={{ backgroundColor: '#39334D' }}
             >
               {loading ? 'Chargement...' : (isSignUp ? 'Créer le compte' : 'Se connecter')}
             </Button>

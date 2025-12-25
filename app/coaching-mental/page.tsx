@@ -8,26 +8,39 @@ import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
 import { Audio } from "@/types"
 import ProtectedContent from "@/components/ProtectedContent"
+import PageHeader from "@/components/layout/PageHeader"
 
 export default function CoachingMentalPage() {
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null)
   const [audios, setAudios] = useState<Audio[]>([])
   const [loading, setLoading] = useState(true)
+  const [thumbnailImages, setThumbnailImages] = useState<string[]>([])
 
-  // Fetch audios from S3
+  // Fetch thumbnail images and audios from S3
   useEffect(() => {
-    const fetchAudios = async () => {
+    const fetchData = async () => {
       try {
-        // Use the API's category filter for better performance
-        // Note: The API uses exact match, so we need to handle case variations
-        const responses = await Promise.all([
+        setLoading(true)
+        
+        // Fetch thumbnail images and audios in parallel
+        const [thumbnailsResponse, audioResponse1, audioResponse2] = await Promise.all([
+          fetch('/api/gallery/list-folder-images?folder=Photos/Illustration/coaching mental'),
           fetch('/api/audio?category=Coaching Mental'),
           fetch('/api/audio?category=Coaching mental')
         ])
         
+        // Get thumbnail images
+        let imageUrls: string[] = []
+        if (thumbnailsResponse.ok) {
+          const thumbnailsData = await thumbnailsResponse.json()
+          imageUrls = thumbnailsData.images?.map((img: { url: string }) => img.url) || []
+        }
+        setThumbnailImages(imageUrls)
+        
+        // Get audios
         const [data1, data2] = await Promise.all([
-          responses[0].ok ? responses[0].json() : [],
-          responses[1].ok ? responses[1].json() : []
+          audioResponse1.ok ? audioResponse1.json() : [],
+          audioResponse2.ok ? audioResponse2.json() : []
         ])
         
         // Combine and deduplicate by id
@@ -36,29 +49,50 @@ export default function CoachingMentalPage() {
           new Map(allAudios.map((audio: Audio) => [audio.id, audio])).values()
         )
         
-        setAudios(uniqueAudios)
+        // Map thumbnail images to audios by index
+        const audiosWithThumbnails = uniqueAudios.map((audio: Audio, index: number) => ({
+          ...audio,
+          thumbnail: imageUrls[index] || audio.thumbnail
+        }))
+        
+        setAudios(audiosWithThumbnails)
       } catch (error) {
-        console.error('Error fetching audios:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchAudios()
+    fetchData()
   }, [])
 
   if (loading) {
     return (
-      <Section gradient="soft" title="Coaching Mental" subtitle="Chargement de votre collection de coaching mental...">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-        </div>
-      </Section>
+      <>
+        <PageHeader
+          imageS3Key="Photos/Illustration/element5-digital-OBbliBNuJlk-unsplash_edited.jpg"
+          title="Coaching Mental"
+          subtitle="Chargement de votre collection de coaching mental..."
+          height="fullScreen"
+        />
+        <Section gradient="soft">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          </div>
+        </Section>
+      </>
     )
   }
 
   return (
-    <Section gradient="soft" title="Coaching Mental" subtitle="Découvrez notre collection de coaching mental pour développer votre confiance et améliorer votre état d'esprit.">
+    <>
+      <PageHeader
+        imageS3Key="Photos/Illustration/element5-digital-OBbliBNuJlk-unsplash_edited.jpg"
+        title="Coaching Mental"
+        subtitle="Découvrez notre collection de coaching mental pour développer votre confiance et améliorer votre état d'esprit."
+        height="fullScreen"
+      />
+      <Section gradient="soft">
       <ProtectedContent feature="audioLibrary">
         {/* Results Count */}
         <div className="mb-6">
@@ -118,5 +152,6 @@ export default function CoachingMentalPage() {
         </div>
       </div>
     </Section>
+    </>
   )
 }

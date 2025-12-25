@@ -3,6 +3,7 @@
 import { CheckCircle, ArrowRight, Music, Brain, Heart } from "lucide-react"
 import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
+import PageHeader from "@/components/layout/PageHeader"
 
 export default function AudioPage() {
   const benefits = [
@@ -15,7 +16,14 @@ export default function AudioPage() {
   ]
 
   return (
-    <Section gradient="soft" title="Améliorez Votre Bien-être Mental et Émotionnel" subtitle="Découvrez nos programmes exclusifs de méditation guidée et de coaching mental">
+    <>
+      <PageHeader
+        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        title="Améliorez Votre Bien-être Mental et Émotionnel"
+        subtitle="Découvrez nos programmes exclusifs de méditation guidée et de coaching mental"
+        height="fullScreen"
+      />
+      <Section gradient="soft">
       
       {/* Introduction */}
       <div className="max-w-4xl mx-auto text-center mb-12">
@@ -120,5 +128,6 @@ export default function AudioPage() {
       </div>
 
     </Section>
+    </>
   )
 }

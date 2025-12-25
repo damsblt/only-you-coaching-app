@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
 import Link from "next/link"
+import PageHeader from "@/components/layout/PageHeader"
 
 interface Video {
   id: string
@@ -217,10 +218,14 @@ export default function ProgrammesPage() {
 
   return (
     <>
-      <Section 
-        gradient="soft" 
-        title="Programmes Prédéfinis" 
+      <PageHeader
+        videoS3Key="Photos/Illustration/1860009_Lunges_Resistance Training_Exercise_1920x1080 (1).mp4"
+        title="Programmes Prédéfinis"
         subtitle="Des entraînements complets en vidéo, conçus pour vous guider vers vos objectifs fitness, étape par étape."
+        height="fullScreen"
+      />
+      <Section 
+        gradient="soft"
       >
         {/* Introduction - Visible to all */}
         <div className="mb-12 text-center">
@@ -294,7 +299,7 @@ export default function ProgrammesPage() {
                           e.preventDefault()
                           window.location.href = `/programmes/${region.name}`
                         }}
-                        className="w-full curved-button bg-gradient-to-r from-secondary-500 to-accent-500 dark:from-secondary-600 dark:to-accent-600 text-white font-semibold py-3 px-6 text-center block hover:shadow-floating transition-all flex items-center justify-center gap-2"
+                        className="w-full curved-button bg-footer-500 dark:bg-footer-600 text-white font-semibold py-3 px-6 text-center block hover:shadow-floating hover:bg-footer-600 dark:hover:bg-footer-700 transition-all flex items-center justify-center gap-2"
                       >
                         <Play className="w-4 h-4" />
                         Voir le programme

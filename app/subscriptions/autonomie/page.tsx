@@ -144,7 +144,7 @@ function AutonomieContent() {
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400 mr-3 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="w-5 h-5 text-accent-500 dark:text-accent-400 mr-3 mt-0.5 flex-shrink-0" />
                       <span className="text-gray-700 dark:text-gray-300 text-sm">{feature}</span>
                     </li>
                   ))}
@@ -154,7 +154,7 @@ function AutonomieContent() {
                     onClick={() => handleSubscribe(plan.id)}
                     disabled={subscriptionLoading === plan.id}
                     fullWidth
-                    className="curved-button inline-flex items-center justify-center font-semibold transition-all bg-accent-500 text-white shadow-organic hover:shadow-floating transform hover:scale-105 px-5 py-3 text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="curved-button inline-flex items-center justify-center font-semibold transition-all bg-footer-500 text-white shadow-organic hover:shadow-floating transform hover:scale-105 hover:bg-footer-600 px-5 py-3 text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {subscriptionLoading === plan.id ? 'Chargement...' : 'Choisir ce plan'}
                   </Button>

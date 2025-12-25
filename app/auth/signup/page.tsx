@@ -95,7 +95,7 @@ function SignupForm() {
             )}
             <Link 
               href="/auth/signin" 
-              className="inline-block bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              className="inline-block bg-footer-500 hover:bg-footer-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
             >
               Se connecter
             </Link>
@@ -230,7 +230,7 @@ function SignupForm() {
               fullWidth
               variant="primary"
               className="hover:opacity-90"
-              style={{ backgroundColor: '#A65959' }}
+              style={{ backgroundColor: '#39334D' }}
             >
               {loading ? 'Création du compte...' : 'Créer mon compte'}
             </Button>

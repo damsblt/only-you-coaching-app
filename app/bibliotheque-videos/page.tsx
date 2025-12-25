@@ -13,6 +13,7 @@ import { useVideos } from "@/hooks/useVideos"
 import { getVideoPositioning, getResponsiveVideoStyles, VideoPositioning } from '@/lib/video-positioning'
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
+import PageHeader from "@/components/layout/PageHeader"
 
 interface Video {
   id: string
@@ -521,28 +522,39 @@ export default function VideosPage() {
 
   if (authLoading || loading) {
     return (
-      <Section 
-        gradient="soft" 
-        title="Bibliothèque de Vidéos" 
-        subtitle="Chargement de votre bibliothèque..."
-        className="min-h-screen"
-      >
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </Section>
+      <>
+        <PageHeader
+          videoS3Key="Photos/Illustration/5033410_Fitness_Beach_Exercise_1920x1080 (1) (1).mp4"
+          title="Bibliothèque de Vidéos"
+          subtitle="Chargement de votre bibliothèque..."
+          height="fullScreen"
+        />
+        <Section 
+          gradient="soft" 
+          className="min-h-screen"
+        >
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        </Section>
+      </>
     )
   }
 
   // Display error state
   if (error) {
     return (
-      <Section 
-        gradient="soft" 
-        title="Bibliothèque de Vidéos" 
-        subtitle="Erreur de chargement"
-        className="min-h-screen"
-      >
+      <>
+        <PageHeader
+          videoS3Key="Photos/Illustration/5033410_Fitness_Beach_Exercise_1920x1080 (1) (1).mp4"
+          title="Bibliothèque de Vidéos"
+          subtitle="Erreur de chargement"
+          height="fullScreen"
+        />
+        <Section 
+          gradient="soft" 
+          className="min-h-screen"
+        >
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-red-500 mb-4">
             <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -569,17 +581,23 @@ export default function VideosPage() {
           </div>
         </div>
       </Section>
+      </>
     )
   }
 
   // Grid mode layout
   return (
-    <Section 
-      gradient="soft" 
-      title="Bibliothèque de Vidéos" 
-      subtitle="Des exercices ciblés par groupe musculaire, conçus pour vous guider vers vos objectifs fitness, étape par étape."
-      className="min-h-screen"
-    >
+    <>
+      <PageHeader
+        videoS3Key="Photos/Illustration/5033410_Fitness_Beach_Exercise_1920x1080 (1) (1).mp4"
+        title="Bibliothèque de Vidéos"
+        subtitle="Des exercices ciblés par groupe musculaire, conçus pour vous guider vers vos objectifs fitness, étape par étape."
+        height="fullScreen"
+      />
+      <Section 
+        gradient="soft" 
+        className="min-h-screen"
+      >
         {/* Introduction - Visible to all */}
         <div className="mb-12 text-center">
           <p className="text-lg text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
@@ -607,7 +625,7 @@ export default function VideosPage() {
                   onClick={() => setViewMode('grid' as const)}
                   variant={(viewMode as string) === 'grid' ? 'primary' : 'ghost'}
                 size="sm"
-                  className={`p-2 ${(viewMode as string) === 'grid' ? 'bg-accent-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                  className={`p-2 ${(viewMode as string) === 'grid' ? 'bg-footer-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                 title="Grid View"
               >
                 <Grid className="w-5 h-5" />
@@ -616,7 +634,7 @@ export default function VideosPage() {
                   onClick={() => setViewMode('feed' as const)}
                   variant={(viewMode as string) === 'feed' ? 'primary' : 'ghost'}
                 size="sm"
-                  className={`p-2 ${(viewMode as string) === 'feed' ? 'bg-accent-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                  className={`p-2 ${(viewMode as string) === 'feed' ? 'bg-footer-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                 title="Feed View"
               >
                 <List className="w-5 h-5" />
@@ -626,7 +644,7 @@ export default function VideosPage() {
                     onClick={() => setViewMode('mobile' as const)}
                     variant={(viewMode as string) === 'mobile' ? 'primary' : 'ghost'}
                   size="sm"
-                    className={`p-2 ${(viewMode as string) === 'mobile' ? 'bg-accent-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                    className={`p-2 ${(viewMode as string) === 'mobile' ? 'bg-footer-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                   title="Mobile View"
                 >
                   <Play className="w-5 h-5" />
@@ -754,6 +772,7 @@ export default function VideosPage() {
           </div>
         </div>
       </Section>
+    </>
   )
 }
 

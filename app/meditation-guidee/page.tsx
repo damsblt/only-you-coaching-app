@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button"
 import { Audio } from "@/types"
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
+import PageHeader from "@/components/layout/PageHeader"
 
 export default function MeditationGuideePage() {
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null)
@@ -24,8 +25,11 @@ export default function MeditationGuideePage() {
         if (response.ok) {
           const data = await response.json()
           // Filter for meditation guidée category
+          // Database uses 'meditation_guidee', but we also check for display name variations
           const meditationAudios = data.filter((audio: Audio) => 
-            audio.category === "Méditation Guidée"
+            audio.category === "meditation_guidee" || 
+            audio.category === "Méditation Guidée" ||
+            audio.category?.toLowerCase().includes('meditation')
           )
           setAudios(meditationAudios)
         } else {
@@ -52,7 +56,14 @@ export default function MeditationGuideePage() {
   }
 
   return (
-    <Section gradient="soft" title="Méditation Guidée" subtitle="Découvrez notre collection de méditations guidées pour apaiser votre esprit et améliorer votre bien-être.">
+    <>
+      <PageHeader
+        imageS3Key="Photos/Illustration/reverie-calme-femme-portant-ecouteurs-se-detendre-ecouter-livre-audio-dans-plantes-vertes-exotiques-surround.jpg"
+        title="Méditation Guidée"
+        subtitle="Découvrez notre collection de méditations guidées pour apaiser votre esprit et améliorer votre bien-être."
+        height="fullScreen"
+      />
+      <Section gradient="soft">
       <ProtectedContent feature="audioLibrary">
         {/* Results Count */}
         <div className="mb-6">
@@ -112,5 +123,6 @@ export default function MeditationGuideePage() {
         </div>
       </div>
     </Section>
+    </>
   )
 }

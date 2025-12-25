@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ArrowRight, Heart, Sparkles, Target, BookOpen, HelpCircle, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/ui/Section'
+import PageHeader from '@/components/layout/PageHeader'
 
 interface FAQItem {
   question: string
@@ -88,10 +89,14 @@ export default function MethodePage() {
   }
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
-      <Section 
-        gradient="soft" 
-        title="Ma méthode" 
+      <PageHeader
+        imageS3Key="Photos/Illustration/balanced-stone.jpg"
+        title="Ma méthode"
         subtitle="Une approche holistique unique alliant Pilates, nutrition et bien-être pour transformer votre corps et votre esprit"
+        height="fullScreen"
+      />
+      <Section 
+        gradient="soft"
       >
         {/* Header Section */}
         <div className="text-center mb-16">

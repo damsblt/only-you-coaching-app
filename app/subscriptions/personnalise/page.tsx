@@ -140,7 +140,7 @@ function PersonnaliseContent() {
               }`}>
                 {index === 1 && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-accent-500 dark:bg-accent-400 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                    <span className="bg-footer-500 dark:bg-footer-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
                       Populaire
                     </span>
                   </div>
@@ -163,7 +163,7 @@ function PersonnaliseContent() {
                     onClick={() => handleSubscribe(plan.id)}
                     disabled={subscriptionLoading === plan.id}
                     fullWidth
-                    className="curved-button inline-flex items-center justify-center font-semibold transition-all bg-accent-500 text-white shadow-organic hover:shadow-floating transform hover:scale-105 px-5 py-3 text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="curved-button inline-flex items-center justify-center font-semibold transition-all bg-footer-500 text-white shadow-organic hover:shadow-floating transform hover:scale-105 hover:bg-footer-600 px-5 py-3 text-sm w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     {subscriptionLoading === plan.id ? 'Chargement...' : 'Choisir ce plan'}
                   </Button>

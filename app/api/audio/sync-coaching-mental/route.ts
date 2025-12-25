@@ -26,22 +26,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Database is already initialized via db from '@/lib/db'
+    // List all objects in the Audio/coaching mental/ folder
+    // Note: S3 keys are case-sensitive, but we'll try both variations
+    const prefixes = [
+      'Audio/coaching mental/',
+      'Audio/Coaching Mental/',
+      'Audio/coaching-mental/',
+      'Audio/Coaching-Mental/',
+    ]
 
-    // List all objects in the Audio/ folder
-    const command = new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
-      Prefix: 'Audio/',
-    })
+    let allAudioFiles: any[] = []
 
-    const response = await s3Client.send(command)
-    
-    if (!response.Contents) {
-      return NextResponse.json({ message: 'No audio files found in S3', synced: 0 })
+    // Try each prefix variation
+    for (const prefix of prefixes) {
+      try {
+        const command = new ListObjectsV2Command({
+          Bucket: BUCKET_NAME,
+          Prefix: prefix,
+        })
+
+        const response = await s3Client.send(command)
+        
+        if (response.Contents && response.Contents.length > 0) {
+          allAudioFiles.push(...response.Contents)
+          console.log(`✅ Found ${response.Contents.length} files in ${prefix}`)
+        }
+      } catch (error) {
+        console.log(`⚠️ No files found in ${prefix} or error:`, error instanceof Error ? error.message : 'Unknown error')
+      }
+    }
+
+    // Remove duplicates based on Key
+    const uniqueFiles = Array.from(
+      new Map(allAudioFiles.map(obj => [obj.Key, obj])).values()
+    )
+
+    if (uniqueFiles.length === 0) {
+      return NextResponse.json({ 
+        message: 'No audio files found in Audio/coaching mental/ folder', 
+        synced: 0,
+        searchedPrefixes: prefixes
+      })
     }
 
     // Filter for audio files
-    const audioFiles = response.Contents.filter(obj => {
+    const audioFiles = uniqueFiles.filter(obj => {
       const key = obj.Key || ''
       const extension = key.split('.').pop()?.toLowerCase()
       return ['mp3', 'wav', 'm4a', 'aac', 'ogg'].includes(extension || '')
@@ -57,7 +86,7 @@ export async function POST(request: NextRequest) {
         const filename = key.split('/').pop() || ''
         const nameWithoutExt = filename.split('.').slice(0, -1).join('.')
         
-        // Generate signed URL for the audio file (valid for 1 year for storage)
+        // Generate signed URL for the audio file (valid for 1 week)
         const getCommand = new GetObjectCommand({
           Bucket: BUCKET_NAME,
           Key: key,
@@ -65,18 +94,12 @@ export async function POST(request: NextRequest) {
         
         const signedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }) // 1 week
         
-        // Determine category based on S3 folder structure
-        let category = 'Méditation Guidée' // Default
-        const lowerKey = key.toLowerCase()
-        if (lowerKey.includes('coaching mental') || lowerKey.includes('coaching-mental')) {
-          category = 'Coaching Mental'
-        } else if (lowerKey.includes('méditation guidée') || lowerKey.includes('meditation guidee') || lowerKey.includes('meditation-guidee')) {
-          category = 'Méditation Guidée'
-        }
+        // Set category to Coaching Mental
+        const category = 'Coaching Mental'
         
         // Generate detailed tags based on filename content
         const lowerName = nameWithoutExt.toLowerCase()
-        let tags = ['audio']
+        let tags: string[] = ['audio', 'coaching', 'mental', 'performance']
         
         // Add content-specific tags
         if (lowerName.includes('anxiété') || lowerName.includes('anxiete')) {
@@ -103,18 +126,11 @@ export async function POST(request: NextRequest) {
           tags.push('sport', 'méditation', 'performance')
         }
         
-        // Add category-specific tags
-        if (category === 'Coaching Mental') {
-          tags.push('coaching', 'mental', 'performance')
-        } else {
-          tags.push('méditation', 'guidée')
-        }
-        
         // Generate better descriptions based on content
-        let description = `Audio de ${category.toLowerCase()}: ${nameWithoutExt.replace(/[-_]/g, ' ')}`
+        let description = `Audio de coaching mental: ${nameWithoutExt.replace(/[-_]/g, ' ')}`
         
         if (lowerName.includes('anxiété') || lowerName.includes('anxiete')) {
-          description = 'Méditation guidée pour gérer l\'anxiété et retrouver la sérénité'
+          description = 'Coaching mental pour gérer l\'anxiété et retrouver la sérénité'
         } else if (lowerName.includes('gratitude')) {
           description = 'Pratique de gratitude pour cultiver la positivité au quotidien'
         } else if (lowerName.includes('valeurs')) {
@@ -124,60 +140,89 @@ export async function POST(request: NextRequest) {
         } else if (lowerName.includes('lâcher') || lowerName.includes('lacher')) {
           description = 'Technique de lâcher-prise pour accepter et libérer le stress'
         } else if (lowerName.includes('estime')) {
-          description = 'Méditation pour renforcer l\'estime de soi et la confiance'
+          description = 'Coaching pour renforcer l\'estime de soi et la confiance'
         } else if (lowerName.includes('affirmation')) {
           description = 'Exercices d\'affirmation de soi et d\'assertivité'
         } else if (lowerName.includes('couleurs')) {
           description = 'Visualisation guidée avec les couleurs pour la relaxation'
         } else if (lowerName.includes('confiance')) {
-          description = 'Méditation pour développer la confiance en soi'
+          description = 'Coaching pour développer la confiance en soi'
         } else if (lowerName.includes('paysages')) {
           description = 'Voyage mental à travers des paysages apaisants'
         } else if (lowerName.includes('sport')) {
-          description = 'Méditation spécialement conçue pour les sportifs'
+          description = 'Coaching mental spécialement conçu pour les sportifs'
         }
 
-        // Check if audio already exists in Supabase (by S3 key or title)
-        const { data: existingAudio } = await db
+        // Check if audio already exists in database (by S3 key or title)
+        // First check by s3key
+        const { data: existingByKey } = await db
           .from('audios')
           .select('id')
-          .or(`s3key.eq.${key},title.eq.${nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`)
-          .maybeSingle()
+          .eq('s3key', key)
+          .execute()
 
-        if (existingAudio) {
-          console.log(`Audio already exists: ${nameWithoutExt}`)
+        if (existingByKey && existingByKey.length > 0) {
+          console.log(`Audio already exists (by s3key): ${nameWithoutExt}`)
           continue
         }
 
-        // Generate a unique ID for the audio
-        const audioId = `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        // Then check by title (case-insensitive)
+        const titleSearch = nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        const { data: existingByTitle } = await db
+          .from('audios')
+          .select('id')
+          .ilike('title', `%${titleSearch}%`)
+          .execute()
+
+        if (existingByTitle && existingByTitle.length > 0) {
+          console.log(`Audio already exists (by title): ${nameWithoutExt}`)
+          continue
+        }
+
+        // Generate a UUID for the audio (PostgreSQL format)
+        // Use crypto.randomUUID() if available, otherwise generate a v4 UUID
+        const generateUUID = () => {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID()
+          }
+          // Fallback: generate a v4 UUID manually
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0
+            const v = c === 'x' ? r : (r & 0x3 | 0x8)
+            return v.toString(16)
+          })
+        }
+        const audioId = generateUUID()
         
-        // Insert audio into Supabase
+        // Insert audio into database
         // Store the S3 key instead of the signed URL to avoid expiration issues
-        // Note: PostgreSQL column names are lowercase unless quoted, so use s3key not s3Key
         const now = new Date().toISOString()
         const audioData: any = {
           id: audioId,
           title: nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
           description: description,
-          s3key: key, // Store S3 key instead of signed URL (lowercase to match PostgreSQL)
+          s3key: key, // Store S3 key instead of signed URL
           thumbnail: null,
-          duration: 300, // Default duration
+          duration: 300, // Default duration (can be updated later)
           category: category,
-          tags: tags,
           isPublished: true,
           createdAt: now,
           updatedAt: now,
         }
         
+        // Add tags as JSONB array for PostgreSQL
+        // The db.insert() method will automatically JSON.stringify arrays
+        // If tags column doesn't exist, we'll try without it
+        audioData.tags = tags
+        
         // Also store audioUrl for backward compatibility, but generate fresh ones in API
         audioData.audioUrl = signedUrl
         
+        // Insert audio into database
+        // The insert() method returns { data, error } directly
         const { data: newAudio, error } = await db
           .from('audios')
           .insert(audioData)
-          .select()
-          .single()
 
         if (error) {
           console.error(`Error inserting audio ${nameWithoutExt}:`, error)
@@ -194,17 +239,18 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `Sync completed. ${syncedCount} audios synced.`,
+      message: `Sync completed. ${syncedCount} audios synced from Audio/coaching mental/ folder.`,
       synced: syncedCount,
       total: audioFiles.length,
       errors: errors.length > 0 ? errors : undefined
     })
 
   } catch (error) {
-    console.error('Error syncing audios from S3:', error)
+    console.error('Error syncing coaching mental audios from S3:', error)
     return NextResponse.json(
-      { error: 'Failed to sync audios from S3' },
+      { error: 'Failed to sync coaching mental audios from S3', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
 }
+

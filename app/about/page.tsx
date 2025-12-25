@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { MapPin, ArrowRight, Sparkles, Heart, Target, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/ui/Section'
+import Gallery from '@/components/Gallery'
+import S3Image from '@/components/S3Image'
+import PageHeader from '@/components/layout/PageHeader'
 
 export const metadata: Metadata = {
   title: 'À propos - Marie-Line Pilates',
@@ -13,10 +16,14 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
-      <Section 
-        gradient="soft" 
-        title="À propos" 
+      <PageHeader
+        imageS3Key="Photos/Training/ok (8).JPG"
+        title="À propos"
         subtitle="Découvrez Marie-Line Bouley, votre coach sportif avec plus de 30 ans d'expérience en fitness, Pilates, nutrition et bien-être holistique"
+        height="fullScreen"
+      />
+      <Section 
+        gradient="soft"
       >
         {/* Header Section */}
         <div className="text-center mb-16">
@@ -68,16 +75,6 @@ export default function AboutPage() {
         <div className="space-y-8 mb-12">
           {/* Introduction */}
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 md:p-10 border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-shadow duration-300">
-            <div className="mb-8 rounded-2xl overflow-hidden shadow-lg group">
-              <div className="relative w-full h-[700px]">
-                <Image
-                  src="/about/coaching-1.jpg"
-                  alt="Marie-Line Bouley - Coach sportif"
-                  fill
-                  className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            </div>
             <div className="mb-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-accent-100 rounded-full mb-4">
                 <BookOpen className="w-4 h-4 text-accent-600" />
@@ -169,11 +166,12 @@ export default function AboutPage() {
                 </p>
               </div>
               <div className="relative w-full h-80 rounded-2xl overflow-hidden shadow-xl group">
-                <Image
-                  src="/about/coaching-2.jpg"
+                <S3Image
+                  s3Key="Photos/Training/THIERRY DOS SUR BALLON.png"
                   alt="Marie-Line en action de coaching"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  fallbackSrc="/about/coaching-1.jpg"
                 />
               </div>
             </div>
@@ -189,11 +187,12 @@ export default function AboutPage() {
                 />
               </div>
               <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-lg group">
-                <Image
-                  src="/about/coaching-3.jpg"
+                <S3Image
+                  s3Key="Photos/Training/vlcsnap-2025-11-03-13h14m30s098.png"
                   alt="Marie-Line coachant ses clients"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  fallbackSrc="/about/coaching-3.jpg"
                 />
               </div>
             </div>
@@ -287,107 +286,21 @@ export default function AboutPage() {
             </p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-6.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-7.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-8.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-9.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-10.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-11.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-12.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-13.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-14.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-15.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-            <div className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg group cursor-pointer">
-              <Image
-                src="/about/coaching-16.jpg"
-                alt="Séance de coaching"
-                fill
-                className="object-cover group-hover:scale-110 transition-transform duration-500"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </div>
-          </div>
+          <Gallery
+            localImages={[
+              '/about/coaching-6.jpg',
+              '/about/coaching-7.jpg',
+              '/about/coaching-8.jpg',
+              '/about/coaching-9.jpg',
+              '/about/coaching-10.jpg',
+              '/about/coaching-11.jpg',
+              '/about/coaching-12.jpg',
+              '/about/coaching-13.jpg',
+              '/about/coaching-14.jpg',
+              '/about/coaching-15.jpg',
+              '/about/coaching-16.jpg',
+            ]}
+          />
         </div>
 
         {/* Where to Find Me Section */}

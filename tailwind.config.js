@@ -70,6 +70,12 @@ module.exports = {
           800: '#999998',
           900: '#838382',
         },
+        footer: {
+          DEFAULT: '#39334D',  // Bleu du footer
+          500: '#39334D',
+          600: '#2D2738',
+          700: '#211D2A',
+        },
         // Keep original colors for compatibility
         rose: {
           50: '#fdf2f8',

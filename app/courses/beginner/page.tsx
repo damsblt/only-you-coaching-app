@@ -120,7 +120,7 @@ export default function BeginnerCoursePage() {
                 <li>• Support vidéo inclus</li>
                 <li>• Groupe WhatsApp</li>
               </ul>
-              <button className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+              <button className="w-full bg-footer-500 hover:bg-footer-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
                 S'inscrire en groupe
               </button>
             </div>
@@ -139,7 +139,7 @@ export default function BeginnerCoursePage() {
                 <li>• Programme adapté</li>
                 <li>• Support prioritaire</li>
               </ul>
-              <button className="w-full bg-secondary-600 hover:bg-secondary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+              <button className="w-full bg-footer-500 hover:bg-footer-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
                 S'inscrire individuellement
               </button>
             </div>

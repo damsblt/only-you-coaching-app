@@ -125,7 +125,7 @@ export default function RecipeCard({ recipe, onClick, viewMode }: RecipeCardProp
           variant="primary" 
           size="md" 
           fullWidth
-          className="!bg-accent-500 !text-white !shadow-lg hover:!bg-accent-600 hover:!shadow-xl"
+          className="!bg-footer-500 !text-white !shadow-lg hover:!bg-footer-600 hover:!shadow-xl"
           onClick={(e) => {
             e.stopPropagation()
             onClick()

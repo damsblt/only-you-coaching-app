@@ -46,7 +46,7 @@ export default function AdminUsersPage() {
           <p className="text-gray-600 mb-4">Vous devez être connecté pour accéder à cette page.</p>
           <a 
             href="/auth/signin-simple?from=admin" 
-            className="inline-block bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="inline-block bg-footer-500 hover:bg-footer-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             Se connecter
           </a>
