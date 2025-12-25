@@ -26,9 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Database is already initialized via db from '@/lib/db'
-
-    // List all objects in the Audio/ folder
+    // List all objects in the Audio/ folder and filter for meditation guidée
     const command = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
       Prefix: 'Audio/',
@@ -36,28 +34,77 @@ export async function POST(request: NextRequest) {
 
     const response = await s3Client.send(command)
     
-    if (!response.Contents) {
-      return NextResponse.json({ message: 'No audio files found in S3', synced: 0 })
+    if (!response.Contents || response.Contents.length === 0) {
+      return NextResponse.json({ 
+        message: 'No audio files found in S3 Audio/ folder', 
+        synced: 0
+      })
     }
 
-    // Filter for audio files
+    // Filter for audio files in meditation guidée folder
+    // The folder name is "méditation guidée" with accents
     const audioFiles = response.Contents.filter(obj => {
       const key = obj.Key || ''
+      
+      // Skip the folder marker itself (Audio/)
+      if (key === 'Audio/' || key.endsWith('/')) {
+        return false
+      }
+      
+      // Check if it's an audio file
       const extension = key.split('.').pop()?.toLowerCase()
-      return ['mp3', 'wav', 'm4a', 'aac', 'ogg'].includes(extension || '')
+      if (!['mp3', 'wav', 'm4a', 'aac', 'ogg'].includes(extension || '')) {
+        return false
+      }
+      
+      // Check if it's in a meditation guidée folder
+      // Exclude coaching mental files
+      const lowerKey = key.toLowerCase()
+      if (lowerKey.includes('coaching mental') || lowerKey.includes('coaching-mental')) {
+        return false
+      }
+      
+      // Check if it's in the méditation guidée folder
+      // The folder name can have various forms: "méditation guidée", "meditation guidee", etc.
+      const normalizedKey = key.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+      
+      const isMeditationGuidee = normalizedKey.includes('meditation guidee') || 
+                                  normalizedKey.includes('meditation-guidee') ||
+                                  normalizedKey.includes('meditation_guidee')
+      
+      // Also check with original accents
+      const hasMeditationGuidee = key.includes('méditation guidée') || 
+                                  key.includes('Méditation Guidée')
+      
+      // Include files in meditation guidée folder
+      return isMeditationGuidee || hasMeditationGuidee
     })
+
+    // Remove duplicates based on S3 key
+    const uniqueAudioFiles = Array.from(
+      new Map(audioFiles.map(obj => [obj.Key, obj])).values()
+    )
+
+    if (uniqueAudioFiles.length === 0) {
+      return NextResponse.json({ 
+        message: 'No audio files found in S3 meditation guidée folder', 
+        synced: 0
+      })
+    }
 
     let syncedCount = 0
     const errors: string[] = []
 
     // Process each audio file
-    for (const obj of audioFiles) {
+    for (const obj of uniqueAudioFiles) {
       try {
         const key = obj.Key || ''
         const filename = key.split('/').pop() || ''
         const nameWithoutExt = filename.split('.').slice(0, -1).join('.')
         
-        // Generate signed URL for the audio file (valid for 1 year for storage)
+        // Generate signed URL for the audio file (valid for 1 week)
         const getCommand = new GetObjectCommand({
           Bucket: BUCKET_NAME,
           Key: key,
@@ -65,53 +112,40 @@ export async function POST(request: NextRequest) {
         
         const signedUrl = await getSignedUrl(s3Client, getCommand, { expiresIn: 604800 }) // 1 week
         
-        // Determine category based on S3 folder structure
-        let category = 'Méditation Guidée' // Default
-        const lowerKey = key.toLowerCase()
-        if (lowerKey.includes('coaching mental') || lowerKey.includes('coaching-mental')) {
-          category = 'Coaching Mental'
-        } else if (lowerKey.includes('méditation guidée') || lowerKey.includes('meditation guidee') || lowerKey.includes('meditation-guidee')) {
-          category = 'Méditation Guidée'
-        }
+        // Set category to meditation_guidee (database constraint requires lowercase with underscore)
+        const category = 'meditation_guidee'
         
         // Generate detailed tags based on filename content
         const lowerName = nameWithoutExt.toLowerCase()
-        let tags = ['audio']
+        let tags = ['audio', 'méditation', 'guidée']
         
         // Add content-specific tags
         if (lowerName.includes('anxiété') || lowerName.includes('anxiete')) {
           tags.push('anxiété', 'relaxation', 'gestion-stress')
         } else if (lowerName.includes('gratitude')) {
-          tags.push('gratitude', 'méditation', 'positivité')
+          tags.push('gratitude', 'positivité')
         } else if (lowerName.includes('valeurs')) {
-          tags.push('valeurs', 'méditation', 'développement-personnel')
+          tags.push('valeurs', 'développement-personnel')
         } else if (lowerName.includes('détente') || lowerName.includes('detente')) {
           tags.push('détente', 'relaxation', 'corporel')
         } else if (lowerName.includes('lâcher') || lowerName.includes('lacher')) {
           tags.push('lâcher-prise', 'relaxation', 'stress')
         } else if (lowerName.includes('estime')) {
-          tags.push('estime-de-soi', 'méditation', 'confiance')
+          tags.push('estime-de-soi', 'confiance')
         } else if (lowerName.includes('affirmation')) {
-          tags.push('affirmation', 'méditation', 'assertivité')
+          tags.push('affirmation', 'assertivité')
         } else if (lowerName.includes('couleurs')) {
           tags.push('couleurs', 'visualisation', 'relaxation')
         } else if (lowerName.includes('confiance')) {
-          tags.push('confiance', 'méditation', 'développement-personnel')
+          tags.push('confiance', 'développement-personnel')
         } else if (lowerName.includes('paysages')) {
           tags.push('paysages', 'visualisation', 'relaxation')
         } else if (lowerName.includes('sport')) {
-          tags.push('sport', 'méditation', 'performance')
-        }
-        
-        // Add category-specific tags
-        if (category === 'Coaching Mental') {
-          tags.push('coaching', 'mental', 'performance')
-        } else {
-          tags.push('méditation', 'guidée')
+          tags.push('sport', 'performance')
         }
         
         // Generate better descriptions based on content
-        let description = `Audio de ${category.toLowerCase()}: ${nameWithoutExt.replace(/[-_]/g, ' ')}`
+        let description = `Méditation guidée: ${nameWithoutExt.replace(/[-_]/g, ' ')}`
         
         if (lowerName.includes('anxiété') || lowerName.includes('anxiete')) {
           description = 'Méditation guidée pour gérer l\'anxiété et retrouver la sérénité'
@@ -137,24 +171,37 @@ export async function POST(request: NextRequest) {
           description = 'Méditation spécialement conçue pour les sportifs'
         }
 
-        // Check if audio already exists in Supabase (by S3 key or title)
-        const { data: existingAudio } = await db
+        // Check if audio already exists in database (by S3 key or title)
+        const title = nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        const { data: existingAudios } = await db
           .from('audios')
           .select('id')
-          .or(`s3key.eq.${key},title.eq.${nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`)
-          .maybeSingle()
+          .or(`s3key.eq.${key},title.eq.${title}`)
+        
+        const existingAudio = existingAudios && existingAudios.length > 0 ? existingAudios[0] : null
 
         if (existingAudio) {
           console.log(`Audio already exists: ${nameWithoutExt}`)
           continue
         }
 
-        // Generate a unique ID for the audio
-        const audioId = `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        // Generate a UUID for the audio (PostgreSQL format)
+        // Use crypto.randomUUID() if available, otherwise generate a v4 UUID
+        const generateUUID = () => {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID()
+          }
+          // Fallback: generate a v4 UUID manually
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0
+            const v = c === 'x' ? r : (r & 0x3 | 0x8)
+            return v.toString(16)
+          })
+        }
+        const audioId = generateUUID()
         
-        // Insert audio into Supabase
+        // Insert audio into database
         // Store the S3 key instead of the signed URL to avoid expiration issues
-        // Note: PostgreSQL column names are lowercase unless quoted, so use s3key not s3Key
         const now = new Date().toISOString()
         const audioData: any = {
           id: audioId,
@@ -164,7 +211,6 @@ export async function POST(request: NextRequest) {
           thumbnail: null,
           duration: 300, // Default duration
           category: category,
-          tags: tags,
           isPublished: true,
           createdAt: now,
           updatedAt: now,
@@ -176,8 +222,6 @@ export async function POST(request: NextRequest) {
         const { data: newAudio, error } = await db
           .from('audios')
           .insert(audioData)
-          .select()
-          .single()
 
         if (error) {
           console.error(`Error inserting audio ${nameWithoutExt}:`, error)
@@ -194,17 +238,18 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `Sync completed. ${syncedCount} audios synced.`,
+      message: `Sync completed. ${syncedCount} meditation guidée audios synced.`,
       synced: syncedCount,
-      total: audioFiles.length,
+      total: uniqueAudioFiles.length,
       errors: errors.length > 0 ? errors : undefined
     })
 
   } catch (error) {
-    console.error('Error syncing audios from S3:', error)
+    console.error('Error syncing meditation guidée audios from S3:', error)
     return NextResponse.json(
-      { error: 'Failed to sync audios from S3' },
+      { error: 'Failed to sync meditation guidée audios from S3' },
       { status: 500 }
     )
   }
 }
+

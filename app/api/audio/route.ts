@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 // Columns needed for audio display - optimize query by selecting only needed fields
-const AUDIO_COLUMNS = 'id,title,description,category,audioUrl,s3key,s3Key,thumbnail,duration,isPublished,createdAt,updatedAt'
+// Note: PostgreSQL column names with camelCase need to be quoted
+const AUDIO_COLUMNS = 'id,title,description,category,"audioUrl",s3key,thumbnail,duration,"isPublished","createdAt","updatedAt"'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Build query - optimize by selecting only needed columns
+    // Note: PostgreSQL column names are case-sensitive when quoted
     let query = db
       .from('audios')
       .select(AUDIO_COLUMNS)

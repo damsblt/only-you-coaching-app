@@ -296,7 +296,7 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
             <button
               type="button"
               onClick={addTag}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="px-4 py-2 bg-footer-500 text-white rounded-lg hover:bg-footer-600 transition-colors"
             >
               Add
             </button>
@@ -323,7 +323,7 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
         <button
           type="submit"
           disabled={isUploading}
-          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-4 rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="w-full bg-footer-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-footer-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
           {isUploading ? (
             <>

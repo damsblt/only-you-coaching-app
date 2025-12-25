@@ -22,6 +22,7 @@ import {
 import VideoPreviewButton from "../components/VideoPreviewButton"
 import { Button } from "@/components/ui/Button"
 import Testimonials from "@/components/Testimonials"
+import PartnersCarousel from "@/components/PartnersCarousel"
 
 // Vidéo sélectionnée pour la page d'accueil (depuis S3 AWS)
 const featuredVideo = {
@@ -69,7 +70,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-6">
                 <Link
                   href="/souscriptions/personnalise"
-                  className="curved-button inline-flex items-center justify-center px-8 py-4 bg-accent-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105"
+                  className="curved-button inline-flex items-center justify-center px-8 py-4 bg-footer-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 hover:bg-footer-600"
                 >
                   JE VEUX UN ABONNEMENT !
                 </Link>
@@ -189,6 +190,9 @@ export default function Home() {
 
       {/* Testimonials Section */}
       <Testimonials />
+
+      {/* Partners Carousel Section */}
+      <PartnersCarousel />
 
       {/* Programmes Section */}
       <section className="py-20 bg-hero-gradient dark:bg-gray-900 relative overflow-hidden transition-colors">
@@ -415,7 +419,7 @@ export default function Home() {
               </p>
               <Link
                 href="/contact"
-                className="inline-flex items-center justify-center px-8 py-4 bg-accent-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 curved-button"
+                className="inline-flex items-center justify-center px-8 py-4 bg-footer-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 curved-button hover:bg-footer-600"
               >
                 Nous contacter
                 <ArrowRight className="ml-2 w-5 h-5" />

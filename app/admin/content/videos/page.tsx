@@ -336,7 +336,7 @@ export default function VideosContentAdmin() {
                   setEditingVideo(null)
                   setCurrentVideoType(activeSection)
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium"
+                className="bg-footer-500 hover:bg-footer-600 text-white px-4 py-2 rounded-lg font-medium"
               >
                 Create New Video
               </button>
@@ -362,7 +362,7 @@ export default function VideosContentAdmin() {
             onClick={() => setActiveSection('MUSCLE_GROUPS')}
             className={`px-6 py-3 rounded-md font-medium transition-colors ${
               activeSection === 'MUSCLE_GROUPS'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-footer-500 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -372,7 +372,7 @@ export default function VideosContentAdmin() {
             onClick={() => setActiveSection('PROGRAMMES')}
             className={`px-6 py-3 rounded-md font-medium transition-colors ${
               activeSection === 'PROGRAMMES'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-footer-500 text-white'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >

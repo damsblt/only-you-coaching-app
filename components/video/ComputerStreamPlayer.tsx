@@ -63,6 +63,35 @@ export default function ComputerStreamPlayer({
   const [showSettings, setShowSettings] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  
+  // TikTok-style scroll states
+  const [isMobile, setIsMobile] = useState(false)
+  const [touchStartY, setTouchStartY] = useState(0)
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchEndY, setTouchEndY] = useState(0)
+  const [touchEndX, setTouchEndX] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const [swipeProgress, setSwipeProgress] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
+  
+  // Minimum swipe distance to trigger navigation (in pixels)
+  const MIN_SWIPE_DISTANCE = 50
+  // Maximum horizontal movement to consider it a vertical swipe
+  const MAX_HORIZONTAL_MOVEMENT = 50
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+                            window.innerWidth <= 768 ||
+                            ('ontouchstart' in window)
+      setIsMobile(isMobileDevice)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load video source when component mounts
   useEffect(() => {
@@ -230,6 +259,76 @@ export default function ComputerStreamPlayer({
     togglePlay()
   }
 
+  // TikTok-style swipe handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return
+    const touch = e.touches[0]
+    setTouchStartY(touch.clientY)
+    setTouchStartX(touch.clientX)
+    setTouchEndY(touch.clientY)
+    setTouchEndX(touch.clientX)
+    setIsSwiping(true)
+    setSwipeProgress(0)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile || !isSwiping) return
+    const touch = e.touches[0]
+    setTouchEndY(touch.clientY)
+    setTouchEndX(touch.clientX)
+    
+    const deltaY = touch.clientY - touchStartY
+    const deltaX = Math.abs(touch.clientX - touchStartX)
+    const absDeltaY = Math.abs(deltaY)
+    
+    // Only prevent default if it's a vertical swipe (not horizontal)
+    if (absDeltaY > 10 && deltaX < MAX_HORIZONTAL_MOVEMENT) {
+      e.preventDefault()
+      
+      // Calculate swipe progress (0 to 1)
+      const progress = Math.min(absDeltaY / (window.innerHeight * 0.3), 1)
+      setSwipeProgress(progress)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (!isMobile || !isSwiping) return
+    
+    const deltaY = touchStartY - touchEndY
+    const deltaX = Math.abs(touchEndX - touchStartX)
+    const absDeltaY = Math.abs(deltaY)
+    
+    // Only trigger navigation if:
+    // 1. Swipe distance is significant
+    // 2. It's primarily a vertical swipe (not horizontal)
+    if (absDeltaY > MIN_SWIPE_DISTANCE && deltaX < MAX_HORIZONTAL_MOVEMENT) {
+      if (deltaY > 0 && onNext) {
+        // Swipe up - next video
+        onNext()
+      } else if (deltaY < 0 && onPrevious) {
+        // Swipe down - previous video
+        onPrevious()
+      }
+    }
+    
+    setIsSwiping(false)
+    setSwipeProgress(0)
+    setTouchStartY(0)
+    setTouchStartX(0)
+    setTouchEndY(0)
+    setTouchEndX(0)
+  }
+
+  // Prevent body scroll when on mobile
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = ''
+      }
+    }
+  }, [isMobile])
+
   if (error) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4">
@@ -263,7 +362,14 @@ export default function ComputerStreamPlayer({
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex">
+    <div 
+      className="fixed inset-0 bg-black z-50 flex"
+      ref={containerRef}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: isMobile ? 'pan-y' : 'auto' }}
+    >
       {/* Main Video Area - Based on Wireframe */}
       <div className="flex-1 relative">
         {/* Video Player */}
@@ -405,8 +511,8 @@ export default function ComputerStreamPlayer({
             </div>
           </div>
 
-          {/* Navigation Arrows */}
-          {onPrevious && (
+          {/* Navigation Arrows - Hidden on mobile when swipe is enabled */}
+          {!isMobile && onPrevious && (
             <button
               onClick={onPrevious}
               className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-4 text-white hover:bg-white/40 transition-colors"
@@ -415,13 +521,29 @@ export default function ComputerStreamPlayer({
             </button>
           )}
 
-          {onNext && (
+          {!isMobile && onNext && (
             <button
               onClick={onNext}
               className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-4 text-white hover:bg-white/40 transition-colors"
             >
               <SkipForward className="w-6 h-6" />
             </button>
+          )}
+
+          {/* Swipe Indicator - Mobile only */}
+          {isMobile && isSwiping && swipeProgress > 0.1 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div 
+                className="bg-black/50 backdrop-blur-sm rounded-full p-6 transition-opacity duration-200"
+                style={{ opacity: swipeProgress }}
+              >
+                {touchStartY > touchEndY ? (
+                  <SkipForward className="w-12 h-12 text-white" />
+                ) : (
+                  <SkipBack className="w-12 h-12 text-white" />
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

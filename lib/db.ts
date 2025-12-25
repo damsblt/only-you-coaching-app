@@ -238,7 +238,11 @@ class QueryBuilder {
           whereParts.push(`EXISTS (SELECT 1 FROM unnest("${condition.field}") AS elem WHERE LOWER(elem::text) = $${whereValues.length})`)
         } else {
           whereValues.push(condition.value)
-          whereParts.push(`"${condition.field}" ${condition.operator} $${whereValues.length}`)
+          // Handle column names that are already quoted (for camelCase columns)
+          const fieldName = condition.field.startsWith('"') && condition.field.endsWith('"') 
+            ? condition.field 
+            : `"${condition.field}"`
+          whereParts.push(`${fieldName} ${condition.operator} $${whereValues.length}`)
         }
       }
 
@@ -355,6 +359,105 @@ class QueryBuilder {
                          error?.message?.includes('timeout'),
       }
       console.error('❌ Insert error:', errorInfo)
+      
+      if (errorInfo.isConnectionError) {
+        return {
+          data: null,
+          error: {
+            message: 'Database connection error. Please try again.',
+            code: error?.code || 'CONNECTION_ERROR',
+            hint: 'The database connection was interrupted. This may be a temporary issue.',
+            originalError: process.env.NODE_ENV === 'development' ? errorInfo : undefined
+          }
+        }
+      }
+      
+      return { data: null, error }
+    }
+  }
+
+  async update(data: Record<string, any>): Promise<{ data: any | null; error: any }> {
+    try {
+      if (!sql) {
+        const error = new Error('Database client is not initialized. Check DATABASE_URL environment variable.')
+        console.error('❌ Database client is null in update() - DATABASE_URL may be missing or invalid')
+        return { 
+          data: null, 
+          error: {
+            message: error.message,
+            code: 'CLIENT_NOT_INITIALIZED',
+            hint: 'Please check your DATABASE_URL environment variable in Vercel settings'
+          }
+        }
+      }
+
+      // Build SET clause
+      const keys = Object.keys(data)
+      const setValues: any[] = []
+      const setParts: string[] = []
+      
+      keys.forEach((key, index) => {
+        const value = data[key]
+        if (value === null || value === undefined) {
+          setValues.push(null)
+        } else if (Array.isArray(value) || (typeof value === 'object' && value.constructor === Object)) {
+          setValues.push(JSON.stringify(value))
+        } else {
+          setValues.push(value)
+        }
+        setParts.push(`"${key}" = $${index + 1}`)
+      })
+
+      // Build WHERE clause
+      const whereParts: string[] = []
+      let paramIndex = keys.length + 1
+      
+      for (const condition of this.whereConditions) {
+        if (condition.operator === 'IN') {
+          const inValues = Array.isArray(condition.value) ? condition.value : [condition.value]
+          const placeholders = inValues.map((val: any) => {
+            setValues.push(val)
+            return `$${paramIndex++}`
+          }).join(', ')
+          whereParts.push(`"${condition.field}" IN (${placeholders})`)
+        } else {
+          setValues.push(condition.value)
+          const fieldName = condition.field.startsWith('"') && condition.field.endsWith('"') 
+            ? condition.field 
+            : `"${condition.field}"`
+          whereParts.push(`${fieldName} ${condition.operator} $${paramIndex++}`)
+        }
+      }
+
+      if (whereParts.length === 0) {
+        return { 
+          data: null, 
+          error: { 
+            message: 'Update requires WHERE conditions', 
+            code: 'MISSING_WHERE_CLAUSE' 
+          } 
+        }
+      }
+
+      const queryStr = `UPDATE "${this.table}" SET ${setParts.join(', ')} WHERE ${whereParts.join(' AND ')} RETURNING *`
+
+      console.log('🔍 Updating', this.table, 'with', setValues.length, 'values')
+
+      // Use helper function to convert parameterized query to template literal
+      const result = await executeQuery(queryStr, setValues)
+      const rows = Array.isArray(result) ? result : []
+      return { data: rows[0] || null, error: null }
+    } catch (error: any) {
+      const errorInfo = {
+        message: error?.message,
+        code: error?.code,
+        detail: error?.detail,
+        hint: error?.hint,
+        isConnectionError: error?.message?.includes('Connection') || 
+                         error?.message?.includes('terminated') ||
+                         error?.message?.includes('timeout'),
+      }
+      console.error('❌ Update error:', errorInfo)
       
       if (errorInfo.isConnectionError) {
         return {

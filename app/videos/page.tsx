@@ -3,6 +3,7 @@
 import { CheckCircle, ArrowRight, Video, BookOpen, Target } from "lucide-react"
 import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
+import PageHeader from "@/components/layout/PageHeader"
 
 export default function VideosPage() {
   const benefits = [
@@ -15,7 +16,14 @@ export default function VideosPage() {
   ]
 
   return (
-    <Section gradient="soft" title="Explorez Nos Vidéos de Pilates" subtitle="Bibliothèque d'exercices et programmes structurés pour votre pratique">
+    <>
+      <PageHeader
+        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        title="Explorez Nos Vidéos de Pilates"
+        subtitle="Bibliothèque d'exercices et programmes structurés pour votre pratique"
+        height="fullScreen"
+      />
+      <Section gradient="soft">
       
       {/* Introduction */}
       <div className="max-w-4xl mx-auto text-center mb-12">
@@ -120,6 +128,7 @@ export default function VideosPage() {
       </div>
 
     </Section>
+    </>
   )
 }
 

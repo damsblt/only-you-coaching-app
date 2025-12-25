@@ -9,6 +9,7 @@ import RecipeCard from '@/components/recipe/RecipeCard'
 import RecipeBookletViewer from '@/components/recipe/RecipeBookletViewer'
 import { Section } from '@/components/ui/Section'
 import { Button } from '@/components/ui/Button'
+import PageHeader from '@/components/layout/PageHeader'
 
 export default function RecettesPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -49,10 +50,14 @@ export default function RecettesPage() {
 
   return (
     <>
+      <PageHeader
+        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        title="Mes Recettes"
+        subtitle="Découvrez une collection de recettes saines et délicieuses pour accompagner votre parcours fitness"
+        height="fullScreen"
+      />
       <Section 
         gradient="soft" 
-        title="Mes Recettes" 
-        subtitle="Découvrez une collection de recettes saines et délicieuses pour accompagner votre parcours fitness"
         className="!pb-8"
       >
         <ProtectedContent 

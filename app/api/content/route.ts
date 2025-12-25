@@ -20,8 +20,8 @@ const CONTENT_TYPES = {
   },
   audios: {
     table: 'audios',
-    fields: ['id', 'title', 'description', 'url', 'duration', 'is_published', 'created_at', 'updated_at'],
-    required: ['title', 'url']
+    fields: ['id', 'title', 'description', 'audioUrl', 's3key', 'thumbnail', 'duration', 'category', 'isPublished', 'createdAt', 'updatedAt'],
+    required: ['title']
   }
 }
 
@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
 
     // Filter by published status if requested
     if (published) {
-      query = query.eq('is_published', true)
+      // audios table uses camelCase, others use snake_case
+      const publishedField = config.table === 'audios' ? 'isPublished' : 'is_published'
+      query = query.eq(publishedField, true)
     }
 
     // Filter by slug if provided
@@ -55,7 +57,9 @@ export async function GET(request: NextRequest) {
       query = query.eq('slug', slug)
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false })
+    // Order by created_at or createdAt depending on table
+    const createdAtField = config.table === 'audios' ? 'createdAt' : 'created_at'
+    const { data, error } = await query.order(createdAtField, { ascending: false })
 
     if (error) {
       console.error('Supabase query error:', error)
@@ -97,13 +101,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Add timestamps
+    // Add timestamps - handle camelCase for audios table
     const now = new Date().toISOString()
-    const contentData = {
-      ...body,
-      created_at: now,
-      updated_at: now,
-      is_published: body.is_published || false
+    const contentData: any = { ...body }
+    
+    if (config.table === 'audios') {
+      contentData.createdAt = now
+      contentData.updatedAt = now
+      contentData.isPublished = body.isPublished !== undefined ? body.isPublished : (body.is_published !== undefined ? body.is_published : false)
+    } else {
+      contentData.created_at = now
+      contentData.updated_at = now
+      contentData.is_published = body.is_published || false
     }
 
     const { data, error } = await db
@@ -142,10 +151,21 @@ export async function PUT(request: NextRequest) {
     const config = CONTENT_TYPES[contentType as keyof typeof CONTENT_TYPES]
     const body = await request.json()
 
-    // Add updated timestamp
-    const updateData = {
-      ...body,
-      updated_at: new Date().toISOString()
+    // Add updated timestamp - handle camelCase for audios table
+    const updateData: any = { ...body }
+    
+    if (config.table === 'audios') {
+      updateData.updatedAt = new Date().toISOString()
+      // Remove snake_case fields if they exist
+      delete updateData.updated_at
+      delete updateData.created_at
+      // Handle isPublished field
+      if (body.is_published !== undefined) {
+        updateData.isPublished = body.is_published
+        delete updateData.is_published
+      }
+    } else {
+      updateData.updated_at = new Date().toISOString()
     }
 
     const { data, error } = await db

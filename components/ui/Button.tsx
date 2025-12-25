@@ -16,10 +16,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const baseClasses = "curved-button inline-flex items-center justify-center font-semibold transition-all"
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-accent-500 text-white shadow-organic hover:shadow-floating transition-all transform hover:scale-105",
-  outline: "border-2 border-white text-white bg-white/10 backdrop-blur-sm hover:bg-white hover:text-burgundy-500 transition-all",
-  white: "bg-white text-burgundy-500 shadow-organic hover:shadow-floating transition-all transform hover:scale-105",
-  ghost: "text-accent-600 hover:text-white hover:bg-secondary-500/90",
+  primary: "bg-footer-500 text-white shadow-organic hover:shadow-floating transition-all transform hover:scale-105 hover:bg-footer-600",
+  outline: "border-2 border-white text-white bg-white/10 backdrop-blur-sm hover:bg-white hover:text-footer-500 transition-all",
+  white: "bg-white text-footer-500 shadow-organic hover:shadow-floating transition-all transform hover:scale-105",
+  ghost: "text-footer-600 hover:text-white hover:bg-footer-500/90",
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
