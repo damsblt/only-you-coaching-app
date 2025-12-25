@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 // GET - List all programs or get specific program by slug
 export async function GET(request: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const published = searchParams.get('published') === 'true'
 
   try {
-    let query = supabaseAdmin.from('programs_info').select('*')
+    let query = db.from('programs_info').select('*')
 
     // Filter by published status if requested
     if (published) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if slug already exists
-    const { data: existingProgram } = await supabaseAdmin
+    const { data: existingProgram } = await db
       .from('programs_info')
       .select('id')
       .eq('slug', body.slug)
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       is_published: body.is_published || false
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('programs_info')
       .insert(programData)
       .select()
@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    let query = supabaseAdmin.from('programs_info').update(updateData)
+    let query = db.from('programs_info').update(updateData)
 
     // Use ID or slug for update
     if (id) {
@@ -142,7 +142,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    let query = supabaseAdmin.from('programs_info').delete()
+    let query = db.from('programs_info').delete()
 
     // Use ID or slug for deletion
     if (id) {

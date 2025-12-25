@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db } from '@/lib/db'
+import { syncUserWithDatabase } from '@/lib/sync-user'
 
 export async function POST(req: NextRequest) {
   try {
+    // Check database connection first
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ DATABASE_URL is not set')
+      return NextResponse.json(
+        { 
+          error: 'Database configuration error',
+          message: 'DATABASE_URL environment variable is missing',
+          details: 'Please check your environment variables'
+        },
+        { status: 500 }
+      )
+    }
+
     const { userId } = await req.json()
     
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    // Get user from Supabase Auth
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId)
-    
-    if (authError || !authUser.user) {
-      return NextResponse.json({ error: 'User not found in Supabase Auth' }, { status: 404 })
-    }
-
-    const user = authUser.user
-    
     // Check if user already exists in our custom table
-    const { data: existingUser, error: existingUserError } = await supabaseAdmin
+    const { data: existingUser, error: existingUserError } = await db
       .from('users')
       .select('*')
       .eq('id', userId)
@@ -40,28 +39,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, user: existingUser })
     }
 
-    // Create user in our custom table
-    const { data: newUser, error: createError } = await supabaseAdmin
-      .from('users')
-      .insert({
-        id: user.id,
-        email: user.email!,
-        name: user.user_metadata?.name || user.email!.split('@')[0],
-        image: user.user_metadata?.avatar_url || null,
-        role: 'USER'
-      })
-      .select()
-      .single()
-
-    if (createError) {
-      console.error('Error creating user:', createError)
-      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
+    // Sync user with database (this will handle user creation through auth system)
+    const syncResult = await syncUserWithDatabase(userId)
+    
+    if (!syncResult.success) {
+      return NextResponse.json({ error: syncResult.error || 'Failed to sync user' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, user: newUser })
+    return NextResponse.json({ success: true, user: syncResult.user })
 
   } catch (error: any) {
-    console.error('Error syncing user:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    // Enhanced error logging for production debugging
+    const errorDetails = {
+      message: error?.message || 'Unknown error',
+      code: error?.code || 'NO_CODE',
+      name: error?.name || null,
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      // Include database connection info if available
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      databaseUrlLength: process.env.DATABASE_URL?.length || 0,
+    }
+    console.error('❌ Error syncing user:', errorDetails)
+    
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        message: error?.message || 'Unknown error',
+        // Only include detailed error info in development
+        details: process.env.NODE_ENV === 'development' 
+          ? errorDetails 
+          : 'An error occurred while syncing the user. Please try again later.'
+      },
+      { status: 500 }
+    )
   }
 }

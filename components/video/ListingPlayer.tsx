@@ -17,6 +17,7 @@ interface Video {
   category: string
   region?: string
   muscleGroups: string[]
+  targeted_muscles?: string[]
   startingPosition?: string
   movement?: string
   intensity?: string
@@ -390,7 +391,7 @@ export default function ListingPlayer({
           </Button>
         </div>
 
-        <div className="flex">
+        <div className="flex flex-col lg:flex-row">
           {/* Video Player */}
           <div className="flex-1">
             <div className="relative aspect-video bg-black">
@@ -479,6 +480,98 @@ export default function ListingPlayer({
                     </span>
                   </div>
 
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Metadata Sidebar */}
+          <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 p-4 overflow-y-auto max-h-[60vh] lg:max-h-[calc(90vh-80px)]">
+            <div className="space-y-4">
+              {/* Description */}
+              {video.description && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+                  <p className="text-sm text-gray-600">{video.description}</p>
+                </div>
+              )}
+
+              {/* Metadata Section */}
+              <div className="space-y-3 text-sm">
+                {/* Muscle cible */}
+                {((video.targeted_muscles && video.targeted_muscles.length > 0) || (video.muscleGroups && video.muscleGroups.length > 0)) && (
+                  <div>
+                    <span className="font-semibold text-gray-700">Muscle cible: </span>
+                    <span className="text-gray-600">
+                      {video.targeted_muscles && video.targeted_muscles.length > 0
+                        ? (Array.isArray(video.targeted_muscles) ? video.targeted_muscles.join(', ') : video.targeted_muscles)
+                        : (Array.isArray(video.muscleGroups) ? video.muscleGroups.join(', ') : video.muscleGroups)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Position départ */}
+                {video.startingPosition && (
+                  <div>
+                    <span className="font-semibold text-gray-700">Position départ: </span>
+                    <span className="text-gray-600">{video.startingPosition}</span>
+                  </div>
+                )}
+
+                {/* Mouvement */}
+                {video.movement && (
+                  <div>
+                    <span className="font-semibold text-gray-700">Mouvement: </span>
+                    <span className="text-gray-600">{video.movement}</span>
+                  </div>
+                )}
+
+                {/* Intensité et Série */}
+                <div className="flex flex-wrap gap-4">
+                  {video.intensity && (
+                    <div>
+                      <span className="font-semibold text-gray-700">Intensité: </span>
+                      <span className="text-gray-600">{video.intensity}</span>
+                    </div>
+                  )}
+                  {video.series && (
+                    <div>
+                      <span className="font-semibold text-gray-700">Série: </span>
+                      <span className="text-gray-600">{video.series}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Contre-indication */}
+                {video.constraints && video.constraints !== "Aucune" && (
+                  <div>
+                    <span className="font-semibold text-gray-700">Contre-indication: </span>
+                    <span className="text-gray-600">{video.constraints}</span>
+                  </div>
+                )}
+                {(!video.constraints || video.constraints === "Aucune") && (
+                  <div>
+                    <span className="font-semibold text-gray-700">Contre-indication: </span>
+                    <span className="text-gray-600">Aucune</span>
+                  </div>
+                )}
+
+                {/* Category and Difficulty */}
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    video.difficulty === 'debutant' || video.difficulty === 'BEGINNER' ? 'bg-green-100 text-green-700' :
+                    video.difficulty === 'intermediaire' || video.difficulty === 'INTERMEDIATE' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {video.difficulty === 'debutant' || video.difficulty === 'BEGINNER' ? 'Débutant' :
+                     video.difficulty === 'intermediaire' || video.difficulty === 'INTERMEDIATE' ? 'Intermédiaire' :
+                     'Avancé'}
+                  </span>
+                  {video.category && (
+                    <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs">
+                      {video.category}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

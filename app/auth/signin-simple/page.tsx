@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +14,42 @@ function SignInForm() {
   const { signIn, signUp } = useSimpleAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Sauvegarder la page référente si elle existe et n'est pas déjà sauvegardée
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUrl = localStorage.getItem('returnUrl')
+      const referrer = document.referrer
+      
+      // Si aucune URL n'est sauvegardée et qu'il y a un référent valide
+      if (!savedUrl && referrer) {
+        try {
+          const referrerUrl = new URL(referrer)
+          const currentUrl = new URL(window.location.href)
+          
+          // Ne sauvegarder que si le référent est du même domaine et n'est pas une page d'auth
+          if (referrerUrl.origin === currentUrl.origin && !referrerUrl.pathname.startsWith('/auth/')) {
+            const returnPath = referrerUrl.pathname + referrerUrl.search
+            localStorage.setItem('returnUrl', returnPath)
+          }
+        } catch (e) {
+          // Ignorer les erreurs de parsing d'URL
+        }
+      }
+    }
+  }, [])
+
+  // Récupérer l'URL de retour sauvegardée
+  const getReturnUrl = () => {
+    if (typeof window !== 'undefined') {
+      const savedUrl = localStorage.getItem('returnUrl')
+      if (savedUrl) {
+        localStorage.removeItem('returnUrl') // Nettoyer après récupération
+        return savedUrl
+      }
+    }
+    return null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +87,7 @@ function SignInForm() {
             const callbackUrl = searchParams.get('callbackUrl')
             const planId = searchParams.get('planId')
             const from = searchParams.get('from')
+            const returnUrl = getReturnUrl() // Récupérer l'URL sauvegardée
             
             if (planId && callbackUrl) {
               // Flow 2: Existing user with planId - redirect to subscriptions with auto-checkout
@@ -59,6 +96,10 @@ function SignInForm() {
             } else if (callbackUrl) {
               console.log('Redirecting to callback URL:', callbackUrl)
               router.push(callbackUrl)
+            } else if (returnUrl) {
+              // Utiliser l'URL sauvegardée si disponible
+              console.log('Redirecting to saved return URL:', returnUrl)
+              router.push(returnUrl)
             } else if (from === 'admin') {
               router.push('/admin/users')
             } else {

@@ -4,12 +4,7 @@
  */
 
 interface EnvironmentConfig {
-  // Supabase
-  supabaseUrl: string
-  supabaseAnonKey: string
-  supabaseServiceKey?: string
-  
-  // Database
+  // Database (Neon)
   databaseUrl: string
   
   // NextAuth
@@ -35,8 +30,6 @@ function validateEnvironment(): EnvironmentConfig {
 
   // Required environment variables
   const requiredVars = {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     DATABASE_URL: process.env.DATABASE_URL,
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
@@ -64,12 +57,7 @@ function validateEnvironment(): EnvironmentConfig {
   }
 
   return {
-    // Supabase
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    
-    // Database
+    // Database (Neon)
     databaseUrl: process.env.DATABASE_URL || '',
     
     // NextAuth
@@ -93,10 +81,6 @@ function validateEnvironment(): EnvironmentConfig {
 export const env = validateEnvironment()
 
 // Helper functions
-export const isSupabaseConfigured = () => {
-  return !!(env.supabaseUrl && env.supabaseAnonKey)
-}
-
 export const isS3Configured = () => {
   return !!(env.awsAccessKeyId && env.awsSecretAccessKey)
 }
@@ -108,8 +92,7 @@ export const isDatabaseConfigured = () => {
 // Log environment status
 if (env.isServer) {
   console.log('🔧 Environment Status:')
-  console.log(`   Supabase: ${isSupabaseConfigured() ? '✅' : '❌'}`)
-  console.log(`   Database: ${isDatabaseConfigured() ? '✅' : '❌'}`)
+  console.log(`   Database (Neon): ${isDatabaseConfigured() ? '✅' : '❌'}`)
   console.log(`   S3: ${isS3Configured() ? '✅' : '❌'}`)
   console.log(`   Environment: ${env.isDevelopment ? 'Development' : 'Production'}`)
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import Image from "next/image"
 import { ThemeToggle } from "@/components/ui/ThemeToggle"
@@ -24,7 +25,13 @@ import {
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const { user, loading, signOut } = useSimpleAuth()
+
+  // Ensure component is mounted before using portal
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -42,6 +49,17 @@ export function Header() {
   const handleSignOut = async () => {
     await signOut()
     window.location.href = '/'
+  }
+
+  const handleSignInClick = () => {
+    // Sauvegarder la page actuelle avant de rediriger vers la connexion
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname + window.location.search
+      // Ne pas sauvegarder si on est déjà sur la page de connexion
+      if (!currentPath.startsWith('/auth/')) {
+        localStorage.setItem('returnUrl', currentPath)
+      }
+    }
   }
 
   const navigation = [
@@ -191,6 +209,7 @@ export function Header() {
                     variant="ghost"
                     size="sm"
                     className="flex items-center space-x-1"
+                    onClick={handleSignInClick}
                   >
                     <LogIn className="w-4 h-4" />
                     <span>Se connecter</span>
@@ -212,18 +231,18 @@ export function Header() {
             </div>
           </div>
 
-          {/* Right Sidebar Menu */}
-          {isMenuOpen && (
+          {/* Right Sidebar Menu - Rendered via Portal to ensure it's above all elements */}
+          {isMenuOpen && mounted && createPortal(
             <>
               {/* Backdrop overlay */}
               <div 
-                className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[9998] lg:hidden transition-opacity duration-300"
+                className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[99998] lg:hidden transition-opacity duration-300"
                 onClick={() => setIsMenuOpen(false)}
                 aria-hidden="true"
               />
               
               {/* Sidebar */}
-              <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl z-[9999] lg:hidden transform translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto">
+              <div className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-800 shadow-2xl z-[99999] lg:hidden transform translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto">
                 <div className="flex flex-col h-full">
                   {/* Sidebar Header */}
                   <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -309,7 +328,10 @@ export function Header() {
                         size="sm"
                         fullWidth
                         className="flex items-center justify-center space-x-2"
-                        onClick={() => setIsMenuOpen(false)}
+                        onClick={() => {
+                          handleSignInClick()
+                          setIsMenuOpen(false)
+                        }}
                       >
                         <LogIn className="w-4 h-4" />
                         <span>Se connecter</span>
@@ -318,7 +340,8 @@ export function Header() {
                   </div>
                 </div>
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
         

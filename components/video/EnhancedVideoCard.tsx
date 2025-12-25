@@ -16,6 +16,7 @@ interface EnhancedVideo {
   category: string
   region?: string
   muscleGroups: string[]
+  targeted_muscles?: string[]
   startingPosition?: string
   movement?: string
   intensity?: string
@@ -72,16 +73,65 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
           {video.title}
         </h3>
 
-        {/* Simple Metadata */}
-        <div className="space-y-2 mb-4">
-          {/* Region as pill badge */}
-          {video.region && (
-            <div className="text-xs text-accent-600 dark:text-accent-400 bg-primary-100 dark:bg-primary-900/30 px-3 py-1.5 inline-flex items-center gap-1 curved-button">
-              <Target className="w-3 h-3" />
-              <span>{video.region}</span>
+        {/* Metadata Section */}
+        <div className="space-y-3 mb-4 text-sm">
+          {/* Muscle cible */}
+          {((video.targeted_muscles && video.targeted_muscles.length > 0) || (video.muscleGroups && video.muscleGroups.length > 0)) && (
+            <div>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Muscle cible: </span>
+              <span className="text-gray-600 dark:text-gray-400">
+                {video.targeted_muscles && video.targeted_muscles.length > 0
+                  ? (Array.isArray(video.targeted_muscles) ? video.targeted_muscles.join(', ') : video.targeted_muscles)
+                  : (Array.isArray(video.muscleGroups) ? video.muscleGroups.join(', ') : video.muscleGroups)}
+              </span>
             </div>
           )}
-          
+
+          {/* Position départ */}
+          {video.startingPosition && (
+            <div>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Position départ: </span>
+              <span className="text-gray-600 dark:text-gray-400">{video.startingPosition}</span>
+            </div>
+          )}
+
+          {/* Mouvement */}
+          {video.movement && (
+            <div>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Mouvement: </span>
+              <span className="text-gray-600 dark:text-gray-400">{video.movement}</span>
+            </div>
+          )}
+
+          {/* Intensité et Série */}
+          <div className="flex flex-wrap gap-4">
+            {video.intensity && (
+              <div>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Intensité: </span>
+                <span className="text-gray-600 dark:text-gray-400">{video.intensity}</span>
+              </div>
+            )}
+            {video.series && (
+              <div>
+                <span className="font-semibold text-gray-700 dark:text-gray-300">Série: </span>
+                <span className="text-gray-600 dark:text-gray-400">{video.series}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Contre-indication */}
+          {video.constraints && video.constraints !== "Aucune" && (
+            <div>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Contre-indication: </span>
+              <span className="text-gray-600 dark:text-gray-400">{video.constraints}</span>
+            </div>
+          )}
+          {(!video.constraints || video.constraints === "Aucune") && (
+            <div>
+              <span className="font-semibold text-gray-700 dark:text-gray-300">Contre-indication: </span>
+              <span className="text-gray-600 dark:text-gray-400">Aucune</span>
+            </div>
+          )}
         </div>
 
         {/* Action Button */}

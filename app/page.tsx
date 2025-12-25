@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import VideoPreviewButton from "../components/VideoPreviewButton"
 import { Button } from "@/components/ui/Button"
+import Testimonials from "@/components/Testimonials"
 
 // Vidéo sélectionnée pour la page d'accueil (depuis S3 AWS)
 const featuredVideo = {
@@ -185,6 +186,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      <Testimonials />
 
       {/* Programmes Section */}
       <section className="py-20 bg-hero-gradient dark:bg-gray-900 relative overflow-hidden transition-colors">

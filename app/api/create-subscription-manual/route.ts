@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +12,7 @@ export async function POST(request: NextRequest) {
     console.log('🔄 Création manuelle d\'abonnement pour:', email)
     
     // Trouver l'utilisateur dans notre DB
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: user, error: userError } = await db
       .from('users')
       .select('*')
       .eq('email', email)
@@ -30,18 +24,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Créer un abonnement Essentiel (plan 69 CHF) directement
-    const { data: newSubscription, error: subscriptionError } = await supabaseAdmin
-      .from('subscriptions')
-      .insert({
-        userId: user.id,
-        status: 'ACTIVE',
-        plan: 'MONTHLY',
-        stripePriceId: 'price_1SFtNZRnELGaRIkTI51JSCso',
-        stripeSubscriptionId: 'sub_1SLqLERnELGaRIkT04qParSX',
-        stripeCurrentPeriodEnd: new Date('2025-11-24T19:08:00.000Z').toISOString()
-      })
-      .select()
-      .single()
+    const { insert } = await import('@/lib/db')
+    const { data: newSubscription, error: subscriptionError } = await insert('subscriptions', {
+      userId: user.id,
+      status: 'ACTIVE',
+      plan: 'MONTHLY',
+      stripePriceId: 'price_1SFtNZRnELGaRIkTI51JSCso',
+      stripeSubscriptionId: 'sub_1SLqLERnELGaRIkT04qParSX',
+      stripeCurrentPeriodEnd: new Date('2025-11-24T19:08:00.000Z').toISOString()
+    })
 
     if (subscriptionError) {
       console.error('Error creating subscription:', subscriptionError)

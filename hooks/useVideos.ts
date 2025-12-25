@@ -66,12 +66,21 @@ export function useVideos(options: UseVideosOptions = {}) {
 
         // Use API endpoint which generates signed URLs for thumbnails
         const response = await fetch(`/api/videos?${params.toString()}`)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch videos: ${response.statusText}`)
+        const data = await response.json()
+        
+        // Check if the response contains an error object
+        if (!response.ok || (data && typeof data === 'object' && 'error' in data)) {
+          const errorMessage = data?.message || data?.error || `Failed to fetch videos: ${response.statusText}`
+          throw new Error(errorMessage)
         }
         
-        const data = await response.json()
-        setVideos(data || [])
+        // Ensure data is an array
+        if (!Array.isArray(data)) {
+          console.error('API returned non-array data:', data)
+          throw new Error('Invalid response format: expected array of videos')
+        }
+        
+        setVideos(data)
       } catch (err) {
         console.error('Error fetching videos:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch videos')
