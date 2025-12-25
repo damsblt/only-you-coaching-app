@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import Image from "next/image"
@@ -22,6 +22,105 @@ import {
   LogOut,
   LogIn
 } from "lucide-react"
+
+// Type for navigation items
+type NavigationItem = {
+  name: string
+  href?: string
+  subItems?: Array<{ name: string; href: string }>
+}
+
+// Component for navigation item with dropdown
+function NavItemWithDropdown({ item }: { item: NavigationItem }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const openMenu = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    setIsOpen(true)
+  }
+
+  const closeMenu = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsOpen(false)
+    }, 50) // Délai très court pour fermeture rapide
+  }
+
+  const handleMouseEnter = () => {
+    openMenu()
+  }
+
+  const handleMouseLeave = () => {
+    closeMenu()
+  }
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
+
+  return (
+    <div 
+      ref={containerRef}
+      className="relative"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {item.href ? (
+        <Link
+          href={item.href}
+          className="text-black dark:text-gray-200 hover:text-accent-500 dark:hover:text-accent-400 px-3 py-2 text-xs font-medium transition-colors uppercase tracking-wide flex items-center"
+        >
+          {item.name}
+          {item.subItems && (
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </Link>
+      ) : (
+        <span className="text-black dark:text-gray-200 px-3 py-2 text-xs font-medium uppercase tracking-wide flex items-center cursor-default">
+          {item.name}
+          {item.subItems && (
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          )}
+        </span>
+      )}
+      {item.subItems && (
+        <div 
+          className={`absolute top-full left-0 w-56 z-[100] transition-opacity duration-150 ${
+            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          style={{ 
+            marginTop: '0px',
+            paddingTop: '8px', // Zone invisible pour faciliter le mouvement de la souris
+          }}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+            {item.subItems.map((subItem) => (
+              <Link
+                key={subItem.name}
+                href={subItem.href}
+                className="block px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-500 dark:hover:text-accent-400 hover:bg-gray-50 dark:hover:bg-gray-700 first:rounded-t-lg last:rounded-b-lg transition-colors"
+              >
+                {subItem.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -115,8 +214,8 @@ export function Header() {
       </div>
       
       {/* Main header with smooth curved bottom */}
-      <div className="relative bg-white dark:bg-gray-800 shadow-md transition-colors">
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="relative bg-white dark:bg-gray-800 shadow-md transition-colors z-50">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center">
@@ -134,43 +233,7 @@ export function Header() {
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1" role="navigation">
               {navigation.map((item) => (
-                <div key={item.name} className="relative group">
-                  {item.href ? (
-                    <Link
-                      href={item.href}
-                      className="text-black dark:text-gray-200 hover:text-accent-500 dark:hover:text-accent-400 px-3 py-2 text-xs font-medium transition-colors uppercase tracking-wide flex items-center"
-                    >
-                      {item.name}
-                      {item.subItems && (
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      )}
-                    </Link>
-                  ) : (
-                    <span className="text-black dark:text-gray-200 px-3 py-2 text-xs font-medium uppercase tracking-wide flex items-center cursor-default">
-                      {item.name}
-                      {item.subItems && (
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      )}
-                    </span>
-                  )}
-                  {item.subItems && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100]">
-                      {item.subItems.map((subItem) => (
-                        <Link
-                          key={subItem.name}
-                          href={subItem.href}
-                          className="block px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:text-accent-500 dark:hover:text-accent-400 hover:bg-gray-50 dark:hover:bg-gray-700 first:rounded-t-lg last:rounded-b-lg transition-colors"
-                        >
-                          {subItem.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <NavItemWithDropdown key={item.name} item={item} />
               ))}
             </div>
 

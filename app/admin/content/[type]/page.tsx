@@ -21,8 +21,8 @@ interface ContentItem {
 }
 
 export default function DynamicContentManager() {
-  const params = useParams()
-  const contentType = params.type as string
+  const routeParams = useParams()
+  const contentType = (routeParams?.type || '') as string
   
   const [schema, setSchema] = useState<ContentTypeSchema | null>(null)
   const [items, setItems] = useState<ContentItem[]>([])

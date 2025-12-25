@@ -46,10 +46,10 @@ export default function Testimonials() {
       try {
         const names = testimonials.map(t => t.name).join(',')
         
-        // Use absolute URL in production to avoid issues with relative paths
+        // Use environment variable in production, fallback to window.location.origin
         const baseUrl = typeof window !== 'undefined' 
-          ? window.location.origin 
-          : process.env.NEXT_PUBLIC_APP_URL || ''
+          ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
+          : (process.env.NEXT_PUBLIC_SITE_URL || '')
         
         const apiUrl = `${baseUrl}/api/testimonials/photos?names=${encodeURIComponent(names)}`
         

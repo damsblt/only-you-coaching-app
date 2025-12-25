@@ -16,9 +16,10 @@ export default function Gallery({ localImages }: GalleryProps) {
     // Fetch images from S3
     const fetchS3Images = async () => {
       try {
+        // Use environment variable in production, fallback to window.location.origin
         const baseUrl = typeof window !== 'undefined' 
-          ? window.location.origin 
-          : process.env.NEXT_PUBLIC_APP_URL || ''
+          ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
+          : (process.env.NEXT_PUBLIC_SITE_URL || '')
         
         const apiUrl = `${baseUrl}/api/gallery/training-photos`
         
