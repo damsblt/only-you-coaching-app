@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, use } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight, ArrowUpLeft, Filter, Lock, CheckCircle2 } from "lucide-react"
 import SimpleVideoPlayer from "@/components/video/SimpleVideoPlayer"
@@ -43,9 +43,11 @@ interface RegionInfo {
 }
 
 export default function RegionPage() {
-  const params = useParams()
+  const routeParams = useParams()
   const router = useRouter()
-  const regionName = params.region as string
+  // In Next.js 15, useParams() returns a synchronous object for client components
+  // But we need to ensure we're not accessing it in a way that triggers warnings
+  const regionName = (routeParams?.region || '') as string
   
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [videos, setVideos] = useState<Video[]>([])
