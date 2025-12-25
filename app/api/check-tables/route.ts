@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('Checking Supabase tables...')
     
     // Get all tables from information_schema
-    const { data: tables, error } = await supabaseAdmin
+    const { data: tables, error } = await db
       .from('information_schema.tables')
       .select('table_name')
       .eq('table_schema', 'public')
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const tableNames = tables?.map(t => t.table_name) || []
     
     // Also check if programs_info table exists specifically
-    const { data: programsData, error: programsError } = await supabaseAdmin
+    const { data: programsData, error: programsError } = await db
       .from('programs_info')
       .select('*')
       .limit(1)

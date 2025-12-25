@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Fetching videos from database...')
     
     // Simply fetch all published videos
-    const { data: videos, error } = await supabaseAdmin
+    const { data: videos, error } = await db
       .from('videos_new')
       .select('*')
       .eq('isPublished', true)

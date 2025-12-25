@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
 const AWS_REGION = process.env.AWS_REGION || 'eu-north-1'
@@ -64,19 +64,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Supabase client
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
     
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: 'Supabase configuration missing' },
-        { status: 500 }
-      )
-    }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    })
+    // Database is already initialized via db from '@/lib/db'
 
     // List all objects in the recettes/ folder
     const command = new ListObjectsV2Command({
@@ -162,14 +153,14 @@ export async function POST(request: NextRequest) {
         const description = `Collection de recettes: ${title}`
         
         // Check if recipe already exists by slug OR by main image URL (to avoid duplicates)
-        const { data: existingRecipeBySlug } = await supabase
+        const { data: existingRecipeBySlug } = await db
           .from('recipes')
           .select('id, slug, title, image')
           .eq('slug', slug)
           .maybeSingle()
 
         // Also check by image URL to catch duplicates with different slugs
-        const { data: existingRecipeByImage } = await supabase
+        const { data: existingRecipeByImage } = await db
           .from('recipes')
           .select('id, slug, title, image')
           .eq('image', mainImage)
@@ -181,7 +172,7 @@ export async function POST(request: NextRequest) {
         
         if (existingRecipe) {
           // Update existing recipe with new images
-          const { data: updatedRecipe, error: updateError } = await supabase
+          const { data: updatedRecipe, error: updateError } = await db
             .from('recipes')
             .update({
               image: mainImage,
@@ -203,7 +194,7 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Create new recipe - published by default
-          const { data: newRecipe, error: insertError } = await supabase
+          const { data: newRecipe, error: insertError } = await db
             .from('recipes')
             .insert({
               title,

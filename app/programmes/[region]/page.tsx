@@ -726,30 +726,65 @@ export default function RegionPage() {
             console.log('🔄 Refreshing progress after video completion for video:', selectedVideo.id)
             if (user && regionName) {
               try {
-                // Wait a bit to ensure the database has been updated
-                await new Promise(resolve => setTimeout(resolve, 500))
+                // Wait a bit longer in production to ensure the database has been updated
+                // Use a longer delay and retry mechanism for production
+                const maxRetries = 3
+                let retryCount = 0
+                let success = false
                 
-                const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`)
-                if (response.ok) {
-                  const data = await response.json()
-                  console.log('✅ Progress refreshed after completion:', JSON.stringify({
-                    completedCount: data.completedCount,
-                    nextAvailableIndex: data.nextAvailableVideoIndex,
-                    progress: data.progress,
-                    completedVideos: data.completedVideos,
-                    videoId: selectedVideo.id,
-                    isVideoInCompleted: data.completedVideos?.includes(selectedVideo.id),
-                    progressForThisVideo: data.progress?.[selectedVideo.id]
-                  }, null, 2))
-                  setVideoProgress(data.progress || {})
-                  setCompletedVideos(data.completedVideos || [])
-                  setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
-                } else {
-                  console.error('❌ Failed to refresh progress:', response.status, response.statusText)
+                while (retryCount < maxRetries && !success) {
+                  // Wait progressively longer: 500ms, 1000ms, 1500ms
+                  await new Promise(resolve => setTimeout(resolve, 500 + (retryCount * 500)))
+                  
+                  console.log(`🔄 Attempting to refresh progress (attempt ${retryCount + 1}/${maxRetries})...`)
+                  
+                  const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`, {
+                    cache: 'no-store', // Ensure we don't get cached data
+                    headers: {
+                      'Cache-Control': 'no-cache'
+                    }
+                  })
+                  
+                  if (response.ok) {
+                    const data = await response.json()
+                    const isVideoCompleted = data.completedVideos?.includes(selectedVideo.id) || data.progress?.[selectedVideo.id]?.completed
+                    
+                    console.log('✅ Progress refreshed after completion:', JSON.stringify({
+                      completedCount: data.completedCount,
+                      nextAvailableIndex: data.nextAvailableVideoIndex,
+                      progress: data.progress,
+                      completedVideos: data.completedVideos,
+                      videoId: selectedVideo.id,
+                      isVideoCompleted,
+                      progressForThisVideo: data.progress?.[selectedVideo.id],
+                      attempt: retryCount + 1
+                    }, null, 2))
+                    
+                    // Only update state if video is actually marked as completed
+                    if (isVideoCompleted) {
+                      setVideoProgress(data.progress || {})
+                      setCompletedVideos(data.completedVideos || [])
+                      setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
+                      success = true
+                      console.log('✅ State updated successfully with completed video')
+                    } else {
+                      console.warn(`⚠️ Video not yet marked as completed in database (attempt ${retryCount + 1}), retrying...`)
+                      retryCount++
+                    }
+                  } else {
+                    console.error(`❌ Failed to refresh progress (attempt ${retryCount + 1}):`, response.status, response.statusText)
+                    retryCount++
+                  }
+                }
+                
+                if (!success) {
+                  console.error('❌ Failed to refresh progress after all retries')
                 }
               } catch (err) {
                 console.error('❌ Error refreshing progress:', err)
               }
+            } else {
+              console.warn('⚠️ Cannot refresh progress: missing user or regionName', { hasUser: !!user, hasRegion: !!regionName })
             }
           }}
         />
@@ -899,9 +934,9 @@ export default function RegionPage() {
 
                         {/* Content */}
                         <div className="p-6">
-                          {/* Title - use exo_title if available, otherwise title */}
+                          {/* Title */}
                           <h3 className="font-semibold text-accent-500 dark:text-accent-400 mb-3 line-clamp-2 group-hover:text-secondary-500 dark:group-hover:text-secondary-400 transition-colors">
-                            {video.exo_title || video.title}
+                            {video.title}
                           </h3>
 
                           {/* Metadata Section */}

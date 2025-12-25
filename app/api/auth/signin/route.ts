@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,44 +10,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    // Sign in user with Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (authError) {
-      console.error('Auth error:', authError)
-      return NextResponse.json({ error: authError.message }, { status: 401 })
-    }
-
-    if (!authData.user) {
-      return NextResponse.json({ error: 'Failed to sign in' }, { status: 500 })
-    }
-
-    // Get user data from our database
-    const { data: userData, error: dbError } = await supabaseAdmin
+    // Get user from database
+    const { data: userData, error: dbError } = await db
       .from('users')
       .select('*')
-      .eq('id', authData.user.id)
+      .eq('email', email)
       .single()
 
-    if (dbError) {
-      console.error('Database error:', dbError)
-      // Don't fail the request, user is authenticated
+    if (dbError || !userData) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+    }
+
+    // Verify password (assuming password is hashed in database)
+    // Note: You should implement proper password hashing during signup
+    const isValidPassword = await bcrypt.compare(password, userData.password || '')
+    
+    if (!isValidPassword) {
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     return NextResponse.json({ 
       success: true,
       user: {
-        id: authData.user.id,
-        email: authData.user.email,
-        fullName: userData?.full_name || authData.user.user_metadata?.full_name
-      },
-      token: authData.session?.access_token
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || userData.full_name
+      }
     })
   } catch (error: any) {
     console.error('Signin error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to sign in' }, { status: 500 })
   }
 }

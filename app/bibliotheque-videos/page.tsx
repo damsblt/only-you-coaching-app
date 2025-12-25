@@ -26,6 +26,7 @@ interface Video {
   category: string
   region: string
   muscleGroups: string[]
+  targeted_muscles?: string[]
   startingPosition: string
   movement: string
   intensity: string
@@ -40,6 +41,7 @@ interface Video {
 
 export default function VideosPage() {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
+  const [searchInput, setSearchInput] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>("all")
   const [viewMode, setViewMode] = useState<'grid' | 'feed' | 'mobile' | 'legacy-feed'>('grid')
@@ -57,14 +59,15 @@ export default function VideosPage() {
   const { user, loading: authLoading } = useSimpleAuth()
 
   // Use the useVideos hook to fetch data
+  // Fetch both MUSCLE_GROUPS and PROGRAMMES videos for the library
   const { videos, isLoading: loading, error } = useVideos({
     muscleGroup: selectedMuscleGroup,
     difficulty: "all",
     search: searchTerm,
-    videoType: 'muscle-groups'
+    videoType: undefined // undefined = fetch all video types
   })
 
-  const muscleGroups = ["all", "Abdos", "Bande", "Biceps", "Cardio", "Dos", "Fessiers et jambes", "Streching", "Triceps"]
+  const muscleGroups = ["all", "Abdos", "Bande", "Biceps", "Cardio", "Dos", "Fessiers et jambes", "Machine", "Pectoraux", "Streching", "Triceps"]
 
 
   const filteredVideos = videos
@@ -531,6 +534,44 @@ export default function VideosPage() {
     )
   }
 
+  // Display error state
+  if (error) {
+    return (
+      <Section 
+        gradient="soft" 
+        title="Bibliothèque de Vidéos" 
+        subtitle="Erreur de chargement"
+        className="min-h-screen"
+      >
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-red-500 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Erreur de chargement</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md text-center">{error}</p>
+          <div className="flex gap-4">
+            <Button
+              onClick={() => window.location.reload()}
+              variant="primary"
+              size="lg"
+            >
+              Réessayer
+            </Button>
+            <Button
+              onClick={() => window.location.href = '/debug-auth'}
+              variant="ghost"
+              size="lg"
+            >
+              Vérifier la connexion
+            </Button>
+          </div>
+        </div>
+      </Section>
+    )
+  }
+
   // Grid mode layout
   return (
     <Section 
@@ -599,15 +640,31 @@ export default function VideosPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8 border border-gray-100 dark:border-gray-700">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Rechercher une vidéo..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+            <div className="relative flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Rechercher une vidéo..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setSearchTerm(searchInput)
+                    }
+                  }}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+                />
+              </div>
+              <Button
+                onClick={() => setSearchTerm(searchInput)}
+                variant="primary"
+                size="md"
+                className="px-6"
+              >
+                <Search className="w-5 h-5 mr-2" />
+                Rechercher
+              </Button>
             </div>
 
             {/* Muscle Group Filter */}

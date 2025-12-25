@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     
     for (const tableName of tablesToTest) {
       try {
-        const { data, error } = await supabaseAdmin
+        const { data, error } = await db
           .from(tableName)
           .select('*')
           .limit(1)

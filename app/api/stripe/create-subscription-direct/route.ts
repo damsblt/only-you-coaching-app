@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 
 // Plan configuration mapping - matches your Stripe product names
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     let customer
     try {
       // Try to find existing customer by email from users table
-      const { data: userData, error: userError } = await supabaseAdmin
+      const { data: userData, error: userError } = await db
         .from('users')
         .select('email')
         .eq('id', userId)
@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
 
     // Update user subscription in database
     try {
-      const { error: dbError } = await supabaseAdmin
+      const { error: dbError } = await db
         .from('users')
         .update({
           subscription_id: subscription.id,

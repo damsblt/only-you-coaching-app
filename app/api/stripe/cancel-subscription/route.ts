@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
+
+
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         })
         
         // Mettre à jour en base
-        await supabaseAdmin
+        await db
           .from('subscriptions')
           .update({
             cancelAtPeriodEnd: false,
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Si engagement terminé, annulation immédiate
     await stripe.subscriptions.cancel(subscriptionId)
     
-    await supabaseAdmin
+    await db
       .from('subscriptions')
       .update({ 
         status: 'CANCELLED',

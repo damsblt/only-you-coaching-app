@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 // Content Types Configuration
 const CONTENT_TYPES = {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const config = CONTENT_TYPES[contentType as keyof typeof CONTENT_TYPES]
     console.log('Using config:', config)
     
-    let query = supabaseAdmin.from(config.table).select('*')
+    let query = db.from(config.table).select('*')
 
     // Filter by published status if requested
     if (published) {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       is_published: body.is_published || false
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from(config.table)
       .insert(contentData)
       .select()
@@ -148,7 +148,7 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString()
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from(config.table)
       .update(updateData)
       .eq('id', id)
@@ -184,7 +184,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const config = CONTENT_TYPES[contentType as keyof typeof CONTENT_TYPES]
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from(config.table)
       .delete()
       .eq('id', id)

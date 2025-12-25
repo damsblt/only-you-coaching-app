@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
 
@@ -26,20 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Initialize Supabase client
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { error: 'Supabase configuration missing' },
-        { status: 500 }
-      )
-    }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false }
-    })
+    // Database is already initialized via db from '@/lib/db'
 
     // List all objects in the Audio/ folder
     const command = new ListObjectsV2Command({
@@ -148,7 +135,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if audio already exists in Supabase (by S3 key or title)
-        const { data: existingAudio } = await supabase
+        const { data: existingAudio } = await db
           .from('audios')
           .select('id')
           .or(`s3key.eq.${key},title.eq.${nameWithoutExt.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`)
@@ -183,7 +170,7 @@ export async function POST(request: NextRequest) {
         // Also store audioUrl for backward compatibility, but generate fresh ones in API
         audioData.audioUrl = signedUrl
         
-        const { data: newAudio, error } = await supabase
+        const { data: newAudio, error } = await db
           .from('audios')
           .insert(audioData)
           .select()

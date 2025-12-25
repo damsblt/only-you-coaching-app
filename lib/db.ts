@@ -1,13 +1,11 @@
 /**
- * Database client for Neon PostgreSQL
+ * Database client for Neon PostgreSQL using serverless client
  * This replaces lib/supabase.ts for database operations
  * 
- * Note: For authentication, you'll need to migrate to NextAuth.js
- * or keep Supabase Auth separately (Neon is just the database)
+ * Uses the neon() client directly for better compatibility with Vercel serverless environments
  */
 
 import { neon, neonConfig } from '@neondatabase/serverless'
-import { Pool } from '@neondatabase/serverless'
 import ws from 'ws'
 
 // Configure Neon for serverless environments
@@ -19,28 +17,62 @@ const databaseUrl = process.env.DATABASE_URL
 
 if (!databaseUrl) {
   console.error('❌ Missing DATABASE_URL environment variable')
-  throw new Error('Missing DATABASE_URL environment variable')
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL: DATABASE_URL is required in production')
+  }
 }
 
-// Create a connection pool for server-side operations
-let pool: Pool
-try {
-  pool = new Pool({ connectionString: databaseUrl })
-  console.log('✅ Database pool created successfully')
-} catch (poolError) {
-  console.error('❌ Failed to create database pool:', poolError)
-  throw poolError
+// Create serverless client (works better than Pool in Vercel serverless environments)
+export const sql = databaseUrl ? neon(databaseUrl) : null
+
+// For backward compatibility
+export const neonSql = sql
+
+/**
+ * Helper function to execute parameterized queries with neon() client
+ * Converts SQL with $1, $2 placeholders to template literal format
+ * Note: This is a workaround since template literals can't be built dynamically
+ * For better performance, consider using template literals directly in your code
+ */
+async function executeQuery(queryStr: string, params: any[] = []): Promise<any[]> {
+  if (!sql) {
+    throw new Error('Database client is not initialized')
+  }
+  
+  if (params.length === 0) {
+    // No parameters, use simple query as template literal
+    return await (sql as any)`${queryStr as any}`
+  }
+  
+  // Convert parameterized query ($1, $2, etc.) to template literal
+  // Split by placeholders and build template literal parts
+  const parts: string[] = []
+  const values: any[] = []
+  const placeholderRegex = /\$(\d+)/g
+  let lastIndex = 0
+  let match
+  
+  while ((match = placeholderRegex.exec(queryStr)) !== null) {
+    const placeholderIndex = parseInt(match[1]) - 1
+    if (placeholderIndex >= 0 && placeholderIndex < params.length) {
+      parts.push(queryStr.substring(lastIndex, match.index))
+      values.push(params[placeholderIndex])
+      lastIndex = match.index + match[0].length
+    }
+  }
+  parts.push(queryStr.substring(lastIndex))
+  
+  // Build template literal array (neon expects TemplateStringsArray)
+  const templateArray = parts as any
+  templateArray.raw = parts
+  
+  // Execute with template literal syntax
+  return await (sql as any)(templateArray, ...values)
 }
-
-export { pool }
-
-// Create a serverless client for edge functions
-export const neonSql = neon(databaseUrl)
-const sql = neonSql
 
 /**
  * Supabase-compatible query builder wrapper
- * This provides a similar API to Supabase for easier migration
+ * Uses neon() client with template literals for serverless compatibility
  */
 class QueryBuilder {
   private table: string
@@ -104,9 +136,14 @@ class QueryBuilder {
     return this
   }
 
+  contains(field: string, value: any) {
+    // For array fields, check if array contains the value
+    // Uses PostgreSQL ANY operator: 'value' = ANY(array_field)
+    this.whereConditions.push({ field, operator: 'ANY', value })
+    return this
+  }
+
   or(conditions: string) {
-    // Parse Supabase-style OR conditions
-    // Format: "field1.ilike.%value%,field2.ilike.%value%"
     const parts = conditions.split(',')
     const orConditions = parts.map(part => {
       const [field, ...rest] = part.split('.')
@@ -145,50 +182,27 @@ class QueryBuilder {
     return this
   }
 
-  private buildWhereClause(): { sql: string; params: any[] } {
-    if (this.whereConditions.length === 0) {
-      return { sql: '', params: [] }
-    }
-
-    const params: any[] = []
-    const conditions: string[] = []
-    let paramIndex = 1
-
-    for (const condition of this.whereConditions) {
-      if (condition.field === '__OR__') {
-        const orConditions = condition.value as Array<{ field: string; operator: string; value: any }>
-        const orParts = orConditions.map(orCond => {
-          params.push(orCond.value)
-          return `"${orCond.field}" ${orCond.operator} $${paramIndex++}`
-        })
-        conditions.push(`(${orParts.join(' OR ')})`)
-      } else if (condition.operator === 'IN') {
-        const placeholders = condition.value.map(() => `$${paramIndex++}`).join(', ')
-        params.push(...condition.value)
-        conditions.push(`"${condition.field}" IN (${placeholders})`)
-      } else {
-        params.push(condition.value)
-        conditions.push(`"${condition.field}" ${condition.operator} $${paramIndex++}`)
-      }
-    }
-
-    return {
-      sql: `WHERE ${conditions.join(' AND ')}`,
-      params
-    }
-  }
-
   async execute(): Promise<{ data: any[] | null; error: any }> {
     try {
-      const where = this.buildWhereClause()
-      
+      if (!sql) {
+        const error = new Error('Database client is not initialized. Check DATABASE_URL environment variable.')
+        console.error('❌ Database client is null - DATABASE_URL may be missing or invalid')
+        return { 
+          data: null, 
+          error: {
+            message: error.message,
+            code: 'CLIENT_NOT_INITIALIZED',
+            hint: 'Please check your DATABASE_URL environment variable in Vercel settings'
+          }
+        }
+      }
+
+      // Build query using template literals for neon() client
       // Escape column names in SELECT clause
       let selectClause = this.selectFields
       if (this.selectFields !== '*') {
-        // Split by comma and escape each column name
         const columns = this.selectFields.split(',').map(col => {
           const trimmed = col.trim()
-          // If already escaped, don't escape again
           if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
             return trimmed
           }
@@ -196,62 +210,88 @@ class QueryBuilder {
         })
         selectClause = columns.join(', ')
       }
-      
-      let query = `SELECT ${selectClause} FROM "${this.table}"`
-      const params: any[] = []
 
-      if (where.sql) {
-        query += ` ${where.sql}`
-        params.push(...where.params)
+      // Build WHERE clause with values
+      const whereParts: string[] = []
+      const whereValues: any[] = []
+      
+      for (const condition of this.whereConditions) {
+        if (condition.field === '__OR__') {
+          const orConditions = condition.value as Array<{ field: string; operator: string; value: any }>
+          const orParts = orConditions.map(orCond => {
+            whereValues.push(orCond.value)
+            return `"${orCond.field}" ${orCond.operator} $${whereValues.length}`
+          })
+          whereParts.push(`(${orParts.join(' OR ')})`)
+        } else if (condition.operator === 'IN') {
+          // Build placeholders for IN clause correctly
+          const inValues = Array.isArray(condition.value) ? condition.value : [condition.value]
+          const placeholders = inValues.map((val: any) => {
+            whereValues.push(val)
+            return `$${whereValues.length}`
+          }).join(', ')
+          whereParts.push(`"${condition.field}" IN (${placeholders})`)
+        } else if (condition.operator === 'ANY') {
+          // Array contains operator - check if value exists in array (case-insensitive)
+          // Use EXISTS with unnest for case-insensitive search
+          whereValues.push(condition.value.toLowerCase())
+          whereParts.push(`EXISTS (SELECT 1 FROM unnest("${condition.field}") AS elem WHERE LOWER(elem::text) = $${whereValues.length})`)
+        } else {
+          whereValues.push(condition.value)
+          whereParts.push(`"${condition.field}" ${condition.operator} $${whereValues.length}`)
+        }
       }
 
+      // Build the query string with placeholders
+      let queryStr = `SELECT ${selectClause} FROM "${this.table}"`
+      if (whereParts.length > 0) {
+        queryStr += ` WHERE ${whereParts.join(' AND ')}`
+      }
       if (this.orderBy) {
-        query += ` ORDER BY "${this.orderBy.field}" ${this.orderBy.ascending ? 'ASC' : 'DESC'}`
+        queryStr += ` ORDER BY "${this.orderBy.field}" ${this.orderBy.ascending ? 'ASC' : 'DESC'}`
       }
-
       if (this.limitValue) {
-        params.push(this.limitValue)
-        query += ` LIMIT $${params.length}`
+        whereValues.push(this.limitValue)
+        queryStr += ` LIMIT $${whereValues.length}`
       }
-
       if (this.offsetValue !== undefined) {
-        params.push(this.offsetValue)
-        query += ` OFFSET $${params.length}`
+        whereValues.push(this.offsetValue)
+        queryStr += ` OFFSET $${whereValues.length}`
       }
 
-      // Use pool.query() for server-side queries
-      // The Pool.query() method accepts SQL string and params array
-      console.log('🔍 Executing query:', query.substring(0, 200), 'with params:', params)
+      console.log('🔍 Executing query:', queryStr.substring(0, 200), 'with', whereValues.length, 'params')
+
+      // Use helper function to convert parameterized query to template literal
+      const result = await executeQuery(queryStr, whereValues)
       
-      let result: any
-      try {
-        // Use pool.query() method - this is the correct way for Neon Pool
-        result = await pool.query(query, params)
-        console.log('✅ Query result type:', typeof result, 'has rows:', 'rows' in result, 'is array:', Array.isArray(result))
-        
-        // Pool.query() returns an object with .rows property
-        const rows = result.rows || (Array.isArray(result) ? result : [])
-        console.log('📊 Returning', rows.length, 'rows')
-        return { data: rows, error: null }
-      } catch (queryError: any) {
-        console.error('❌ Query execution error:', {
-          message: queryError?.message,
-          code: queryError?.code,
-          detail: queryError?.detail,
-          hint: queryError?.hint,
-          fullError: queryError
-        })
-        return { data: null, error: queryError }
-      }
+      // neon() returns an array directly
+      const rows = Array.isArray(result) ? result : []
+      console.log('📊 Returning', rows.length, 'rows')
+      return { data: rows, error: null }
     } catch (error: any) {
-      console.error('❌ Database query error in execute():', {
-        message: error?.message || String(error),
+      const errorInfo = {
+        message: error?.message,
         code: error?.code,
         detail: error?.detail,
         hint: error?.hint,
-        stack: error?.stack?.substring(0, 500),
-        fullError: error
-      })
+        isConnectionError: error?.message?.includes('Connection') || 
+                         error?.message?.includes('terminated') ||
+                         error?.message?.includes('timeout'),
+      }
+      console.error('❌ Query execution error:', errorInfo)
+      
+      if (errorInfo.isConnectionError) {
+        return {
+          data: null,
+          error: {
+            message: 'Database connection error. Please try again.',
+            code: error?.code || 'CONNECTION_ERROR',
+            hint: 'The database connection was interrupted. This may be a temporary issue.',
+            originalError: process.env.NODE_ENV === 'development' ? errorInfo : undefined
+          }
+        }
+      }
+      
       return { data: null, error }
     }
   }
@@ -269,24 +309,65 @@ class QueryBuilder {
 
   async insert(data: Record<string, any>): Promise<{ data: any | null; error: any }> {
     try {
+      if (!sql) {
+        const error = new Error('Database client is not initialized. Check DATABASE_URL environment variable.')
+        console.error('❌ Database client is null in insert() - DATABASE_URL may be missing or invalid')
+        return { 
+          data: null, 
+          error: {
+            message: error.message,
+            code: 'CLIENT_NOT_INITIALIZED',
+            hint: 'Please check your DATABASE_URL environment variable in Vercel settings'
+          }
+        }
+      }
+
       const keys = Object.keys(data)
-      // Process values: convert arrays/objects to JSON strings for JSONB columns
-      const processedValues = Object.values(data).map(val => {
+      const values = Object.values(data).map(val => {
         if (val === null || val === undefined) {
           return null
         }
-        // If it's an array or object, stringify it (PostgreSQL JSONB will handle it)
         if (Array.isArray(val) || (typeof val === 'object' && val.constructor === Object)) {
           return JSON.stringify(val)
         }
         return val
       })
-      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
-      const query = `INSERT INTO "${this.table}" (${keys.map(k => `"${k}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`
-      const result = await pool.query(query, processedValues)
-      const rows = result.rows || (Array.isArray(result) ? result : [])
+
+      // Build template literal for INSERT
+      const columns = keys.map(k => `"${k}"`).join(', ')
+      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
+      const queryStr = `INSERT INTO "${this.table}" (${columns}) VALUES (${placeholders}) RETURNING *`
+
+      console.log('🔍 Inserting into', this.table, 'with', values.length, 'values')
+
+      // Use helper function to convert parameterized query to template literal
+      const result = await executeQuery(queryStr, values)
+      const rows = Array.isArray(result) ? result : []
       return { data: rows[0] || null, error: null }
-    } catch (error) {
+    } catch (error: any) {
+      const errorInfo = {
+        message: error?.message,
+        code: error?.code,
+        detail: error?.detail,
+        hint: error?.hint,
+        isConnectionError: error?.message?.includes('Connection') || 
+                         error?.message?.includes('terminated') ||
+                         error?.message?.includes('timeout'),
+      }
+      console.error('❌ Insert error:', errorInfo)
+      
+      if (errorInfo.isConnectionError) {
+        return {
+          data: null,
+          error: {
+            message: 'Database connection error. Please try again.',
+            code: error?.code || 'CONNECTION_ERROR',
+            hint: 'The database connection was interrupted. This may be a temporary issue.',
+            originalError: process.env.NODE_ENV === 'development' ? errorInfo : undefined
+          }
+        }
+      }
+      
       return { data: null, error }
     }
   }
@@ -301,16 +382,19 @@ class DatabaseClient {
   }
 
   async query(querySql: string, params?: any[]): Promise<any> {
-    // Use pool.query() for server-side queries
-    const result = await pool.query(querySql, params || [])
-    return result.rows || (Array.isArray(result) ? result : result)
+    if (!sql) {
+      throw new Error('Database client is not initialized. Check DATABASE_URL environment variable.')
+    }
+    
+    const result = await executeQuery(querySql, params || [])
+    return Array.isArray(result) ? result : []
   }
 }
 
 // Export singleton instances
 export const db = new DatabaseClient()
 
-// For backward compatibility, export as supabaseAdmin
+// For backward compatibility
 export const supabaseAdmin = db
 
 // Helper to check if we're on the server
@@ -327,12 +411,15 @@ export const getSupabaseClient = () => {
 }
 
 /**
- * Direct SQL query helper (using pool.query for server-side operations)
+ * Direct SQL query helper
  */
 export async function query(querySql: string, params?: any[]): Promise<any> {
-  // Use pool.query() for parameterized queries
-  const result = await pool.query(querySql, params || [])
-  return result.rows || (Array.isArray(result) ? result : result)
+  if (!sql) {
+    throw new Error('Database client is not initialized. Check DATABASE_URL environment variable.')
+  }
+  
+  const result = await executeQuery(querySql, params || [])
+  return Array.isArray(result) ? result : []
 }
 
 /**
@@ -340,12 +427,33 @@ export async function query(querySql: string, params?: any[]): Promise<any> {
  */
 export async function insert(table: string, data: Record<string, any>): Promise<{ data: any | null; error: any }> {
   try {
+    if (!sql) {
+      return { 
+        data: null, 
+        error: {
+          message: 'Database client is not initialized. Check DATABASE_URL environment variable.',
+          code: 'CLIENT_NOT_INITIALIZED'
+        }
+      }
+    }
+    
     const keys = Object.keys(data)
-    const values = Object.values(data)
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ')
-    const query = `INSERT INTO "${table}" (${keys.map(k => `"${k}"`).join(', ')}) VALUES (${placeholders}) RETURNING *`
-    const result = await pool.query(query, values)
-    const rows = result.rows || (Array.isArray(result) ? result : [])
+    const values = Object.values(data).map(val => {
+      if (val === null || val === undefined) {
+        return null
+      }
+      if (Array.isArray(val) || (typeof val === 'object' && val.constructor === Object)) {
+        return JSON.stringify(val)
+      }
+      return val
+    })
+    
+    const columns = keys.map(k => `"${k}"`).join(', ')
+    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
+    const queryStr = `INSERT INTO "${table}" (${columns}) VALUES (${placeholders}) RETURNING *`
+
+    const result = await executeQuery(queryStr, values)
+    const rows = Array.isArray(result) ? result : []
     return { data: rows[0] || null, error: null }
   } catch (error) {
     return { data: null, error }
@@ -361,14 +469,25 @@ export async function update(
   where: Record<string, any>
 ): Promise<{ data: any | null; error: any }> {
   try {
-    // Escape column names with quotes
+    if (!sql) {
+      return { 
+        data: null, 
+        error: {
+          message: 'Database client is not initialized. Check DATABASE_URL environment variable.',
+          code: 'CLIENT_NOT_INITIALIZED'
+        }
+      }
+    }
+    
     const setClause = Object.keys(data).map((key, i) => `"${key}" = $${i + 1}`).join(', ')
     const whereClause = Object.keys(where).map((key, i) => `"${key}" = $${Object.keys(data).length + i + 1}`).join(' AND ')
     const values = [...Object.values(data), ...Object.values(where)]
-    const query = `UPDATE "${table}" SET ${setClause} WHERE ${whereClause} RETURNING *`
-    console.log('🔍 Update query:', query.substring(0, 200), 'with values:', values)
-    const result = await pool.query(query, values)
-    const rows = result.rows || (Array.isArray(result) ? result : [])
+    const queryStr = `UPDATE "${table}" SET ${setClause} WHERE ${whereClause} RETURNING *`
+    
+    console.log('🔍 Update query:', queryStr.substring(0, 200), 'with values:', values.length)
+
+    const result = await executeQuery(queryStr, values)
+    const rows = Array.isArray(result) ? result : []
     return { data: rows[0] || null, error: null }
   } catch (error) {
     console.error('❌ Update error:', error)
@@ -381,14 +500,27 @@ export async function update(
  */
 export async function remove(table: string, where: Record<string, any>): Promise<{ data: any | null; error: any }> {
   try {
-    const whereClause = Object.keys(where).map((key, i) => `${key} = $${i + 1}`).join(' AND ')
+    if (!sql) {
+      return { 
+        data: null, 
+        error: {
+          message: 'Database client is not initialized. Check DATABASE_URL environment variable.',
+          code: 'CLIENT_NOT_INITIALIZED'
+        }
+      }
+    }
+    
+    const whereClause = Object.keys(where).map((key, i) => `"${key}" = $${i + 1}`).join(' AND ')
     const values = Object.values(where)
-    const query = `DELETE FROM "${table}" WHERE ${whereClause} RETURNING *`
-    const result = await pool.query(query, values)
-    const rows = result.rows || (Array.isArray(result) ? result : [])
+    const queryStr = `DELETE FROM "${table}" WHERE ${whereClause} RETURNING *`
+
+    const result = await executeQuery(queryStr, values)
+    const rows = Array.isArray(result) ? result : []
     return { data: rows || null, error: null }
   } catch (error) {
     return { data: null, error }
   }
 }
 
+// Export pool for backward compatibility (deprecated, use sql instead)
+export const pool = null

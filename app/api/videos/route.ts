@@ -78,11 +78,13 @@ export async function GET(request: NextRequest) {
       query = query.eq('isPublished', true)
 
       // Handle videoType filter
+      // If videoType is not provided, fetch all video types (for bibliotheque-videos)
       if (videoType === 'muscle-groups') {
         query = query.eq('videoType', 'MUSCLE_GROUPS')
       } else if (videoType === 'programmes') {
         query = query.eq('videoType', 'PROGRAMMES')
       }
+      // If videoType is undefined/null, don't filter (show all types)
 
       // Handle region filter (priority: region > programme > muscleGroup)
       let finalRegion: string | null = null
@@ -91,6 +93,7 @@ export async function GET(request: NextRequest) {
       } else if (programme && programme !== 'all') {
         finalRegion = programme
       } else if (muscleGroup && muscleGroup !== 'all') {
+        // Map UI muscle group names to database region values
         const muscleGroupMap: { [key: string]: string } = {
           'Abdos': 'abdos',
           'Bande': 'bande',
@@ -98,6 +101,8 @@ export async function GET(request: NextRequest) {
           'Cardio': 'cardio',
           'Dos': 'dos',
           'Fessiers et jambes': 'fessiers-jambes',
+          'Machine': 'machine',
+          'Pectoraux': 'pectoraux',
           'Streching': 'streching',
           'Triceps': 'triceps'
         }
@@ -123,12 +128,12 @@ export async function GET(request: NextRequest) {
     // then sort them, then apply pagination
     // Check if this region has a custom order defined in program-orders.ts
     const needsCustomOrdering = videoType === 'programmes' && region && 
-      ['machine', 'abdos', 'brule-graisse', 'cuisses-abdos', 'dos-abdos', 
-       'femmes', 'haute-intensite', 'jambes', 'rehabilitation-dos'].includes(region)
+      ['machine', 'abdos', 'brule-graisse', 'cuisses-abdos', 'cuisses-abdos-fessiers', 'dos-abdos', 
+       'femmes', 'haute-intensite', 'homme', 'jambes', 'rehabilitation-dos'].includes(region)
     
     console.log('📊 Executing query with filters:', { 
-      videoType: where.videoType, 
-      region: where.region, 
+      videoType, 
+      region: finalRegion, 
       difficulty, 
       search,
       offset, 
@@ -211,61 +216,75 @@ export async function GET(request: NextRequest) {
       const batch = sortedData.slice(i, i + BATCH_SIZE)
       const processedBatch = await Promise.all(
         batch.map(async (video) => {
-          if (!video.thumbnail) {
-            return video
-          }
+          let processedVideo = { ...video }
 
-          // Check if thumbnail is an S3 URL
-          try {
-            const thumbnailUrl = new URL(video.thumbnail)
-            // Check if it's an S3 URL
-            if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
-              // If URL already has query parameters (signed URL), clean it up
-              if (thumbnailUrl.search) {
-                // Extract the S3 key from the pathname (ignore query params)
-                const encodedPath = thumbnailUrl.pathname
-                const decodedPath = decodeURIComponent(encodedPath)
-                const s3Key = decodedPath.substring(1) // Remove leading slash
-                
-                // If it's in the thumbnails folder, use public URL
-                if (s3Key.startsWith('thumbnails/')) {
-                  const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
-                  return { ...video, thumbnail: publicUrl }
-                }
-                
-                // For non-thumbnail files, generate a new signed URL
-                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                if (signedUrlResult.success) {
-                  // Ensure the URL is properly formatted (no newlines)
-                  const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                  return { ...video, thumbnail: cleanUrl }
-                }
-              } else {
-                // No query params - it's already a public URL
-                // If it's in thumbnails folder, keep it as is
-                const encodedPath = thumbnailUrl.pathname
-                const decodedPath = decodeURIComponent(encodedPath)
-                const s3Key = decodedPath.substring(1)
-                
-                if (s3Key.startsWith('thumbnails/')) {
-                  // Already a public URL, keep it
-                  return video
-                }
-                
-                // For non-thumbnail files, generate signed URL
-                const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                if (signedUrlResult.success) {
-                  const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                  return { ...video, thumbnail: cleanUrl }
+          // Process thumbnail URL
+          if (video.thumbnail) {
+            try {
+              const thumbnailUrl = new URL(video.thumbnail)
+              
+              // Check if it's a Neon Storage URL (keep as is - they're already accessible)
+              if (thumbnailUrl.hostname.includes('neon.tech') || thumbnailUrl.hostname.includes('storage.neon')) {
+                // Neon Storage URLs are already public and accessible, keep them as is
+                // No processing needed
+              } else if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
+                // Check if it's an S3 URL
+                if (thumbnailUrl.search) {
+                  // If URL already has query parameters (signed URL), clean it up
+                  const encodedPath = thumbnailUrl.pathname
+                  const decodedPath = decodeURIComponent(encodedPath)
+                  const s3Key = decodedPath.substring(1) // Remove leading slash
+                  
+                  // If it's in the thumbnails folder, use public URL
+                  if (s3Key.startsWith('thumbnails/')) {
+                    const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
+                    processedVideo.thumbnail = publicUrl
+                  } else {
+                    // For non-thumbnail files, generate a new signed URL
+                    const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                    if (signedUrlResult.success) {
+                      const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                      processedVideo.thumbnail = cleanUrl
+                    }
+                  }
+                } else {
+                  // No query params - it's already a public URL
+                  const encodedPath = thumbnailUrl.pathname
+                  const decodedPath = decodeURIComponent(encodedPath)
+                  const s3Key = decodedPath.substring(1)
+                  
+                  if (!s3Key.startsWith('thumbnails/')) {
+                    // For non-thumbnail files, generate signed URL
+                    const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                    if (signedUrlResult.success) {
+                      const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                      processedVideo.thumbnail = cleanUrl
+                    }
+                  }
                 }
               }
+            } catch (urlError) {
+              // Not a valid URL or error processing, keep original thumbnail
+              console.warn('Thumbnail URL format not recognized for video', video.id, ':', video.thumbnail, 'Error:', urlError)
             }
-          } catch (urlError) {
-            // Not a valid URL or error processing, keep original thumbnail
-            console.error('Error processing thumbnail URL for video', video.id, ':', urlError)
           }
 
-          return video
+          // Process videoUrl - keep Neon Storage URLs as is, they're already accessible
+          if (video.videoUrl) {
+            try {
+              const videoUrlObj = new URL(video.videoUrl)
+              // Neon Storage URLs are already public and accessible, keep them as is
+              if (videoUrlObj.hostname.includes('neon.tech') || videoUrlObj.hostname.includes('storage.neon')) {
+                // No processing needed for Neon Storage URLs
+              }
+              // S3 URLs are handled by the /api/videos/[id]/stream endpoint
+            } catch (urlError) {
+              // Not a valid URL, keep original
+              console.warn('Video URL format not recognized for video', video.id, ':', video.videoUrl, 'Error:', urlError)
+            }
+          }
+
+          return processedVideo
         })
       )
       videosWithSignedThumbnails.push(...processedBatch)

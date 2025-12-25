@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import "../styles/video-player.css";
 import { Providers } from "@/components/providers";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
@@ -32,15 +33,17 @@ export default function RootLayout({
   return (
     <html lang="fr" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
-        <Providers>
-          <div className="relative flex flex-col min-h-screen overflow-x-hidden">
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <div className="relative flex flex-col min-h-screen overflow-x-hidden">
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -1,12 +1,6 @@
 import { NextRequest } from 'next/server'
 import { uploadToS3, generateVideoKey, generateThumbnailKey } from './s3'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { pool } from './db'
 
 // Define types locally since we're not using Prisma anymore
 type Difficulty = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED'
@@ -98,28 +92,29 @@ export async function handleVideoUpload(
     const duration = 0 // This would be calculated from video metadata
 
     // Save to database
-    const { data: video, error } = await supabaseAdmin
-      .from('videos_new')
-      .insert({
+    const videoResult = await pool.query(
+      `INSERT INTO videos_new (title, description, "videoUrl", thumbnail, duration, difficulty, category, tags, "isPublished")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING *`,
+      [
         title,
         description,
-        videoUrl: videoUpload.location!,
-        thumbnail: thumbnailUrl,
+        videoUpload.location!,
+        thumbnailUrl,
         duration,
         difficulty,
         category,
-        tags,
-        isPublished: false, // Admin needs to approve
-      })
-      .select()
-      .single()
+        JSON.stringify(tags),
+        false // Admin needs to approve
+      ]
+    )
 
-    if (error) {
-      console.error('Error creating video:', error)
+    if (videoResult.rows.length === 0) {
+      console.error('Error creating video: No rows returned')
       return { success: false, error: 'Failed to save video to database' }
     }
 
-    return { success: true, video }
+    return { success: true, video: videoResult.rows[0] }
   } catch (error) {
     console.error('Error uploading video:', error)
     return {
@@ -132,16 +127,17 @@ export async function handleVideoUpload(
 // Get video with signed URL for private access
 export async function getVideoWithSignedUrl(videoId: string, userId: string) {
   try {
-    const { data: video, error } = await supabaseAdmin
-      .from('videos_new')
-      .select('*')
-      .eq('id', videoId)
-      .single()
+    const videoResult = await pool.query(
+      'SELECT * FROM videos_new WHERE id = $1',
+      [videoId]
+    )
 
-    if (error || !video) {
-      console.error('Video not found:', error)
+    if (videoResult.rows.length === 0) {
+      console.error('Video not found')
       return { success: false, error: 'Video not found' }
     }
+
+    const video = videoResult.rows[0]
 
     // Check if user has access to this video
     // This would include subscription checks, etc.

@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Testing Supabase connection...')
+    console.log('Testing Neon database connection...')
     
     // Test basic connection
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('programs_info')
       .select('count')
       .limit(1)
 
     if (error) {
-      console.error('Supabase connection error:', error)
+      console.error('Database connection error:', error)
       return NextResponse.json({ 
         error: 'Database connection failed', 
         details: error.message,
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Test if we can get table info
-    const { data: tableData, error: tableError } = await supabaseAdmin
+    const { data: tableData, error: tableError } = await db
       .from('programs_info')
       .select('*')
       .limit(5)

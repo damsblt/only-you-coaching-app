@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-// Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db, update, remove } from '@/lib/db'
 
 // GET single video
 export async function GET(
@@ -14,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const { data: video, error } = await supabaseAdmin
+    const { data: video, error } = await db
       .from('videos_new')
       .select('*')
       .eq('id', id)
@@ -60,12 +54,8 @@ export async function PUT(
       allowedFields.tags = []
     }
 
-    const { data: video, error } = await supabaseAdmin
-      .from('videos_new')
-      .update(allowedFields)
-      .eq('id', id)
-      .select()
-      .single()
+    // Use update helper from db
+    const { data: video, error } = await update('videos_new', allowedFields, { id })
 
     if (error) {
       console.error('Error updating video:', error)
@@ -94,10 +84,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const { error } = await supabaseAdmin
-      .from('videos_new')
-      .delete()
-      .eq('id', id)
+    const { error } = await remove('videos_new', { id })
 
     if (error) {
       console.error('Error deleting video:', error)

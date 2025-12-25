@@ -93,16 +93,6 @@ export default function ProgrammesPage() {
       thumbnail: ""
     },
     {
-      id: "pectoraux",
-      name: "pectoraux",
-      displayName: "Pectoraux",
-      description: "Développez votre poitrine et vos pectoraux",
-      icon: <Target className="h-8 w-8" />,
-      color: "bg-green-500",
-      videoCount: 0,
-      thumbnail: ""
-    },
-    {
       id: "rehabilitation-dos",
       name: "rehabilitation-dos",
       displayName: "Réhabilitation du Dos",
@@ -197,7 +187,12 @@ export default function ProgrammesPage() {
           })
         )
         
-        setRegions(updatedRegions)
+        // Sort regions alphabetically by displayName
+        const sortedRegions = updatedRegions.sort((a, b) => 
+          a.displayName.localeCompare(b.displayName, 'fr', { sensitivity: 'base' })
+        )
+        
+        setRegions(sortedRegions)
       } catch (error) {
         console.error('Error fetching video data:', error)
         setRegions(regionCards)

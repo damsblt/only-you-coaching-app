@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
+import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,51 +11,52 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email, password and full name are required' }, { status: 400 })
     }
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: {
-        full_name: fullName
-      },
-      email_confirm: true // Auto-confirm for testing
-    })
+    // Check if user already exists
+    const { data: existingUser } = await db
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single()
 
-    if (authError) {
-      console.error('Auth error:', authError)
-      return NextResponse.json({ error: authError.message }, { status: 400 })
+    if (existingUser) {
+      return NextResponse.json({ error: 'User already exists' }, { status: 400 })
     }
 
-    if (!authData.user) {
-      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
-    }
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user record in our database
-    const { error: dbError } = await supabaseAdmin
+    // Create user in database
+    const userId = uuidv4()
+    const { data: newUser, error: dbError } = await db
       .from('users')
       .insert({
-        id: authData.user.id,
-        email: authData.user.email,
+        id: userId,
+        email,
+        name: fullName,
         full_name: fullName,
+        password: hashedPassword,
+        role: 'USER',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
+      .select()
+      .single()
 
     if (dbError) {
       console.error('Database error:', dbError)
-      // Don't fail the request, user is created in auth
+      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
     }
 
     return NextResponse.json({ 
       success: true,
       user: {
-        id: authData.user.id,
-        email: authData.user.email,
-        fullName: fullName
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name || newUser.full_name
       }
     })
   } catch (error: any) {
     console.error('Signup error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error.message || 'Failed to create user' }, { status: 500 })
   }
 }

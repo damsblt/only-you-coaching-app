@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@supabase/supabase-js'
+import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+
 
 // Use service role key for admin operations
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
+
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
         
         if (!userId && customer.email) {
           console.log(`⚠️ userId not in metadata, searching by email: ${customer.email}`)
-          const { data: user, error: userError } = await supabaseAdmin
+          const { data: user, error: userError } = await db
             .from('users')
             .select('id')
             .eq('email', customer.email)
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         }
         
         // Vérifier si l'abonnement existe déjà
-        const { data: existingSubscription } = await supabaseAdmin
+        const { data: existingSubscription } = await db
           .from('subscriptions')
           .select('*')
           .eq('stripeSubscriptionId', subscription.id)
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         const priceId = subscription.items.data[0]?.price?.id
         
         // Créer l'enregistrement d'abonnement dans notre base de données
-        const { error: createError } = await supabaseAdmin
+        const { error: createError } = await db
           .from('subscriptions')
           .insert({
             userId: userId,
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
           }
         }
         
-        const { error } = await supabaseAdmin
+        const { error } = await db
           .from('subscriptions')
           .update({
             status: status,
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
         
-        const { error } = await supabaseAdmin
+        const { error } = await db
           .from('subscriptions')
           .update({ status: 'CANCELED' })
           .eq('stripeSubscriptionId', subscription.id)
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         
-        const { error } = await supabaseAdmin
+        const { error } = await db
           .from('subscriptions')
           .update({ status: 'PAST_DUE' })
           .eq('stripeCustomerId', invoice.customer as string)

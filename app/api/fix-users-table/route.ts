@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     
     console.log('🧪 Test de création d\'utilisateur avec la nouvelle structure...')
     
-    const { data: testUser, error: testError } = await supabaseAdmin
+    const { data: testUser, error: testError } = await db
       .from('users')
       .insert({
         id: testUserId,
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       if (testError.message.includes('plan_id') || testError.message.includes('full_name')) {
         console.log('🔄 Tentative avec l\'ancienne structure...')
         
-        const { data: testUserOld, error: testErrorOld } = await supabaseAdmin
+        const { data: testUserOld, error: testErrorOld } = await db
           .from('users')
           .insert({
             id: testUserId,
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
           console.log('✅ Utilisateur créé avec l\'ancienne structure')
           
           // Nettoyer le test
-          await supabaseAdmin
+          await db
             .from('users')
             .delete()
             .eq('id', testUserId)
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ Utilisateur créé avec la nouvelle structure')
     
     // Nettoyer le test
-    await supabaseAdmin
+    await db
       .from('users')
       .delete()
       .eq('id', testUserId)

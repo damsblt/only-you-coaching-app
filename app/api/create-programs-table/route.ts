@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { db } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       is_published: false
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('programs_info')
       .insert(testData)
       .select()
@@ -50,7 +50,7 @@ CREATE TABLE programs_info (
 
     // If successful, delete the test record
     if (data && data[0]) {
-      await supabaseAdmin
+      await db
         .from('programs_info')
         .delete()
         .eq('id', data[0].id)
@@ -73,7 +73,7 @@ CREATE TABLE programs_info (
 // GET - Check if table exists
 export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('programs_info')
       .select('*')
       .limit(1)

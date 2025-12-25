@@ -67,13 +67,13 @@ export default function SimpleVideoPlayer({
   const saveProgress = async (progressSeconds: number, completed: boolean): Promise<void> => {
     if (!user || !video.id) {
       console.log('⚠️ Cannot save progress: missing user or video.id', { hasUser: !!user, hasVideoId: !!video.id })
-      return
+      return Promise.resolve() // Return resolved promise instead of void
     }
     
     // Throttle saves to avoid too many API calls (but always save if completed)
     const now = Date.now()
     if (!completed && now - lastSaveTimeRef.current < 5000) {
-      return // Only save every 5 seconds for non-completed videos
+      return Promise.resolve() // Return resolved promise instead of void
     }
     lastSaveTimeRef.current = now
     
@@ -106,7 +106,7 @@ export default function SimpleVideoPlayer({
           error: errorData,
           url: `/api/videos/${video.id}/progress`
         })
-        return
+        return Promise.resolve() // Return resolved promise even on error to allow callback to proceed
       }
       
       const data = await response.json()
@@ -115,8 +115,10 @@ export default function SimpleVideoPlayer({
         progress: data.progress,
         videoId: video.id
       })
+      return Promise.resolve() // Explicitly return resolved promise
     } catch (error) {
       console.error('❌ Error saving progress (network/exception):', error)
+      return Promise.resolve() // Return resolved promise even on error to allow callback to proceed
     }
   }
 
@@ -501,7 +503,7 @@ export default function SimpleVideoPlayer({
       <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">{video.exo_title || video.title}</h2>
+          <h2 className="text-xl font-bold text-gray-900">{video.title}</h2>
           <Button
             onClick={onClose}
             variant="ghost"
