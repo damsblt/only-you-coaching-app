@@ -20,6 +20,7 @@ export default function VideoFeed() {
   const [currentY, setCurrentY] = useState(0)
   const [screenWidth, setScreenWidth] = useState(0)
   const [manualAdjustments, setManualAdjustments] = useState<Record<string, VideoPositioning>>({})
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   // Fetch videos
   useEffect(() => {
@@ -107,6 +108,76 @@ export default function VideoFeed() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentVideoIndex, videos.length])
+
+  // Fullscreen management for mobile landscape
+  useEffect(() => {
+    const handleOrientationChange = async () => {
+      // Detect landscape orientation on mobile
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches
+      const isMobile = window.innerWidth <= 1024
+      
+      if (isLandscape && isMobile && containerRef.current) {
+        try {
+          // Try to enter fullscreen
+          if (!document.fullscreenElement) {
+            if (containerRef.current.requestFullscreen) {
+              await containerRef.current.requestFullscreen()
+            } else if ((containerRef.current as any).webkitRequestFullscreen) {
+              await (containerRef.current as any).webkitRequestFullscreen()
+            } else if ((containerRef.current as any).mozRequestFullScreen) {
+              await (containerRef.current as any).mozRequestFullScreen()
+            } else if ((containerRef.current as any).msRequestFullscreen) {
+              await (containerRef.current as any).msRequestFullscreen()
+            }
+          }
+          
+          // Lock screen orientation if possible
+          if (screen.orientation && screen.orientation.lock) {
+            try {
+              await screen.orientation.lock('landscape')
+            } catch (err) {
+              console.log('Screen orientation lock not supported')
+            }
+          }
+        } catch (err) {
+          console.log('Fullscreen request failed:', err)
+        }
+      }
+    }
+
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', handleOrientationChange)
+    const mediaQuery = window.matchMedia('(orientation: landscape)')
+    mediaQuery.addEventListener('change', handleOrientationChange)
+    
+    // Check initial orientation
+    handleOrientationChange()
+
+    // Listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange)
+      mediaQuery.removeEventListener('change', handleOrientationChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+    }
+  }, [])
 
   // Navigation functions
   const goToPrevious = () => {

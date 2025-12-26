@@ -100,3 +100,4 @@ Le script détecte automatiquement :
 - Les recettes sont détectées par `slug` ou par `image` (URL principale) pour éviter les doublons
 
 
+

@@ -5,10 +5,8 @@ import { Search, Filter, Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight } 
 import EnhancedVideoCard from "@/components/video/EnhancedVideoCard"
 import ComputerStreamPlayer from "@/components/video/ComputerStreamPlayer"
 import MobileStreamPlayer from "@/components/video/MobileStreamPlayer"
-import ListingPlayer from "@/components/video/ListingPlayer"
 import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
-import SimpleVideoPlayer from "@/components/video/SimpleVideoPlayer"
 import { useVideos } from "@/hooks/useVideos"
 import { getVideoPositioning, getResponsiveVideoStyles, VideoPositioning } from '@/lib/video-positioning'
 import ProtectedContent from "@/components/ProtectedContent"
@@ -41,7 +39,6 @@ interface Video {
 }
 
 export default function VideosPage() {
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [searchInput, setSearchInput] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>("all")
@@ -54,6 +51,7 @@ export default function VideosPage() {
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null)
   const [loadingVideoId, setLoadingVideoId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Use the auth context
@@ -132,6 +130,78 @@ export default function VideosPage() {
     }
   }, [viewMode])
 
+  // Fullscreen management for mobile landscape in feed mode
+  useEffect(() => {
+    if (viewMode !== 'feed') return
+
+    const handleOrientationChange = async () => {
+      // Detect landscape orientation on mobile
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches
+      const isMobileDevice = window.innerWidth <= 1024
+      
+      if (isLandscape && isMobileDevice && containerRef.current) {
+        try {
+          // Try to enter fullscreen
+          if (!document.fullscreenElement) {
+            if (containerRef.current.requestFullscreen) {
+              await containerRef.current.requestFullscreen()
+            } else if ((containerRef.current as any).webkitRequestFullscreen) {
+              await (containerRef.current as any).webkitRequestFullscreen()
+            } else if ((containerRef.current as any).mozRequestFullScreen) {
+              await (containerRef.current as any).mozRequestFullScreen()
+            } else if ((containerRef.current as any).msRequestFullscreen) {
+              await (containerRef.current as any).msRequestFullscreen()
+            }
+          }
+          
+          // Lock screen orientation if possible
+          if (screen.orientation && screen.orientation.lock) {
+            try {
+              await screen.orientation.lock('landscape')
+            } catch (err) {
+              console.log('Screen orientation lock not supported')
+            }
+          }
+        } catch (err) {
+          console.log('Fullscreen request failed:', err)
+        }
+      }
+    }
+
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', handleOrientationChange)
+    const mediaQuery = window.matchMedia('(orientation: landscape)')
+    mediaQuery.addEventListener('change', handleOrientationChange)
+    
+    // Check initial orientation
+    handleOrientationChange()
+
+    // Listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange)
+      mediaQuery.removeEventListener('change', handleOrientationChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+    }
+  }, [viewMode])
+
   // Navigation functions
   const goToPrevious = () => {
     if (currentVideoIndex > 0) {
@@ -159,7 +229,25 @@ export default function VideosPage() {
     }
   }
 
-  // Handle video play/pause
+  // Handle video play from grid - opens in feed view
+  const handleVideoPlay = (video: Video) => {
+    // Find the index of the video in filteredVideos
+    const videoIndex = filteredVideos.findIndex(v => v.id === video.id)
+    
+    if (videoIndex !== -1) {
+      // Set the current video index
+      setCurrentVideoIndex(videoIndex)
+      // Switch to feed view mode
+      setViewMode('feed')
+    } else {
+      // If video not found in filtered list, add it and switch to feed
+      // This shouldn't happen, but just in case
+      console.warn('Video not found in filtered list, opening in feed anyway')
+      setViewMode('feed')
+    }
+  }
+
+  // Handle video play/pause (for feed mode)
   const handleVideoClick = async (videoId: string) => {
     const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement
     if (!videoElement) return
@@ -725,20 +813,12 @@ export default function VideosPage() {
               <EnhancedVideoCard
                 key={video.id}
                 video={video}
-                  onPlay={() => setSelectedVideo(video as Video)}
+                onPlay={handleVideoPlay}
               />
             ))}
           </div>
         )}
 
-        {/* Enhanced Video Player Modal */}
-        {selectedVideo && (
-          <ListingPlayer
-            video={selectedVideo}
-            onClose={() => setSelectedVideo(null)}
-            variant="modal"
-          />
-        )}
         </ProtectedContent>
 
         {/* Free Trial CTA Section */}

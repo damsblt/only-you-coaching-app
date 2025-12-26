@@ -219,3 +219,4 @@ return NextResponse.json(data, {
 - Le cache est déjà bien implémenté côté client
 - Les URLs publiques S3 fonctionnent maintenant correctement
 
+

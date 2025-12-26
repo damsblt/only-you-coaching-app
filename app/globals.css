@@ -51,6 +51,34 @@ html {
   }
 }
 
+/* Force full-screen on mobile landscape mode */
+@media (max-width: 1024px) and (orientation: landscape) {
+  .video-feed-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 9999 !important;
+  }
+  
+  .video-feed-item {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+  }
+  
+  .video-feed-item video {
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    object-fit: cover !important;
+  }
+}
+
 /* Ensure proper spacing for mobile devices */
 @media (max-width: 768px) {
   .video-feed-container {
@@ -99,7 +127,7 @@ html {
 }
 
 /* For landscape videos on mobile */
-@media (max-width: 768px) and (orientation: landscape) {
+@media (max-width: 1024px) and (orientation: landscape) {
   .video-feed-item video {
     width: 100vw !important;
     height: 100vh !important;
@@ -107,6 +135,16 @@ html {
     height: 100svh !important;
     object-fit: cover !important;
     object-position: center center !important;
+  }
+  
+  /* Hide browser UI in landscape mode */
+  body {
+    overflow: hidden !important;
+  }
+  
+  /* Ensure video container takes full screen */
+  .video-feed-container {
+    overflow: hidden !important;
   }
 }
 
