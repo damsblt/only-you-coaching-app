@@ -1,0 +1,25 @@
+[
+  {
+    "videoNumber": 12,
+    "region": "abdos",
+    "title": "Crunch classique",
+    "muscleCible": "Abdominaux",
+    "positionDepart": "Allongé sur le dos",
+    "mouvement": "Relever le buste",
+    "intensite": "Moyenne",
+    "serie": "3x15",
+    "contreIndication": "Problèmes de dos"
+  },
+  {
+    "videoNumber": 5,
+    "region": "abdos",
+    "title": "Planche à genoux",
+    "muscleCible": "Transverse",
+    "positionDepart": "À genoux, appui sur les avant-bras",
+    "mouvement": "Maintenir la position",
+    "intensite": "Débutant",
+    "serie": "1x 30 secondes",
+    "contreIndication": "Aucune"
+  }
+]
+

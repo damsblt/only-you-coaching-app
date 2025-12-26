@@ -66,17 +66,11 @@ export async function GET(request: NextRequest) {
 
     for (const s3Key of imageFiles) {
       try {
-        // Try to generate signed URL first (valid for 7 days)
-        const signedUrlResult = await getSignedVideoUrl(s3Key, 604800)
-        if (signedUrlResult.success && signedUrlResult.url) {
-          const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-          photoUrls.push(cleanUrl)
-        } else {
-          // Fallback to public URL if signed URL generation fails
-          const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-          const publicUrl = getPublicUrl(encodedKey)
-          photoUrls.push(publicUrl)
-        }
+        // Use public URLs directly for production (signed URLs require proper IAM permissions)
+        // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*
+        const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
+        const publicUrl = getPublicUrl(encodedKey)
+        photoUrls.push(publicUrl)
       } catch (error) {
         // Fallback to public URL on error
         console.warn(`⚠️ Error generating signed URL for ${s3Key}, using public URL:`, error)

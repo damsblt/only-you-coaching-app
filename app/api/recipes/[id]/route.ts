@@ -3,7 +3,8 @@ import { db } from '@/lib/db'
 import { Recipe } from '@/types/cms'
 import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
 
-// Helper function to get signed URL for S3 images (with fallback to public URL)
+// Helper function to get public URL for S3 images
+// Using public URLs directly for production (signed URLs require proper IAM permissions)
 async function getSignedImageUrl(url: string): Promise<string> {
   if (!url) return url
   try {
@@ -14,37 +15,11 @@ async function getSignedImageUrl(url: string): Promise<string> {
         const encodedPath = imageUrl.pathname
         const decodedPath = decodeURIComponent(encodedPath)
         const s3Key = decodedPath.substring(1) // Remove leading slash
-
-        // Check AWS credentials
-        const hasAwsCredentials = !!(
-          process.env.AWS_ACCESS_KEY_ID && 
-          process.env.AWS_SECRET_ACCESS_KEY
-        )
-
-        if (hasAwsCredentials) {
-          // Generate signed URL (valid for 24 hours)
-          const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-
-          if (signedUrlResult.success && signedUrlResult.url) {
-            return signedUrlResult.url
-          }
-        }
-
-        // Fallback to public URL if credentials missing or signed URL generation fails
         const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
         return getPublicUrl(encodedKey)
       } catch (urlError) {
         console.error('Error processing image URL:', urlError)
-        // Fallback: try to extract S3 key and return public URL
-        try {
-          const encodedPath = imageUrl.pathname
-          const decodedPath = decodeURIComponent(encodedPath)
-          const s3Key = decodedPath.substring(1)
-          const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-          return getPublicUrl(encodedKey)
-        } catch {
-          return url
-        }
+        return url
       }
     }
   } catch (error) {

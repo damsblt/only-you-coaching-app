@@ -10,36 +10,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check AWS credentials
-    const hasAwsCredentials = !!(
-      process.env.AWS_ACCESS_KEY_ID && 
-      process.env.AWS_SECRET_ACCESS_KEY
-    )
-    
-    if (!hasAwsCredentials) {
-      console.warn('⚠️ AWS credentials not configured. Using public URL fallback.')
-      // Fallback to public URL if credentials are not available
-      const decodedKey = decodeURIComponent(key)
-      const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
-      const publicUrl = getPublicUrl(encodedKey)
-      return NextResponse.json({ url: publicUrl })
-    }
-
-    // Try to generate signed URL first (valid for 1 hour)
+    // Use public URLs directly for production (signed URLs require proper IAM permissions)
+    // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*
     const decodedKey = decodeURIComponent(key)
-    const result = await getSignedVideoUrl(decodedKey, 3600)
-
-    if (!result.success || !result.url) {
-      // Fallback to public URL if signed URL generation fails
-      console.warn(`⚠️ Failed to generate signed URL for ${decodedKey}, using public URL:`, result.error)
-      const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
-      const publicUrl = getPublicUrl(encodedKey)
-      return NextResponse.json({ url: publicUrl })
-    }
-
-    // Clean the URL to remove any potential newlines or whitespace issues
-    const cleanUrl = result.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-    return NextResponse.json({ url: cleanUrl })
+    const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    const publicUrl = getPublicUrl(encodedKey)
+    return NextResponse.json({ url: publicUrl })
   } catch (error) {
     console.error('Error generating video URL:', error)
     // Fallback to public URL on error

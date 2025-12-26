@@ -1,0 +1,45 @@
+# Exclure les fichiers volumineux qui ne doivent pas être déployés sur Vercel
+# Ces fichiers doivent être sur S3, pas dans le déploiement
+
+# Dossier Cliente - contient les fichiers sources (vidéos, audios, images)
+Dossier Cliente/
+
+# Scripts de développement (non nécessaires en production)
+scripts/
+*.sh
+
+# Fichiers SQL (utilisés pour les migrations)
+*.sql
+supabase-rls-*.sql
+
+# Documentation
+*.md
+!README.md
+
+# Fichiers PDF volumineux
+*.pdf
+
+# Fichiers de test/développement
+public/test-video.mp4
+
+# Lambda functions (déployées séparément)
+lambda/
+
+# Fichiers temporaires
+tsconfig.tsbuildinfo
+*.log
+
+# Fichiers de configuration locale
+supabase/config.toml
+
+# Fichiers de check
+vercel-env-check.md
+
+
+
+
+
+
+
+
+
