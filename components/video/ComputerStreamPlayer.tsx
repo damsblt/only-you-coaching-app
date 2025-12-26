@@ -234,13 +234,59 @@ export default function ComputerStreamPlayer({
     setPlaybackRate(rate)
   }
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
+    // On mobile, always try to lock orientation to landscape first
+    if (isMobile && screen.orientation && screen.orientation.lock) {
+      try {
+        await screen.orientation.lock('landscape')
+        // If orientation lock succeeds, it will encourage user to rotate phone
+      } catch (err) {
+        console.log('Screen orientation lock not supported or failed:', err)
+      }
+    }
+
     if (!document.fullscreenElement) {
-      videoRef.current?.requestFullscreen()
-      setIsFullscreen(true)
+      // Enter fullscreen
+      try {
+        if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen()
+        } else if (videoRef.current?.requestFullscreen) {
+          await videoRef.current.requestFullscreen()
+        } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen()
+        } else if ((videoRef.current as any)?.webkitRequestFullscreen) {
+          await (videoRef.current as any).webkitRequestFullscreen()
+        }
+        setIsFullscreen(true)
+      } catch (err) {
+        console.log('Fullscreen request failed:', err)
+        // Even if fullscreen fails, orientation lock should still work
+      }
     } else {
-      document.exitFullscreen()
-      setIsFullscreen(false)
+      // Exit fullscreen
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen()
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen()
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen()
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen()
+        }
+        setIsFullscreen(false)
+      } catch (err) {
+        console.log('Exit fullscreen failed:', err)
+      }
+      
+      // On mobile, unlock orientation when exiting fullscreen
+      if (isMobile && screen.orientation && screen.orientation.unlock) {
+        try {
+          screen.orientation.unlock()
+        } catch (err) {
+          console.log('Screen orientation unlock failed:', err)
+        }
+      }
     }
   }
 
@@ -418,13 +464,18 @@ export default function ComputerStreamPlayer({
           }`}>
             <div className="flex items-center justify-between">
               <h1 className="text-white text-xl font-bold">{video.title}</h1>
-              <button
-                onClick={onClose}
-                className="text-white hover:text-gray-300 transition-colors p-2"
-              >
-                <X className="w-6 h-6" />
-              </button>
             </div>
+          </div>
+
+          {/* Close Button - Always visible */}
+          <div className="absolute top-0 right-0 p-4 z-10">
+            <button
+              onClick={onClose}
+              className="text-white hover:text-gray-300 transition-colors p-2 bg-black/50 rounded-full hover:bg-black/70 backdrop-blur-sm"
+              title="Fermer"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
 
           {/* Bottom Controls */}
