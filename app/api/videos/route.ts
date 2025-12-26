@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
     const difficulty = searchParams.get('difficulty')
     const search = searchParams.get('search')
     const videoType = searchParams.get('videoType')
-    const limit = parseInt(searchParams.get('limit') || '100') // Default limit instead of 1000
+    // No limit - fetch all videos
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined
     const offset = parseInt(searchParams.get('offset') || '0')
     
     console.log('📋 Parsed params:', { muscleGroup, programme, region, difficulty, search, videoType, limit, offset })
@@ -141,11 +142,13 @@ export async function GET(request: NextRequest) {
       needsCustomOrdering
     })
     
-    // If we need custom ordering, fetch all matching videos first (with a reasonable max limit)
-    // Otherwise, apply pagination at the database level
+    // If we need custom ordering, fetch all matching videos first
+    // Otherwise, apply pagination at the database level only if limit is specified
     let queryToExecute = needsCustomOrdering 
-      ? query.limit(500)  // Fetch up to 500 videos for custom ordering (should be more than enough)
-      : query.range(offset, offset + limit - 1)
+      ? query  // Fetch all videos for custom ordering
+      : limit 
+        ? query.range(offset, offset + limit - 1)  // Apply limit only if specified
+        : query  // No limit - fetch all videos
     
     console.log('🔍 About to execute query...')
     
@@ -202,8 +205,12 @@ export async function GET(request: NextRequest) {
     let sortedData = data || []
     if (needsCustomOrdering && region) {
       sortedData = sortVideosByProgramOrder(sortedData, region)
-      // Apply pagination after sorting
-      sortedData = sortedData.slice(offset, offset + limit)
+      // Apply pagination after sorting only if limit is specified
+      if (limit) {
+        sortedData = sortedData.slice(offset, offset + limit)
+      } else {
+        sortedData = sortedData.slice(offset) // Only apply offset, no limit
+      }
       console.log(`📋 Applied custom ordering for ${region} program: ${sortedData.length} videos after pagination`)
     }
 
