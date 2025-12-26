@@ -140,6 +140,7 @@ export default function PageHeader({
             loop
             muted
             playsInline
+            preload="metadata"
             className="w-full h-full object-cover"
             onError={(e) => {
               console.error('Video error:', e)
@@ -154,6 +155,7 @@ export default function PageHeader({
             alt={title || 'Page header'}
             fill
             className="object-cover"
+            priority={true}
           />
         ) : null}
         {/* Overlay gradient for better text readability */}
