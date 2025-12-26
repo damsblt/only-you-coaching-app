@@ -43,17 +43,26 @@ export default function Testimonials() {
   useEffect(() => {
     // Fetch signed URLs for testimonial photos
     const fetchPhotoUrls = async () => {
+      // Only run on client side
+      if (typeof window === 'undefined') {
+        return
+      }
+
       try {
         const names = testimonials.map(t => t.name).join(',')
         
         // Use environment variable in production, fallback to window.location.origin
-        const baseUrl = typeof window !== 'undefined' 
-          ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
-          : (process.env.NEXT_PUBLIC_SITE_URL || '')
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+        
+        // Validate baseUrl
+        if (!baseUrl) {
+          console.warn('⚠️ No base URL available for fetching testimonial photos')
+          return
+        }
         
         const apiUrl = `${baseUrl}/api/testimonials/photos?names=${encodeURIComponent(names)}`
         
-        console.log('Fetching testimonial photos from:', apiUrl)
+        console.log('📸 Fetching testimonial photos from:', apiUrl)
         
         const response = await fetch(apiUrl, {
           method: 'GET',
@@ -64,17 +73,37 @@ export default function Testimonials() {
           cache: 'no-store',
         })
         
-        if (response.ok) {
-          const data = await response.json()
-          console.log('Received photo URLs:', Object.keys(data.photos || {}))
-          setPhotoUrls(data.photos || {})
-        } else {
+        if (!response.ok) {
           const errorText = await response.text()
-          console.error('Failed to fetch photo URLs:', response.status, errorText)
+          console.error('❌ Failed to fetch photo URLs:', response.status, errorText)
+          // Don't throw - gracefully handle the error by showing fallback avatars
+          return
+        }
+        
+        const data = await response.json()
+        console.log('✅ Received photo URLs for:', Object.keys(data.photos || {}))
+        
+        if (data.photos && Object.keys(data.photos).length > 0) {
+          // Log each URL for debugging
+          Object.entries(data.photos).forEach(([name, url]) => {
+            console.log(`  - ${name}: ${url?.substring(0, 80)}...`)
+          })
+          setPhotoUrls(data.photos)
+        } else {
+          console.warn('⚠️ No photo URLs received from API. Response:', data)
         }
       } catch (error) {
-        console.error('Error fetching photo URLs:', error)
+        // Handle network errors gracefully
+        if (error instanceof TypeError && error.message === 'Failed to fetch') {
+          console.warn('⚠️ Network error fetching testimonial photos. This may be due to:', {
+            reason: 'API route unavailable or network issue',
+            suggestion: 'Photos will use fallback avatars'
+          })
+        } else {
+          console.error('❌ Error fetching photo URLs:', error)
+        }
         // Don't set failed photos here - let the image onError handle it
+        // The component will gracefully show fallback avatars
       }
     }
 
@@ -119,9 +148,16 @@ export default function Testimonials() {
                       src={photoUrls[testimonial.name]}
                       alt={testimonial.name}
                       className="w-full h-full object-cover"
-                      onError={() => {
+                      loading="lazy"
+                      onError={(e) => {
+                        console.error(`❌ Failed to load image for ${testimonial.name}`)
+                        console.error('Image URL:', photoUrls[testimonial.name]?.substring(0, 100))
+                        console.error('Error event:', e)
                         // Mark this photo as failed to show fallback
                         setFailedPhotos(prev => new Set(prev).add(testimonial.name))
+                      }}
+                      onLoad={() => {
+                        console.log(`✅ Successfully loaded image for ${testimonial.name}`)
                       }}
                     />
                   </div>

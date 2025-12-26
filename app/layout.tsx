@@ -6,6 +6,7 @@ import { Providers } from "@/components/providers";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import HeaderAssetsPreloader from "@/components/HeaderAssetsPreloader";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
         <ErrorBoundary>
           <Providers>
+            <HeaderAssetsPreloader />
             <div className="relative flex flex-col min-h-screen overflow-x-hidden">
               <Header />
               <main className="flex-1">

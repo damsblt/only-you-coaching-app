@@ -7,28 +7,79 @@ import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null)
+  const [createdUserPassword, setCreatedUserPassword] = useState<string | null>(null)
+  const [createdUserEmail, setCreatedUserEmail] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    email: '',
+    name: ''
+  })
   
   // Use the auth context instead of direct auth calls
   const { user: currentUser, loading: authLoading } = useSimpleAuth()
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (currentUser) {
-        try {
-          const response = await fetch('/api/admin/users')
-          const data = await response.json()
-          if (data.users) {
-            setUsers(data.users)
-          }
-        } catch (error) {
-          console.error('Error fetching users:', error)
+  const fetchUsers = async () => {
+    if (currentUser) {
+      try {
+        const response = await fetch('/api/admin/users')
+        const data = await response.json()
+        if (data.users) {
+          setUsers(data.users)
         }
+      } catch (error) {
+        console.error('Error fetching users:', error)
       }
-      setLoading(false)
     }
-    
+    setLoading(false)
+  }
+
+  useEffect(() => {
     fetchUsers()
   }, [currentUser])
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreating(true)
+    setCreateError(null)
+    setCreateSuccess(null)
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la création de l\'utilisateur')
+      }
+
+      // Stocker le mot de passe et l'email pour l'affichage
+      if (data.password) {
+        setCreatedUserPassword(data.password)
+        setCreatedUserEmail(data.user.email)
+      }
+      
+      setCreateSuccess('Utilisateur créé avec succès avec accès intégral !')
+      setFormData({ email: '', name: '' })
+      setCreateError(null) // Réinitialiser les erreurs
+      setShowCreateForm(false) // Fermer le formulaire mais garder le message visible
+      
+      // Rafraîchir la liste des utilisateurs
+      await fetchUsers()
+    } catch (error: any) {
+      setCreateError(error.message || 'Erreur lors de la création de l\'utilisateur')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   if (loading || authLoading) {
     return (
@@ -72,9 +123,172 @@ export default function AdminUsersPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">
-              Gestion des Utilisateurs et Abonnements
-            </h1>
+            <div className="flex justify-between items-center mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Gestion des Utilisateurs et Abonnements
+              </h1>
+              <button
+                onClick={() => {
+                  setShowCreateForm(!showCreateForm)
+                  // Réinitialiser les messages quand on ouvre le formulaire
+                  if (!showCreateForm) {
+                    setCreateError(null)
+                    setCreateSuccess(null)
+                    setCreatedUserPassword(null)
+                    setCreatedUserEmail(null)
+                  }
+                }}
+                className="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Créer un utilisateur
+              </button>
+            </div>
+
+            {/* Message de succès (affiché en dehors du formulaire pour rester visible) */}
+            {createSuccess && (
+              <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm text-green-800 font-semibold mb-2">{createSuccess}</p>
+                {createdUserPassword && createdUserEmail && (
+                  <div className="mt-4 p-4 bg-white border-2 border-green-300 rounded-lg">
+                    <p className="text-sm font-semibold text-gray-700 mb-3">
+                      📋 Informations de connexion à transmettre :
+                    </p>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Email :</label>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 bg-gray-100 px-3 py-2 rounded font-mono text-sm">
+                            {createdUserEmail}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(createdUserEmail)
+                              alert('Email copié !')
+                            }}
+                            className="bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded text-sm"
+                          >
+                            📋 Copier
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Mot de passe :</label>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 bg-yellow-50 border-2 border-yellow-300 px-3 py-2 rounded font-mono text-lg font-bold text-gray-900">
+                            {createdUserPassword}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(createdUserPassword)
+                              alert('Mot de passe copié !')
+                            }}
+                            className="bg-yellow-200 hover:bg-yellow-300 px-3 py-2 rounded text-sm font-semibold"
+                          >
+                            📋 Copier
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-3 italic">
+                      ⚠️ Notez ces informations avant de fermer cette fenêtre. Le mot de passe ne sera plus affiché.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreatedUserPassword(null)
+                        setCreatedUserEmail(null)
+                        setCreateSuccess(null)
+                      }}
+                      className="mt-3 text-xs text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Masquer les informations
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Formulaire de création */}
+            {showCreateForm && (
+              <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                  Créer un nouvel utilisateur avec accès intégral
+                </h2>
+                <form onSubmit={handleCreateUser} className="space-y-4">
+                  {createError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-sm text-red-800">{createError}</p>
+                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="exemple@email.com"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Nom complet <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                      placeholder="Prénom Nom"
+                    />
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note :</strong> L'utilisateur pourra se connecter avec son email. Le système d'authentification gère automatiquement les sessions.
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>Accès intégral :</strong> Cet utilisateur aura accès à toutes les vidéos, programmes, audios et recettes sans limitation.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={creating}
+                      className="bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {creating ? 'Création...' : 'Créer l\'utilisateur'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateForm(false)
+                        setFormData({ email: '', name: '' })
+                        setCreateError(null)
+                        setCreateSuccess(null)
+                        setCreatedUserPassword(null)
+                        setCreatedUserEmail(null)
+                      }}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             
             <div className="mb-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

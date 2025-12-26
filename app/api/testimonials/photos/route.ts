@@ -2,16 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSignedVideoUrl } from '@/lib/s3'
 
 // Map of testimonial names to their S3 photo keys
+// Photos are stored in Photos/Témoinages/ folder
 const testimonialPhotos: Record<string, string> = {
-  'JEAN YVES': 'Photos/PHOTO JEAN YVES.jpg',
-  'LUCIENNE': 'Photos/PHOTO LUCIENNE.jpg',
-  'VALERIE': 'Photos/PHOTO VALERIE.jpg',
-  'TRISTAN': 'Photos/PHOTO TRISTAN.jpg',
-  'YVONNE': 'Photos/Foto Yvonne.PNG',
-  'PIERRE ANDRE': 'Photos/PHOTO PIERRE ANDRE.jpg',
-  'SEDEF': 'Photos/PHOTO SDEF.jpg',
-  'VERONIQUE': 'Photos/photo véronique.jpg',
-  'NICOLAS': 'Photos/PHOTO NICOLAS.jpg',
+  'JEAN YVES': 'Photos/Témoinages/PHOTO JEAN YVES.jpg',
+  'LUCIENNE': 'Photos/Témoinages/PHOTO LUCIENNE.jpg',
+  'VALERIE': 'Photos/Témoinages/PHOTO VALERIE.jpg',
+  'TRISTAN': 'Photos/Témoinages/PHOTO TRISTAN.jpg',
+  'YVONNE': 'Photos/Témoinages/Foto Yvonne.PNG',
+  'PIERRE ANDRE': 'Photos/Témoinages/PHOTO PIERRE ANDRE.jpg',
+  'SEDEF': 'Photos/Témoinages/PHOTO SDEF.jpg',
+  'VERONIQUE': 'Photos/Témoinages/photo véronique.jpg',
+  'NICOLAS': 'Photos/Témoinages/PHOTO NICOLAS.jpg',
 }
 
 // GET /api/testimonials/photos - Get signed URLs for testimonial photos
@@ -22,8 +23,13 @@ export async function GET(request: NextRequest) {
     
     if (!names) {
       return NextResponse.json(
-        { error: 'Names parameter is required' },
-        { status: 400 }
+        { error: 'Names parameter is required', photos: {} },
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       )
     }
 
@@ -33,69 +39,60 @@ export async function GET(request: NextRequest) {
       process.env.AWS_SECRET_ACCESS_KEY
     )
     
-    if (!hasAwsCredentials) {
-      console.error('⚠️ AWS credentials not configured. Cannot generate signed URLs.')
-      return NextResponse.json(
-        { 
-          error: 'AWS credentials not configured',
-          photos: {} 
-        },
-        { status: 500 }
-      )
-    }
-
     const nameList = names.split(',').map(name => name.trim())
     const photoUrls: Record<string, string> = {}
+    const bucketName = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
+    const region = process.env.AWS_REGION || 'eu-north-1'
 
-    console.log(`Generating signed URLs for ${nameList.length} testimonials`)
+    console.log(`Generating URLs for ${nameList.length} testimonials`)
 
-    // Generate signed URLs for each testimonial photo
+    // Generate proxy URLs for each testimonial photo (bypasses CORS issues)
+    // Use the request URL to determine the base URL
+    const requestUrl = new URL(request.url)
+    const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`
+    
     for (const name of nameList) {
       const s3Key = testimonialPhotos[name]
       if (s3Key) {
-        try {
-          // Try to generate signed URL first (valid for 7 days)
-          const signedUrlResult = await getSignedVideoUrl(s3Key, 604800)
-          if (signedUrlResult.success) {
-            const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-            photoUrls[name] = cleanUrl
-            console.log(`✅ Generated signed URL for ${name}`)
-          } else {
-            // Fallback to public URL if signed URL generation fails
-            console.warn(`⚠️ Signed URL failed for ${name}, using public URL as fallback`)
-            // Encode the S3 key properly for URL (encode each segment separately to preserve slashes)
-            const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-            const bucketName = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
-            const region = process.env.AWS_REGION || 'eu-north-1'
-            const publicUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${encodedKey}`
-            photoUrls[name] = publicUrl
-            console.log(`✅ Using public URL fallback for ${name}: ${publicUrl}`)
-          }
-        } catch (error) {
-          // Fallback to public URL on error
-          console.warn(`⚠️ Error generating signed URL for ${name}, using public URL:`, error)
-          const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-          const bucketName = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
-          const region = process.env.AWS_REGION || 'eu-north-1'
-          const publicUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${encodedKey}`
-          photoUrls[name] = publicUrl
-        }
+        // Use our proxy endpoint to serve images through our API (bypasses CORS)
+        const encodedName = encodeURIComponent(name)
+        photoUrls[name] = `${baseUrl}/api/testimonials/image/${encodedName}`
+        console.log(`✅ Generated proxy URL for ${name}: ${photoUrls[name]}`)
       } else {
         console.warn(`⚠️ No S3 key found for testimonial: ${name}`)
       }
     }
 
     console.log(`Successfully generated ${Object.keys(photoUrls).length} photo URLs`)
-    return NextResponse.json({ photos: photoUrls })
+    return NextResponse.json(
+      { photos: photoUrls },
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   } catch (error) {
-    console.error('❌ Error generating testimonial photo URLs:', error)
+    // Enhanced error logging
+    const errorDetails = {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+    }
+    console.error('❌ Error generating testimonial photo URLs:', errorDetails)
+    
+    // Always return a valid JSON response, even on error
     return NextResponse.json(
       { 
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        photos: {}
+        message: errorDetails.message,
+        photos: {} // Return empty photos so component can show fallback avatars
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     )
   }
 }

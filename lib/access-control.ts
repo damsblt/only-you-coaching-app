@@ -1,4 +1,4 @@
-import { pool } from './db'
+import { db } from './db'
 
 // Define what each subscription plan includes
 export const PLAN_FEATURES = {
@@ -97,22 +97,51 @@ export const PLAN_FEATURES = {
       progressTracking: false,
       homeVisit: false,
     }
+  },
+  full_access: {
+    name: 'Accès Intégral',
+    features: {
+      videos: true,
+      recipes: true,
+      predefinedPrograms: true,
+      customPrograms: 999, // Unlimited
+      coachingCalls: 999, // Unlimited
+      emailSupport: true,
+      smsSupport: true,
+      audioLibrary: true,
+      nutritionAdvice: true,
+      progressTracking: true,
+      homeVisit: 999, // Unlimited
+    }
   }
 }
 
 export async function getUserSubscription(userId: string) {
   try {
-    const result = await pool.query(
-      `SELECT * FROM subscriptions 
-       WHERE "userId" = $1 
-       AND status = 'ACTIVE' 
-       AND "stripeCurrentPeriodEnd" >= $2 
-       ORDER BY "createdAt" DESC 
-       LIMIT 1`,
-      [userId, new Date().toISOString()]
-    )
+    const now = new Date().toISOString()
+    // Utiliser SQL direct car le QueryBuilder a des problèmes avec les guillemets
+    const { sql } = await import('./db')
+    
+    if (!sql) {
+      console.error('SQL client not available')
+      return null
+    }
 
-    return result.rows[0] || null
+    // Récupérer l'abonnement actif avec SQL direct
+    const subscriptions = await (sql as any)`
+      SELECT * FROM subscriptions 
+      WHERE "userId" = ${userId}::uuid
+      AND status = 'active'
+      AND "currentPeriodEnd" >= ${now}::timestamp
+      ORDER BY created_at DESC
+      LIMIT 1
+    `
+    
+    if (subscriptions && subscriptions.length > 0) {
+      return subscriptions[0]
+    }
+
+    return null
   } catch (error) {
     console.error('Error fetching user subscription:', error)
     return null
@@ -122,15 +151,14 @@ export async function getUserSubscription(userId: string) {
 export async function getUserPlanFeatures(userId: string) {
   // Check if user has ADMIN role - give full access
   try {
-    const userResult = await pool.query(
-      'SELECT role FROM users WHERE id = $1',
-      [userId]
-    )
+    const { data: userData, error: userError } = await db
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single()
     
-    const user = userResult.rows[0]
-    
-    if (!user) {
-      console.error('Error fetching user: User not found')
+    if (userError || !userData) {
+      console.error('Error fetching user: User not found', userError)
       return {
         videos: false,
         recipes: false,
@@ -146,7 +174,7 @@ export async function getUserPlanFeatures(userId: string) {
       }
     }
     
-    if (user.role === 'ADMIN') {
+    if (userData.role === 'ADMIN') {
       // Full access for admin user
       return {
         videos: true,
@@ -203,6 +231,11 @@ export async function getUserPlanFeatures(userId: string) {
   const planId = getPlanIdFromSubscription(subscription)
   const planFeatures = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES]
   
+  // Si le plan est 'full_access', retourner les features d'accès intégral
+  if (planId === 'full_access') {
+    return PLAN_FEATURES.full_access.features
+  }
+  
   return planFeatures?.features || PLAN_FEATURES.starter.features
 }
 
@@ -219,8 +252,10 @@ export async function getAccessLevel(userId: string, feature: keyof typeof PLAN_
 // Helper function to determine plan ID from subscription
 function getPlanIdFromSubscription(subscription: any): string {
   // First try to use the stored planId field (if it exists)
-  if (subscription.planId) {
-    return subscription.planId
+  // Handle both camelCase and snake_case column names
+  const planId = subscription.planId || subscription.plan_id || subscription['planId'] || subscription['plan_id']
+  if (planId) {
+    return planId
   }
 
   // Fallback to mapping from Stripe price ID
@@ -264,48 +299,27 @@ function getPlanIdFromSubscription(subscription: any): string {
 // Get all users with their subscription status
 export async function getAllUsersWithSubscriptions() {
   try {
-    const usersResult = await pool.query(`
-      SELECT 
-        u.id,
-        u.email,
-        u.name,
-        u.role,
-        s.id as subscription_id,
-        s.status,
-        s.plan,
-        s."stripeCurrentPeriodEnd",
-        s."createdAt"
-      FROM users u
-      LEFT JOIN subscriptions s ON s."userId" = u.id
-      WHERE s.id IS NOT NULL
-    `)
-
-    // Group subscriptions by user
-    const usersMap = new Map()
+    // Utiliser SQL direct car le QueryBuilder a des problèmes avec les guillemets
+    const { sql } = await import('@/lib/db')
     
-    for (const row of usersResult.rows) {
-      if (!usersMap.has(row.id)) {
-        usersMap.set(row.id, {
-          id: row.id,
-          email: row.email,
-          name: row.name,
-          role: row.role,
-          subscriptions: []
-        })
-      }
-      
-      if (row.subscription_id) {
-        usersMap.get(row.id).subscriptions.push({
-          id: row.subscription_id,
-          status: row.status,
-          plan: row.plan,
-          stripeCurrentPeriodEnd: row.stripeCurrentPeriodEnd,
-          createdAt: row.createdAt
-        })
-      }
+    if (!sql) {
+      console.error('❌ SQL client not available')
+      return []
     }
 
-    return Array.from(usersMap.values()).map(user => {
+    // Récupérer tous les utilisateurs avec SQL direct
+    const usersData = await (sql as any)`SELECT id, email, name, role FROM users`
+    console.log(`✅ Fetched ${usersData.length} users`)
+    if (usersData.length > 0) {
+      console.log('📋 Sample user:', JSON.stringify(usersData[0], null, 2))
+    }
+
+    // Récupérer tous les abonnements avec SQL direct
+    const subscriptions = await (sql as any)`SELECT * FROM subscriptions`
+    console.log(`✅ Fetched ${subscriptions.length} subscriptions`)
+
+    // Grouper les abonnements par utilisateur
+    return usersData.map(user => {
       // Special handling for admin users
       const isAdmin = user.role === 'ADMIN'
       if (isAdmin) {
@@ -321,17 +335,40 @@ export async function getAllUsersWithSubscriptions() {
         }
       }
       
-      const activeSubscriptions = user.subscriptions.filter((sub: any) => 
-        sub.status === 'ACTIVE' && new Date(sub.stripeCurrentPeriodEnd) > new Date()
-      )
+      // Trouver les abonnements actifs pour cet utilisateur
+      // La colonne userId peut être retournée comme "userId" ou userId selon la base de données
+      const userSubscriptions = subscriptions.filter((sub: any) => {
+        const subUserId = sub.userId || sub['userId'] || sub.user_id
+        const matchesUser = subUserId === user.id || String(subUserId) === String(user.id)
+        const isActive = sub.status === 'active' || sub.status === 'ACTIVE'
+        // Utiliser currentPeriodEnd ou stripeCurrentPeriodEnd selon ce qui existe
+        const periodEnd = sub.stripeCurrentPeriodEnd || sub.currentPeriodEnd || sub['currentPeriodEnd']
+        const isValidDate = periodEnd && new Date(periodEnd) > new Date()
+        return matchesUser && isActive && isValidDate
+      })
+      
+      const activeSubscription = userSubscriptions[0]
+      
+      // Déterminer le nom du plan
+      let planName = null
+      if (activeSubscription) {
+        if (activeSubscription.planId === 'full_access') {
+          planName = 'Accès Intégral'
+        } else {
+          planName = activeSubscription.planId || 'Actif'
+        }
+      }
       
       return {
         id: user.id,
         email: user.email,
         name: user.name,
-        hasActiveSubscription: activeSubscriptions.length > 0,
-        currentPlan: activeSubscriptions[0]?.plan || null,
-        subscriptionEnd: activeSubscriptions[0]?.stripeCurrentPeriodEnd || null,
+        hasActiveSubscription: userSubscriptions.length > 0,
+        currentPlan: planName,
+        subscriptionEnd: activeSubscription?.stripeCurrentPeriodEnd || 
+                        activeSubscription?.currentPeriodEnd || 
+                        activeSubscription?.['currentPeriodEnd'] || 
+                        null,
         isAdmin: false,
         adminNote: null
       }

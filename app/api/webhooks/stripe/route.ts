@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: typeof customer === 'string' ? customer : customer.id,
             stripeSubscriptionId: subscription.id,
             stripePriceId: priceId || '',
-            status: 'ACTIVE',
+            status: 'active',
             plan: getPlanFromMetadata(planIdFromMetadata),
             planId: planIdFromMetadata || getPlanIdFromPriceId(priceId || ''),
             stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
         const isCommitmentPeriod = subscription.metadata?.commitment_period === 'true'
         const durationMonths = parseInt(subscription.metadata?.duration_months || '0')
         
-        let status = subscription.status === 'active' ? 'ACTIVE' : 'INACTIVE'
+        let status = subscription.status === 'active' ? 'active' : 'canceled'
         
         // Calculer la date de fin d'engagement
         const commitmentEndDate = isCommitmentPeriod && durationMonths > 0 
@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
           
           // Si engagement pas encore terminé
           if (now < commitmentEndTimestamp) {
-            status = 'ACTIVE'
+            status = 'active'
             
             // Si aucune annulation n'est programmée OU si elle ne correspond pas à la fin de l'engagement, la programmer
             if (!subscription.cancel_at || subscription.cancel_at !== commitmentEndTimestamp) {
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
             // Le statut sera mis à jour lors du webhook customer.subscription.deleted
             if (subscription.status === 'active' && subscription.cancel_at) {
               // L'abonnement devrait être annulé bientôt
-              status = 'ACTIVE'
+              status = 'active'
             }
           }
         }
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
         
         const { error } = await db
           .from('subscriptions')
-          .update({ status: 'CANCELED' })
+          .update({ status: 'canceled' })
           .eq('stripeSubscriptionId', subscription.id)
 
         if (error) {
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
         
         const { error } = await db
           .from('subscriptions')
-          .update({ status: 'PAST_DUE' })
+          .update({ status: 'past_due' })
           .eq('stripeCustomerId', invoice.customer as string)
 
         if (error) {

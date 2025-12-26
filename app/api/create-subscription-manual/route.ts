@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const { insert } = await import('@/lib/db')
     const { data: newSubscription, error: subscriptionError } = await insert('subscriptions', {
       userId: user.id,
-      status: 'ACTIVE',
+      status: 'active',
       plan: 'MONTHLY',
       stripePriceId: 'price_1SFtNZRnELGaRIkTI51JSCso',
       stripeSubscriptionId: 'sub_1SLqLERnELGaRIkT04qParSX',
