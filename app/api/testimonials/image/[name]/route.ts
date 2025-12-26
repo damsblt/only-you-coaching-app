@@ -38,40 +38,11 @@ export async function GET(
     
     console.log(`📸 Fetching S3 key: "${s3Key}" for testimonial: "${decodedName}"`)
 
-    // Check AWS credentials
-    const hasAwsCredentials = !!(
-      process.env.AWS_ACCESS_KEY_ID && 
-      process.env.AWS_SECRET_ACCESS_KEY
-    )
-    
-    // Determine which URL to use (signed or public)
-    let imageUrl: string
-    
-    if (!hasAwsCredentials) {
-      console.warn(`⚠️ AWS credentials not configured for ${decodedName}. Using public URL fallback.`)
-      const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-      imageUrl = getPublicUrl(encodedKey)
-    } else {
-      try {
-        // Generate a signed URL first
-        const signedUrlResult = await getSignedVideoUrl(s3Key, 3600) // 1 hour expiry
-        
-        if (signedUrlResult.success && signedUrlResult.url) {
-          imageUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-          console.log(`✅ Generated signed URL for ${decodedName}`)
-        } else {
-          // Fallback to public URL if signed URL generation fails
-          console.warn(`⚠️ Failed to generate signed URL for ${decodedName}, using public URL:`, signedUrlResult.error)
-          const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-          imageUrl = getPublicUrl(encodedKey)
-        }
-      } catch (error) {
-        // Fallback to public URL on error
-        console.warn(`⚠️ Error generating signed URL for ${decodedName}, using public URL:`, error)
-        const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-        imageUrl = getPublicUrl(encodedKey)
-      }
-    }
+    // Use public URLs directly for production (signed URLs require proper IAM permissions)
+    // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*
+    const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    const imageUrl = getPublicUrl(encodedKey)
+    console.log(`✅ Using public URL for ${decodedName}`)
 
     try {
       console.log(`📥 Fetching image for ${decodedName} from: ${imageUrl.substring(0, 100)}...`)

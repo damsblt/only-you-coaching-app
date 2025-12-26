@@ -1,0 +1,18 @@
+Vidéo 12 (abdos):
+  - Titre exercice: Crunch classique
+  - Muscle cible: Abdominaux
+  - Position départ: Allongé sur le dos
+  - Mouvement: Relever le buste
+  - Intensité: Moyenne
+  - Série: 3x15
+  - Contre-indication: Problèmes de dos
+
+Vidéo 5 (abdos):
+  - Titre exercice: Planche à genoux
+  - Muscle cible: Transverse
+  - Position départ: À genoux, appui sur les avant-bras
+  - Mouvement: Maintenir la position
+  - Intensité: Débutant
+  - Série: 1x 30 secondes
+  - Contre-indication: Aucune
+
