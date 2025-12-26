@@ -12,10 +12,22 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    // Activer les formats modernes pour de meilleures performances
+    formats: ['image/avif', 'image/webp'],
+    // Tailles d'appareils pour le responsive
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Cache long pour les images optimisées
+    minimumCacheTTL: 31536000, // 1 an
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'only-you-coaching.s3.eu-north-1.amazonaws.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
         pathname: '/**',
       },
     ],

@@ -82,10 +82,12 @@ export default function S3Image({
   fallbackSrc,
   width,
   height,
-  style
-}: S3ImageProps) {
+  style,
+  priority = false,
+  loading: loadingProp
+}: S3ImageProps & { priority?: boolean; loading?: 'lazy' | 'eager' }) {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
@@ -102,7 +104,7 @@ export default function S3Image({
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         if (!cancelled) {
           setImageUrl(cached.url)
-          setLoading(false)
+          setIsLoading(false)
           return
         }
       }
@@ -116,7 +118,7 @@ export default function S3Image({
         } else {
           setError(true)
         }
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
@@ -127,7 +129,7 @@ export default function S3Image({
     }
   }, [s3Key])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div 
         className={`bg-gray-200 dark:bg-gray-700 animate-pulse ${className}`}
@@ -163,6 +165,8 @@ export default function S3Image({
       className={className}
       style={style}
       unoptimized
+      priority={priority}
+      loading={loadingProp}
       onError={() => {
         setError(true)
       }}

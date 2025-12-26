@@ -15,7 +15,15 @@ export async function GET(request: NextRequest) {
     const decodedKey = decodeURIComponent(key)
     const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
     const publicUrl = getPublicUrl(encodedKey)
-    return NextResponse.json({ url: publicUrl })
+    return NextResponse.json(
+      { url: publicUrl },
+      {
+        headers: {
+          // Cache for 1 hour, stale-while-revalidate for 24 hours
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        },
+      }
+    )
   } catch (error) {
     console.error('Error generating video URL:', error)
     // Fallback to public URL on error
