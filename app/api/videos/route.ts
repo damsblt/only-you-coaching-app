@@ -144,14 +144,19 @@ export async function GET(request: NextRequest) {
     
     // If we need custom ordering, fetch all matching videos first
     // Otherwise, apply pagination at the database level only if limit is specified
-    // Note: Supabase/Neon has a default limit of 1000, so we set a high limit (10000) to fetch all videos
+    // Note: We set a very high limit (50000) to ensure we fetch all videos, bypassing any default limits
     let queryToExecute = needsCustomOrdering 
-      ? query.limit(10000)  // Fetch all videos for custom ordering (high limit to bypass default)
+      ? query.limit(50000)  // Fetch all videos for custom ordering (very high limit to bypass any default)
       : limit 
         ? query.range(offset, offset + limit - 1)  // Apply limit only if specified
-        : query.limit(10000)  // No limit specified - fetch all videos (high limit to bypass default)
+        : query.limit(50000)  // No limit specified - fetch all videos (very high limit to bypass any default)
     
-    console.log('🔍 About to execute query...')
+    console.log('🔍 About to execute query...', { 
+      hasLimit: !!limit, 
+      limitValue: limit, 
+      needsCustomOrdering,
+      willUseLimit: !limit && !needsCustomOrdering ? 50000 : 'custom'
+    })
     
     let data: any[] | null = null
     let error: any = null
