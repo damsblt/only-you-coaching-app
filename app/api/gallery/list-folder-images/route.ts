@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
-import { getSignedVideoUrl } from '@/lib/s3'
+import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
 
@@ -46,13 +46,30 @@ export async function GET(request: NextRequest) {
       })
       .sort()
 
-    // Generate signed URLs for each image
+    // Generate signed URLs for each image (with fallback to public URLs)
     const imagesWithUrls = await Promise.all(
       imageFiles.map(async (key) => {
-        const result = await getSignedVideoUrl(key, 3600) // 1 hour
+        // Check AWS credentials
+        const hasAwsCredentials = !!(
+          process.env.AWS_ACCESS_KEY_ID && 
+          process.env.AWS_SECRET_ACCESS_KEY
+        )
+
+        if (hasAwsCredentials) {
+          const result = await getSignedVideoUrl(key, 3600) // 1 hour
+          if (result.success && result.url) {
+            return {
+              key,
+              url: result.url.trim().replace(/\n/g, '').replace(/\r/g, ''),
+            }
+          }
+        }
+
+        // Fallback to public URL
+        const encodedKey = key.split('/').map(segment => encodeURIComponent(segment)).join('/')
         return {
           key,
-          url: result.success ? result.url : null,
+          url: getPublicUrl(encodedKey),
         }
       })
     )

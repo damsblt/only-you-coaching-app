@@ -21,24 +21,22 @@ export async function GET(request: NextRequest) {
     )
     
     if (!hasAwsCredentials) {
-      console.error('⚠️ AWS credentials not configured. Cannot generate photo URL.')
-      return NextResponse.json(
-        { 
-          error: 'AWS credentials not configured',
-          url: null 
-        },
-        { status: 500 }
-      )
+      console.warn('⚠️ AWS credentials not configured. Using public URL fallback.')
+      // Fallback to public URL if credentials are not available
+      const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
+      const publicUrl = getPublicUrl(encodedKey)
+      return NextResponse.json({ url: publicUrl })
     }
 
     try {
       // Try to generate signed URL first (valid for 7 days)
       const signedUrlResult = await getSignedVideoUrl(s3Key, 604800)
-      if (signedUrlResult.success) {
+      if (signedUrlResult.success && signedUrlResult.url) {
         const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
         return NextResponse.json({ url: cleanUrl })
       } else {
         // Fallback to public URL if signed URL generation fails
+        console.warn(`⚠️ Failed to generate signed URL for ${s3Key}, using public URL`)
         const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
         const publicUrl = getPublicUrl(encodedKey)
         return NextResponse.json({ url: publicUrl })
