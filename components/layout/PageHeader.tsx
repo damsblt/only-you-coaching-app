@@ -89,6 +89,18 @@ export default function PageHeader({
 }: PageHeaderProps) {
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoLoading, setVideoLoading] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Fetch video URL if videoS3Key is provided
   useEffect(() => {
@@ -142,6 +154,9 @@ export default function PageHeader({
             playsInline
             preload="metadata"
             className="w-full h-full object-cover"
+            style={{
+              objectPosition: isMobile ? '65% center' : 'center'
+            }}
             onError={(e) => {
               console.error('Video error:', e)
               setVideoUrl(null)

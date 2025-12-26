@@ -65,7 +65,9 @@ export default function UnifiedVideoPlayer({
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [showOverlay, setShowOverlay] = useState(true)
   const [isVideoReady, setIsVideoReady] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const playerRef = useRef<HTMLVideoElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const overlayTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Use the video player hook
@@ -209,6 +211,74 @@ export default function UnifiedVideoPlayer({
     }
   }, [])
 
+  // Fullscreen management for mobile landscape
+  useEffect(() => {
+    if (!isMobile || variant !== 'modal') return
+
+    const handleOrientationChange = async () => {
+      // Detect landscape orientation
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches
+      
+      if (isLandscape && containerRef.current) {
+        try {
+          // Try to enter fullscreen
+          if (containerRef.current.requestFullscreen) {
+            await containerRef.current.requestFullscreen()
+          } else if ((containerRef.current as any).webkitRequestFullscreen) {
+            await (containerRef.current as any).webkitRequestFullscreen()
+          } else if ((containerRef.current as any).mozRequestFullScreen) {
+            await (containerRef.current as any).mozRequestFullScreen()
+          } else if ((containerRef.current as any).msRequestFullscreen) {
+            await (containerRef.current as any).msRequestFullscreen()
+          }
+          
+          // Also lock screen orientation if possible
+          if (screen.orientation && screen.orientation.lock) {
+            try {
+              await screen.orientation.lock('landscape')
+            } catch (err) {
+              console.log('Screen orientation lock not supported:', err)
+            }
+          }
+        } catch (err) {
+          console.log('Fullscreen request failed:', err)
+        }
+      }
+    }
+
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', handleOrientationChange)
+    window.matchMedia('(orientation: landscape)').addEventListener('change', handleOrientationChange)
+    
+    // Check initial orientation
+    handleOrientationChange()
+
+    // Listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange)
+      window.matchMedia('(orientation: landscape)').removeEventListener('change', handleOrientationChange)
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+    }
+  }, [isMobile, variant])
+
   // Handle user interaction to show overlay
   const handleUserInteraction = () => {
     if (isMobile && isPlaying) {
@@ -261,7 +331,7 @@ export default function UnifiedVideoPlayer({
   }
 
   const playerContent = (
-    <div className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full h-full">
       {/* Video Player */}
       <div 
         className={`video-player-container w-full h-full ${className}`}

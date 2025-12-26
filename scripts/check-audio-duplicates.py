@@ -23,3 +23,4 @@ for k, v in sorted(dups.items())[:20]:
         print(f'    - ID: {aa["id"][:8]}... | thumbnail: {has_thumb} | s3key: {aa.get("s3key", "")[:50]}')
 
 
+

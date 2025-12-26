@@ -132,3 +132,4 @@ Après avoir appliqué les corrections :
 - ✅ `scripts/verify-s3-headers-access.js` - Script de vérification
 - ✅ `scripts/update-s3-headers-policy.js` - Script de mise à jour de la policy
 
+

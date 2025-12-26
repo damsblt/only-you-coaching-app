@@ -108,3 +108,4 @@ L'architecture actuelle avec **une seule table et un attribut `videoType`** est 
 Aucun changement de structure n'est nécessaire. Il suffit de s'assurer que les vidéos sont synchronisées avec le bon `videoType`.
 
 
+
