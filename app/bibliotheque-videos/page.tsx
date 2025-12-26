@@ -52,18 +52,19 @@ export default function VideosPage() {
   const [loadingVideoId, setLoadingVideoId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [shouldScrollToVideo, setShouldScrollToVideo] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Use the auth context
   const { user, loading: authLoading } = useSimpleAuth()
 
   // Use the useVideos hook to fetch data
-  // Fetch both MUSCLE_GROUPS and PROGRAMMES videos for the library
+  // Fetch only MUSCLE_GROUPS videos for the library
   const { videos, isLoading: loading, error } = useVideos({
     muscleGroup: selectedMuscleGroup,
     difficulty: "all",
     search: searchTerm,
-    videoType: undefined // undefined = fetch all video types
+    videoType: "muscle-groups" // Only fetch MUSCLE_GROUPS videos
   })
 
   const muscleGroups = ["all", "Abdos", "Bande", "Biceps", "Cardio", "Dos", "Fessiers et jambes", "Machine", "Pectoraux", "Streching", "Triceps"]
@@ -121,12 +122,17 @@ export default function VideosPage() {
   useEffect(() => {
     if (viewMode === 'feed') {
       document.body.classList.add('hide-app-chrome')
+      // Prevent scrolling when entering feed mode
+      document.body.style.overflow = 'hidden'
     } else {
       document.body.classList.remove('hide-app-chrome')
+      // Restore scrolling when leaving feed mode
+      document.body.style.overflow = ''
     }
 
     return () => {
       document.body.classList.remove('hide-app-chrome')
+      document.body.style.overflow = ''
     }
   }, [viewMode])
 
@@ -249,23 +255,32 @@ export default function VideosPage() {
 
   // Handle closing feed view - return to grid and scroll to current video
   const handleCloseFeed = () => {
-    // Switch back to grid view
+    // Switch back to grid view and trigger scroll
     setViewMode('grid')
-    
-    // Scroll to the video that was being watched after a small delay
-    // to ensure the grid is rendered
-    setTimeout(() => {
+    setShouldScrollToVideo(true)
+  }
+
+  // Scroll to video when returning from feed view
+  useEffect(() => {
+    if (shouldScrollToVideo && viewMode === 'grid' && filteredVideos.length > 0) {
       const currentVideo = filteredVideos[currentVideoIndex]
-      if (currentVideo) {
-        // Find the video card element by data attribute
+      if (!currentVideo) {
+        setShouldScrollToVideo(false)
+        return
+      }
+
+      // Function to scroll to the video instantly
+      const scrollToVideo = () => {
+        // Try to find the video card element
         const videoCard = document.querySelector(`[data-video-id="${currentVideo.id}"]`) as HTMLElement
         if (videoCard) {
-          // Scroll to the video card with smooth behavior
-          videoCard.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
-          })
+          // Calculate the position of the video card
+          const rect = videoCard.getBoundingClientRect()
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+          const targetPosition = rect.top + scrollTop - (window.innerHeight / 2) + (rect.height / 2)
+          
+          // Scroll instantly using direct assignment (fastest method)
+          window.scrollTo(0, targetPosition)
           
           // Add a highlight effect temporarily
           videoCard.style.transition = 'all 0.5s ease-in-out'
@@ -276,10 +291,46 @@ export default function VideosPage() {
               videoCard.style.transition = ''
             }, 500)
           }, 2000)
+          
+          // Reset the flag
+          setShouldScrollToVideo(false)
+          return true
         }
+        return false
       }
-    }, 100)
-  }
+
+      // Give DOM enough time to render - try with increasing delays
+      const tryScroll = () => {
+        if (scrollToVideo()) {
+          return // Success!
+        }
+        // Try again after a delay
+        setTimeout(() => {
+          if (!scrollToVideo()) {
+            // Try one more time
+            setTimeout(() => {
+              if (!scrollToVideo()) {
+                // Final attempt
+                setTimeout(() => {
+                  scrollToVideo()
+                  setShouldScrollToVideo(false)
+                }, 100)
+              }
+            }, 150)
+          }
+        }, 200)
+      }
+
+      // Start after a delay to ensure DOM is fully ready
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            tryScroll()
+          })
+        })
+      }, 150)
+    }
+  }, [shouldScrollToVideo, viewMode, currentVideoIndex, filteredVideos])
 
   // Handle video play/pause (for feed mode)
   const handleVideoClick = async (videoId: string) => {
