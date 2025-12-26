@@ -220,3 +220,5 @@ return NextResponse.json(data, {
 - Les URLs publiques S3 fonctionnent maintenant correctement
 
 
+
+
