@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { Recipe } from '@/types/cms'
-import { getSignedVideoUrl } from '@/lib/s3'
+import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
 
 // Cache configuration - revalidate every 60 seconds
 export const revalidate = 60
@@ -9,7 +9,7 @@ export const revalidate = 60
 // Columns needed for recipe display - optimize query by selecting only needed fields
 const RECIPE_COLUMNS = 'id,title,slug,description,image,images,pdf_url,category,prep_time,servings,is_vegetarian,difficulty,tags,ingredients,instructions,nutrition_info,is_premium,is_published,published_at,updated_at'
 
-// Helper function to get signed URL for S3 images
+// Helper function to get signed URL for S3 images (with fallback to public URL)
 async function getSignedImageUrl(url: string): Promise<string> {
   try {
     const imageUrl = new URL(url)
@@ -20,14 +20,36 @@ async function getSignedImageUrl(url: string): Promise<string> {
         const decodedPath = decodeURIComponent(encodedPath)
         const s3Key = decodedPath.substring(1) // Remove leading slash
 
-        // Generate signed URL (valid for 24 hours)
-        const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+        // Check AWS credentials
+        const hasAwsCredentials = !!(
+          process.env.AWS_ACCESS_KEY_ID && 
+          process.env.AWS_SECRET_ACCESS_KEY
+        )
 
-        if (signedUrlResult.success) {
-          return signedUrlResult.url
+        if (hasAwsCredentials) {
+          // Generate signed URL (valid for 24 hours)
+          const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+
+          if (signedUrlResult.success && signedUrlResult.url) {
+            return signedUrlResult.url
+          }
         }
+
+        // Fallback to public URL if credentials missing or signed URL generation fails
+        const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
+        return getPublicUrl(encodedKey)
       } catch (urlError) {
         console.error('Error processing image URL:', urlError)
+        // Fallback: try to extract S3 key and return public URL
+        try {
+          const encodedPath = imageUrl.pathname
+          const decodedPath = decodeURIComponent(encodedPath)
+          const s3Key = decodedPath.substring(1)
+          const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
+          return getPublicUrl(encodedKey)
+        } catch {
+          return url
+        }
       }
     }
   } catch (error) {

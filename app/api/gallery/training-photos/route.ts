@@ -25,24 +25,24 @@ export async function GET(request: NextRequest) {
     )
     
     if (!hasAwsCredentials) {
-      console.error('⚠️ AWS credentials not configured. Cannot fetch training photos.')
-      return NextResponse.json(
-        { 
-          error: 'AWS credentials not configured',
-          photos: [] 
-        },
-        { status: 500 }
-      )
+      console.warn('⚠️ AWS credentials not configured. Cannot list S3 objects. Returning empty array.')
+      // Return empty array if we can't list objects, but don't fail completely
+      return NextResponse.json({ photos: [] })
     }
 
     // List all objects in Photos/Training/ folder
-    const command = new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
-      Prefix: 'Photos/Training/',
-      MaxKeys: 100,
-    })
-
-    const response = await s3Client.send(command)
+    let response
+    try {
+      const command = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        Prefix: 'Photos/Training/',
+        MaxKeys: 100,
+      })
+      response = await s3Client.send(command)
+    } catch (error) {
+      console.error('❌ Error listing S3 objects:', error)
+      return NextResponse.json({ photos: [] })
+    }
     
     if (!response.Contents || response.Contents.length === 0) {
       console.log('No photos found in Photos/Training/ folder')
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       try {
         // Try to generate signed URL first (valid for 7 days)
         const signedUrlResult = await getSignedVideoUrl(s3Key, 604800)
-        if (signedUrlResult.success) {
+        if (signedUrlResult.success && signedUrlResult.url) {
           const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
           photoUrls.push(cleanUrl)
         } else {
