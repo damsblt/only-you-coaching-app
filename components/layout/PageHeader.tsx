@@ -155,7 +155,7 @@ export default function PageHeader({
             preload="metadata"
             className="w-full h-full object-cover"
             style={{
-              objectPosition: isMobile ? '65% center' : 'center'
+              objectPosition: isMobile ? '35% center' : 'center'
             }}
             onError={(e) => {
               console.error('Video error:', e)

@@ -37,6 +37,7 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
 
   return (
     <div
+      data-video-id={video.id}
       className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
