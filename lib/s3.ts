@@ -1,10 +1,16 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
+// Helper function to clean environment variables (remove newlines, trim whitespace)
+function cleanEnvVar(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  return value.trim().replace(/\n/g, '').replace(/\r/g, '').replace(/\s+/g, ' ')
+}
+
 // S3 Configuration with environment validation
-const awsRegion = process.env.AWS_REGION || 'eu-north-1'
-const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID
-const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+const awsRegion = cleanEnvVar(process.env.AWS_REGION) || 'eu-north-1'
+const awsAccessKeyId = cleanEnvVar(process.env.AWS_ACCESS_KEY_ID)
+const awsSecretAccessKey = cleanEnvVar(process.env.AWS_SECRET_ACCESS_KEY)
 
 // Validate AWS credentials
 if (!awsAccessKeyId || !awsSecretAccessKey) {
@@ -21,7 +27,7 @@ const s3Client = new S3Client({
 })
 
 // Use S3 Access Point instead of direct bucket
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
+const BUCKET_NAME = cleanEnvVar(process.env.AWS_S3_BUCKET_NAME) || 'only-you-coaching'
 const ACCESS_POINT_ALIAS = process.env.AWS_S3_ACCESS_POINT_ALIAS || 's3-access-56ig858wntepzkh8ssrxmmjor4psgeun1a-s3alias'
 
 // Upload a file to S3
@@ -66,7 +72,16 @@ export async function getSignedVideoUrl(key: string, expiresIn: number = 3600) {
   try {
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn })
     // Clean the URL to remove any potential newlines or whitespace issues
-    const cleanUrl = signedUrl.trim().replace(/\n/g, '').replace(/\r/g, '')
+    // Also decode and re-encode to fix any encoding issues
+    let cleanUrl = signedUrl.trim().replace(/\n/g, '').replace(/\r/g, '').replace(/\s+/g, '')
+    // Fix any double-encoded or malformed parts
+    try {
+      const urlObj = new URL(cleanUrl)
+      // Reconstruct the URL properly
+      cleanUrl = `${urlObj.protocol}//${urlObj.host}${urlObj.pathname}${urlObj.search}`
+    } catch {
+      // If URL parsing fails, use the cleaned string as-is
+    }
     return {
       success: true,
       url: cleanUrl,
