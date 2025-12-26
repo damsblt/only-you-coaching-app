@@ -1,105 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-
-// Define what each subscription plan includes
-const PLAN_FEATURES = {
-  essentiel: {
-    name: 'Essentiel',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: true,
-      customPrograms: 3,
-      coachingCalls: 1,
-      emailSupport: true,
-      smsSupport: true,
-      audioLibrary: false,
-      nutritionAdvice: false,
-      progressTracking: false,
-      homeVisit: false,
-    }
-  },
-  avance: {
-    name: 'Avancé',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: true,
-      customPrograms: 3,
-      coachingCalls: 1,
-      emailSupport: true,
-      smsSupport: true,
-      audioLibrary: true,
-      nutritionAdvice: true,
-      progressTracking: true,
-      homeVisit: false,
-    }
-  },
-  premium: {
-    name: 'Premium',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: true,
-      customPrograms: 3,
-      coachingCalls: 1,
-      emailSupport: true,
-      smsSupport: true,
-      audioLibrary: true,
-      nutritionAdvice: true,
-      progressTracking: true,
-      homeVisit: 1,
-    }
-  },
-  starter: {
-    name: 'Starter',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: false,
-      customPrograms: 0,
-      coachingCalls: 0,
-      emailSupport: false,
-      smsSupport: false,
-      audioLibrary: true,
-      nutritionAdvice: false,
-      progressTracking: false,
-      homeVisit: false,
-    }
-  },
-  pro: {
-    name: 'Pro',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: true,
-      customPrograms: 0,
-      coachingCalls: 0,
-      emailSupport: false,
-      smsSupport: false,
-      audioLibrary: true,
-      nutritionAdvice: false,
-      progressTracking: false,
-      homeVisit: false,
-    }
-  },
-  expert: {
-    name: 'Expert',
-    features: {
-      videos: true,
-      recipes: true,
-      predefinedPrograms: true,
-      customPrograms: 0,
-      coachingCalls: 0,
-      emailSupport: false,
-      smsSupport: false,
-      audioLibrary: true,
-      nutritionAdvice: false,
-      progressTracking: false,
-      homeVisit: false,
-    }
-  }
-}
+import { PLAN_FEATURES } from '@/lib/access-control'
 
 function getPlanIdFromPriceId(priceId: string): string {
   const priceIdLower = priceId.toLowerCase()
@@ -210,20 +111,77 @@ export async function GET(request: NextRequest) {
 
     // Chercher les abonnements actifs
     const now = new Date().toISOString()
-    const { data: subscriptions, error: subError } = await db
-      .from('subscriptions')
-      .select('*')
-      .eq('userId', user.id)
-      .eq('status', 'ACTIVE')
-      .gte('stripeCurrentPeriodEnd', now)
-      .execute()
-
-    if (subError) {
-      console.error('❌ Erreur lors de la recherche des abonnements:', subError)
-      return NextResponse.json({ error: subError.message || 'Database error' }, { status: 500 })
+    // Utiliser SQL direct pour éviter les problèmes avec le QueryBuilder
+    const { sql } = await import('@/lib/db')
+    
+    let subscriptions: any[] = []
+    if (sql) {
+      subscriptions = await (sql as any)`
+        SELECT * FROM subscriptions 
+        WHERE "userId" = ${user.id}::uuid
+        AND status = 'active'
+        AND "currentPeriodEnd" >= ${now}::timestamp
+        ORDER BY created_at DESC
+      `
     }
 
     console.log('📋 Abonnements actifs trouvés:', subscriptions?.length || 0)
+    
+    // Vérifier si l'utilisateur a un abonnement full_access
+    if (subscriptions && subscriptions.length > 0) {
+      const activeSubscription = subscriptions[0]
+      const planId = activeSubscription.planId || activeSubscription.plan_id || activeSubscription['planId']
+      
+      console.log('📋 Plan ID trouvé:', planId)
+      
+      // Si c'est un abonnement full_access, donner accès intégral
+      if (planId === 'full_access') {
+        console.log('✅ Abonnement full_access détecté - accord de l\'accès intégral')
+        return NextResponse.json({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          },
+          subscriptions: subscriptions,
+          planId: 'full_access',
+          features: PLAN_FEATURES.full_access.features,
+          hasAccess: true,
+          isFullAccess: true
+        })
+      }
+      
+      // Pour les autres plans, utiliser la logique normale
+      const planFeatures = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES]
+      
+      if (planFeatures && planFeatures.features) {
+        return NextResponse.json({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          },
+          subscriptions: subscriptions,
+          planId: planId,
+          features: planFeatures.features,
+          hasAccess: true
+        })
+      } else {
+        console.warn(`⚠️ Plan non reconnu: ${planId}, utilisation du plan par défaut`)
+        // Si le plan n'est pas reconnu, utiliser le plan essentiel par défaut
+        return NextResponse.json({
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name
+          },
+          subscriptions: subscriptions,
+          planId: 'essentiel',
+          features: PLAN_FEATURES.essentiel.features,
+          hasAccess: true
+        })
+      }
+    }
 
     // Si pas d'abonnement actif, vérifier le planid dans la table users
     if (!subscriptions || subscriptions.length === 0) {
@@ -236,7 +194,7 @@ export async function GET(request: NextRequest) {
         // Valider que le planid existe dans PLAN_FEATURES
         const planFeatures = PLAN_FEATURES[userPlanId as keyof typeof PLAN_FEATURES]
         
-        if (planFeatures) {
+        if (planFeatures && planFeatures.features) {
           console.log('✅ Plan valide, accord de l\'accès basé sur planid')
           return NextResponse.json({
             user: {
@@ -251,7 +209,7 @@ export async function GET(request: NextRequest) {
             source: 'planid'
           })
         } else {
-          console.log('⚠️ Planid invalide:', userPlanId)
+          console.log('⚠️ Planid invalide ou features manquantes:', userPlanId)
         }
       }
       
@@ -310,14 +268,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Déterminer le plan à partir du price ID
-    const subscription = subscriptions[0]
-    const planId = getPlanIdFromPriceId(subscription.stripePriceId || '')
-    const planFeatures = PLAN_FEATURES[planId as keyof typeof PLAN_FEATURES]
-
-    console.log('📊 Plan déterminé:', planId)
-    console.log('🎯 Fonctionnalités:', planFeatures?.features)
-
+    // Si on arrive ici, il y a un abonnement mais le planId n'a pas été reconnu dans le bloc précédent
+    // Cela ne devrait normalement pas arriver, mais on gère le cas
+    console.warn('⚠️ Abonnement trouvé mais planId non reconnu dans le traitement précédent')
     return NextResponse.json({
       user: {
         id: user.id,
@@ -325,8 +278,8 @@ export async function GET(request: NextRequest) {
         name: user.name
       },
       subscriptions: subscriptions,
-      planId: planId,
-      features: planFeatures?.features || PLAN_FEATURES.starter.features,
+      planId: 'essentiel',
+      features: PLAN_FEATURES.essentiel.features,
       hasAccess: true
     })
 

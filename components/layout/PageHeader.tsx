@@ -19,6 +19,66 @@ const heightClasses = {
   fullScreen: 'h-screen'
 }
 
+// Cache global pour les URLs vidéo S3 (valide 1 heure)
+// Utiliser le cache global partagé avec le préchargeur
+declare global {
+  var s3VideoCache: Map<string, { url: string; timestamp: number }> | undefined
+}
+
+// Initialiser le cache global s'il n'existe pas
+if (typeof window !== 'undefined' && !globalThis.s3VideoCache) {
+  globalThis.s3VideoCache = new Map()
+}
+
+const s3VideoCache = typeof window !== 'undefined' && globalThis.s3VideoCache 
+  ? globalThis.s3VideoCache 
+  : new Map<string, { url: string; timestamp: number }>()
+
+const VIDEO_CACHE_DURATION = 60 * 60 * 1000 // 1 heure
+
+async function fetchS3VideoUrl(videoS3Key: string): Promise<string | null> {
+  // Utiliser le cache global partagé
+  const cache = typeof window !== 'undefined' && globalThis.s3VideoCache 
+    ? globalThis.s3VideoCache 
+    : s3VideoCache
+  
+  // Vérifier le cache
+  const cached = cache.get(videoS3Key)
+  if (cached && Date.now() - cached.timestamp < VIDEO_CACHE_DURATION) {
+    return cached.url
+  }
+
+  try {
+    const baseUrl = typeof window !== 'undefined' 
+      ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
+      : (process.env.NEXT_PUBLIC_SITE_URL || '')
+    
+    const apiUrl = `${baseUrl}/api/videos/s3-video?key=${encodeURIComponent(videoS3Key)}`
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Utiliser le cache HTTP pour accélérer
+      cache: 'default' // Utilise le cache du navigateur
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.url) {
+        // Mettre en cache global
+        cache.set(videoS3Key, { url: data.url, timestamp: Date.now() })
+        return data.url
+      }
+    }
+    return null
+  } catch (error) {
+    console.error('Error fetching video URL:', error)
+    return null
+  }
+}
+
 export default function PageHeader({ 
   imageS3Key, 
   videoS3Key,
@@ -33,38 +93,39 @@ export default function PageHeader({
   // Fetch video URL if videoS3Key is provided
   useEffect(() => {
     if (videoS3Key) {
-      const fetchVideoUrl = async () => {
-        try {
-          setVideoLoading(true)
-          // Use environment variable in production, fallback to window.location.origin
-          const baseUrl = typeof window !== 'undefined' 
-            ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
-            : (process.env.NEXT_PUBLIC_SITE_URL || '')
-          
-          const apiUrl = `${baseUrl}/api/videos/s3-video?key=${encodeURIComponent(videoS3Key)}`
-          
-          const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            cache: 'no-store',
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.url) {
-              setVideoUrl(data.url)
-            }
+      let cancelled = false
+
+      const loadVideo = async () => {
+        // Utiliser le cache global partagé
+        const cache = typeof window !== 'undefined' && globalThis.s3VideoCache 
+          ? globalThis.s3VideoCache 
+          : s3VideoCache
+        
+        // Vérifier le cache immédiatement
+        const cached = cache.get(videoS3Key)
+        if (cached && Date.now() - cached.timestamp < VIDEO_CACHE_DURATION) {
+          if (!cancelled) {
+            setVideoUrl(cached.url)
+            setVideoLoading(false)
+            return
           }
-        } catch (error) {
-          console.error('Error fetching video URL:', error)
-        } finally {
+        }
+
+        // Sinon, fetch avec cache HTTP
+        const url = await fetchS3VideoUrl(videoS3Key)
+        if (!cancelled) {
+          setVideoUrl(url)
           setVideoLoading(false)
         }
       }
 
-      fetchVideoUrl()
+      loadVideo()
+
+      return () => {
+        cancelled = true
+      }
+    } else {
+      setVideoLoading(false)
     }
   }, [videoS3Key])
 

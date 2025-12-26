@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       const { data: updatedSubscription, error: updateError } = await db
         .from('subscriptions')
         .update({
-          status: 'ACTIVE',
+          status: 'active',
           planId: planId,
           stripePriceId: priceId,
           stripeCurrentPeriodEnd: new Date(subscription.current_period_end * 1000).toISOString(),
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         .from('subscriptions')
         .insert({
           userId: user.id,
-          status: 'ACTIVE',
+          status: 'active',
           plan: 'MONTHLY', // Type d'abonnement (monthly/yearly/lifetime)
           planId: planId, // Ajouter le planId
           stripePriceId: priceId,

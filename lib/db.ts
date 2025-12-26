@@ -203,9 +203,15 @@ class QueryBuilder {
       if (this.selectFields !== '*') {
         const columns = this.selectFields.split(',').map(col => {
           const trimmed = col.trim()
+          // Don't quote if it's already quoted or if it's a function call
           if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
             return trimmed
           }
+          // Check if it's a function call (like COUNT(*))
+          if (trimmed.includes('(') || trimmed.includes(')')) {
+            return trimmed
+          }
+          // Quote the column name
           return `"${trimmed}"`
         })
         selectClause = columns.join(', ')
