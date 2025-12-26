@@ -247,6 +247,40 @@ export default function VideosPage() {
     }
   }
 
+  // Handle closing feed view - return to grid and scroll to current video
+  const handleCloseFeed = () => {
+    // Switch back to grid view
+    setViewMode('grid')
+    
+    // Scroll to the video that was being watched after a small delay
+    // to ensure the grid is rendered
+    setTimeout(() => {
+      const currentVideo = filteredVideos[currentVideoIndex]
+      if (currentVideo) {
+        // Find the video card element by data attribute
+        const videoCard = document.querySelector(`[data-video-id="${currentVideo.id}"]`) as HTMLElement
+        if (videoCard) {
+          // Scroll to the video card with smooth behavior
+          videoCard.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center',
+            inline: 'nearest'
+          })
+          
+          // Add a highlight effect temporarily
+          videoCard.style.transition = 'all 0.5s ease-in-out'
+          videoCard.style.boxShadow = '0 0 0 4px rgba(168, 85, 247, 0.5)'
+          setTimeout(() => {
+            videoCard.style.boxShadow = ''
+            setTimeout(() => {
+              videoCard.style.transition = ''
+            }, 500)
+          }, 2000)
+        }
+      }
+    }, 100)
+  }
+
   // Handle video play/pause (for feed mode)
   const handleVideoClick = async (videoId: string) => {
     const videoElement = document.querySelector(`video[data-video-id="${videoId}"]`) as HTMLVideoElement
@@ -383,7 +417,7 @@ export default function VideosPage() {
         <div className="h-screen w-screen bg-black relative overflow-hidden hide-app-chrome" style={{ position: 'fixed', top: 0, left: 0 }}>
           <ComputerStreamPlayer
             video={filteredVideos[currentVideoIndex]}
-            onClose={() => setViewMode('grid')}
+            onClose={handleCloseFeed}
             onNext={currentVideoIndex < filteredVideos.length - 1 ? goToNext : undefined}
             onPrevious={currentVideoIndex > 0 ? goToPrevious : undefined}
             currentIndex={currentVideoIndex}
