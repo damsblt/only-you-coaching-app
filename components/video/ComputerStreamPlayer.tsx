@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Settings } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Settings, ChevronUp, ChevronDown } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 
 interface Video {
@@ -72,6 +72,8 @@ export default function ComputerStreamPlayer({
   const [touchEndX, setTouchEndX] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
   const [swipeProgress, setSwipeProgress] = useState(0)
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true)
+  const [hasSwiped, setHasSwiped] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Minimum swipe distance to trigger navigation (in pixels)
@@ -235,56 +237,100 @@ export default function ComputerStreamPlayer({
   }
 
   const toggleFullscreen = async () => {
-    // On mobile, always try to lock orientation to landscape first
-    if (isMobile && screen.orientation && screen.orientation.lock) {
-      try {
-        await screen.orientation.lock('landscape')
-        // If orientation lock succeeds, it will encourage user to rotate phone
-      } catch (err) {
-        console.log('Screen orientation lock not supported or failed:', err)
-      }
-    }
-
-    if (!document.fullscreenElement) {
-      // Enter fullscreen
-      try {
-        if (containerRef.current?.requestFullscreen) {
-          await containerRef.current.requestFullscreen()
-        } else if (videoRef.current?.requestFullscreen) {
-          await videoRef.current.requestFullscreen()
-        } else if ((containerRef.current as any)?.webkitRequestFullscreen) {
-          await (containerRef.current as any).webkitRequestFullscreen()
-        } else if ((videoRef.current as any)?.webkitRequestFullscreen) {
-          await (videoRef.current as any).webkitRequestFullscreen()
+    if (isMobile) {
+      // On mobile, handle fullscreen with orientation lock
+      if (!document.fullscreenElement) {
+        try {
+          // Step 1: Lock orientation to landscape first
+          if (screen.orientation && screen.orientation.lock) {
+            try {
+              await screen.orientation.lock('landscape')
+            } catch (err) {
+              console.log('Screen orientation lock failed:', err)
+            }
+          }
+          
+          // Step 2: Enter fullscreen to hide browser UI
+          const elementToFullscreen = containerRef.current || videoRef.current
+          if (elementToFullscreen) {
+            if (elementToFullscreen.requestFullscreen) {
+              await elementToFullscreen.requestFullscreen()
+            } else if ((elementToFullscreen as any).webkitRequestFullscreen) {
+              await (elementToFullscreen as any).webkitRequestFullscreen()
+            } else if ((elementToFullscreen as any).mozRequestFullScreen) {
+              await (elementToFullscreen as any).mozRequestFullScreen()
+            } else if ((elementToFullscreen as any).msRequestFullscreen) {
+              await (elementToFullscreen as any).msRequestFullscreen()
+            }
+          }
+          
+          // Step 3: Hide browser UI by scrolling to top (triggers UI hide on mobile)
+          window.scrollTo(0, 0)
+          
+          // Step 4: Force viewport to use full screen
+          const viewport = document.querySelector('meta[name="viewport"]')
+          if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
+          }
+          
+          setIsFullscreen(true)
+        } catch (err) {
+          console.log('Mobile fullscreen failed:', err)
         }
-        setIsFullscreen(true)
-      } catch (err) {
-        console.log('Fullscreen request failed:', err)
-        // Even if fullscreen fails, orientation lock should still work
+      } else {
+        // Exit fullscreen on mobile
+        try {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen()
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen()
+          } else if ((document as any).msExitFullscreen) {
+            await (document as any).msExitFullscreen()
+          }
+          
+          // Unlock orientation
+          if (screen.orientation && screen.orientation.unlock) {
+            try {
+              screen.orientation.unlock()
+            } catch (err) {
+              console.log('Screen orientation unlock failed:', err)
+            }
+          }
+          
+          setIsFullscreen(false)
+        } catch (err) {
+          console.log('Exit fullscreen failed:', err)
+        }
       }
     } else {
-      // Exit fullscreen
-      try {
-        if (document.exitFullscreen) {
-          await document.exitFullscreen()
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen()
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen()
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen()
-        }
-        setIsFullscreen(false)
-      } catch (err) {
-        console.log('Exit fullscreen failed:', err)
-      }
-      
-      // On mobile, unlock orientation when exiting fullscreen
-      if (isMobile && screen.orientation && screen.orientation.unlock) {
+      // Desktop fullscreen behavior
+      if (!document.fullscreenElement) {
         try {
-          screen.orientation.unlock()
+          if (containerRef.current?.requestFullscreen) {
+            await containerRef.current.requestFullscreen()
+          } else if (videoRef.current?.requestFullscreen) {
+            await videoRef.current.requestFullscreen()
+          }
+          setIsFullscreen(true)
         } catch (err) {
-          console.log('Screen orientation unlock failed:', err)
+          console.log('Fullscreen request failed:', err)
+        }
+      } else {
+        try {
+          if (document.exitFullscreen) {
+            await document.exitFullscreen()
+          } else if ((document as any).webkitExitFullscreen) {
+            await (document as any).webkitExitFullscreen()
+          } else if ((document as any).mozCancelFullScreen) {
+            await (document as any).mozCancelFullScreen()
+          } else if ((document as any).msExitFullscreen) {
+            await (document as any).msExitFullscreen()
+          }
+          setIsFullscreen(false)
+        } catch (err) {
+          console.log('Exit fullscreen failed:', err)
         }
       }
     }
@@ -355,6 +401,12 @@ export default function ComputerStreamPlayer({
         // Swipe down - previous video
         onPrevious()
       }
+      
+      // Hide scroll indicator after first swipe
+      if (!hasSwiped) {
+        setHasSwiped(true)
+        setShowScrollIndicator(false)
+      }
     }
     
     setIsSwiping(false)
@@ -374,6 +426,25 @@ export default function ComputerStreamPlayer({
       }
     }
   }, [isMobile])
+
+  // Hide scroll indicator after 5 seconds or after first swipe
+  useEffect(() => {
+    if (showScrollIndicator && isMobile) {
+      const timer = setTimeout(() => {
+        setShowScrollIndicator(false)
+      }, 5000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [showScrollIndicator, isMobile])
+
+  // Hide indicator when video changes (user navigated)
+  useEffect(() => {
+    if (currentIndex !== undefined && currentIndex > 0) {
+      setShowScrollIndicator(false)
+      setHasSwiped(true)
+    }
+  }, [currentIndex])
 
   if (error) {
     return (
@@ -407,6 +478,28 @@ export default function ComputerStreamPlayer({
     )
   }
 
+  // Apply fullscreen styles on mobile when in fullscreen
+  useEffect(() => {
+    if (isMobile && isFullscreen) {
+      // Force full viewport on mobile
+      document.documentElement.style.height = '100%'
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.height = '100%'
+      document.body.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+      
+      return () => {
+        document.documentElement.style.height = ''
+        document.documentElement.style.overflow = ''
+        document.body.style.height = ''
+        document.body.style.overflow = ''
+        document.body.style.position = ''
+        document.body.style.width = ''
+      }
+    }
+  }, [isMobile, isFullscreen])
+
   return (
     <div 
       className="fixed inset-0 bg-black z-50 flex"
@@ -414,7 +507,19 @@ export default function ComputerStreamPlayer({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{ touchAction: isMobile ? 'pan-y' : 'auto' }}
+      style={{ 
+        touchAction: isMobile ? 'pan-y' : 'auto',
+        ...(isMobile && isFullscreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          height: '100dvh', // Dynamic viewport height
+        } : {})
+      }}
     >
       {/* Main Video Area - Based on Wireframe */}
       <div className="flex-1 relative">
@@ -579,6 +684,20 @@ export default function ComputerStreamPlayer({
             >
               <SkipForward className="w-6 h-6" />
             </button>
+          )}
+
+          {/* Scroll Indicator - TikTok style (mobile only, first video) */}
+          {isMobile && showScrollIndicator && !hasSwiped && currentIndex === 0 && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 pointer-events-none">
+              <div className="flex flex-col items-center gap-2 bg-black/50 backdrop-blur-sm rounded-full p-3 animate-bounce">
+                <ChevronUp className="w-5 h-5 text-white animate-pulse" />
+                <div className="w-1 h-8 bg-white/60 rounded-full"></div>
+                <ChevronDown className="w-5 h-5 text-white animate-pulse" />
+              </div>
+              <div className="absolute right-16 top-1/2 transform -translate-y-1/2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 whitespace-nowrap animate-fade-in">
+                <p className="text-white text-sm font-medium">Glissez pour naviguer</p>
+              </div>
+            </div>
           )}
 
           {/* Swipe Indicator - Mobile only */}
