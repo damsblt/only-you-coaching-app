@@ -194,9 +194,21 @@ function SignupForm() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-red-300 focus:ring-red-500'
+                    : confirmPassword && password === confirmPassword
+                    ? 'border-green-300 focus:ring-green-500'
+                    : 'border-gray-300 focus:ring-primary-500'
+                }`}
                 placeholder="••••••••"
               />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">Les mots de passe ne correspondent pas</p>
+              )}
+              {confirmPassword && password === confirmPassword && password.length > 0 && (
+                <p className="mt-1 text-sm text-green-600">✓ Les mots de passe correspondent</p>
+              )}
             </div>
 
             <div className="flex items-center">

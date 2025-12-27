@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/Button'
 function SignInForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn, signUp } = useSimpleAuth()
+  const { signIn } = useSimpleAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -57,58 +56,36 @@ function SignInForm() {
     setError('')
 
     try {
-      if (isSignUp) {
-        // Sign up
-        const planId = searchParams.get('planId')
-        const { success, error: signUpError } = await signUp(email, password, email.split('@')[0], planId || undefined)
-        if (success) {
-          // Wait a moment for the auth state to be properly set
-          setTimeout(() => {
-            const callbackUrl = searchParams.get('callbackUrl')
-            
-            if (planId && callbackUrl) {
-              // New user with planId - redirect to checkout
-              console.log('New user with planId, redirecting to checkout:', `/checkout?planId=${planId}`)
-              router.push(`/checkout?planId=${planId}`)
-            } else {
-              setError('Compte créé avec succès! Vous pouvez maintenant vous connecter.')
-            }
-          }, 500) // Small delay to ensure auth state is updated
-        } else {
-          setError(signUpError || 'Erreur lors de la création du compte')
-        }
+      // Sign in only
+      const { success, error: signInError } = await signIn(email, password)
+      if (success) {
+        // Wait a moment for the auth state to be properly set
+        setTimeout(() => {
+          // Smart redirect based on where user came from
+          const callbackUrl = searchParams.get('callbackUrl')
+          const planId = searchParams.get('planId')
+          const from = searchParams.get('from')
+          const returnUrl = getReturnUrl() // Récupérer l'URL sauvegardée
+          
+          if (planId && callbackUrl) {
+            // Flow 2: Existing user with planId - redirect to subscriptions with auto-checkout
+            console.log('Flow 2: Existing user with planId, redirecting to:', `${callbackUrl}?planId=${planId}&autoCheckout=true`)
+            router.push(`${callbackUrl}?planId=${planId}&autoCheckout=true`)
+          } else if (callbackUrl) {
+            console.log('Redirecting to callback URL:', callbackUrl)
+            router.push(callbackUrl)
+          } else if (returnUrl) {
+            // Utiliser l'URL sauvegardée si disponible
+            console.log('Redirecting to saved return URL:', returnUrl)
+            router.push(returnUrl)
+          } else if (from === 'admin') {
+            router.push('/admin/users')
+          } else {
+            router.push('/souscriptions/personnalise')
+          }
+        }, 500) // Small delay to ensure auth state is updated
       } else {
-        // Sign in
-        const { success, error: signInError } = await signIn(email, password)
-        if (success) {
-          // Wait a moment for the auth state to be properly set
-          setTimeout(() => {
-            // Smart redirect based on where user came from
-            const callbackUrl = searchParams.get('callbackUrl')
-            const planId = searchParams.get('planId')
-            const from = searchParams.get('from')
-            const returnUrl = getReturnUrl() // Récupérer l'URL sauvegardée
-            
-            if (planId && callbackUrl) {
-              // Flow 2: Existing user with planId - redirect to subscriptions with auto-checkout
-              console.log('Flow 2: Existing user with planId, redirecting to:', `${callbackUrl}?planId=${planId}&autoCheckout=true`)
-              router.push(`${callbackUrl}?planId=${planId}&autoCheckout=true`)
-            } else if (callbackUrl) {
-              console.log('Redirecting to callback URL:', callbackUrl)
-              router.push(callbackUrl)
-            } else if (returnUrl) {
-              // Utiliser l'URL sauvegardée si disponible
-              console.log('Redirecting to saved return URL:', returnUrl)
-              router.push(returnUrl)
-            } else if (from === 'admin') {
-              router.push('/admin/users')
-            } else {
-              router.push('/souscriptions/personnalise')
-            }
-          }, 500) // Small delay to ensure auth state is updated
-        } else {
-          setError(signInError || 'Erreur lors de la connexion')
-        }
+        setError(signInError || 'Erreur lors de la connexion')
       }
     } catch (err: any) {
       setError(err.message)
@@ -122,7 +99,7 @@ function SignInForm() {
       <div className="max-w-md mx-auto px-4">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <h1 className="text-3xl font-bold text-center text-gray-900 mb-6">
-            {isSignUp ? 'Créer un compte' : 'Connexion'}
+            Connexion
           </h1>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -156,6 +133,7 @@ function SignInForm() {
               />
             </div>
 
+
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm" style={{ color: error.includes('succès') ? '#39334D' : '#dc2626' }}>
                 {error}
@@ -170,18 +148,20 @@ function SignInForm() {
               className="hover:opacity-90"
               style={{ backgroundColor: '#39334D' }}
             >
-              {loading ? 'Chargement...' : (isSignUp ? 'Créer le compte' : 'Se connecter')}
+              {loading ? 'Chargement...' : 'Se connecter'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <Button
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                router.push('/#tarifs')
+              }}
               variant="ghost"
               size="sm"
               className="text-blue-600 hover:text-blue-700 text-sm underline"
             >
-              {isSignUp ? 'Déjà un compte ? Se connecter' : 'Pas de compte ? Créer un compte'}
+              Pas de compte ? Voir les abonnements
             </Button>
           </div>
         </div>

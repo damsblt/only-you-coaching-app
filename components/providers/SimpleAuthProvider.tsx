@@ -43,19 +43,25 @@ const checkUserExists = async (email: string): Promise<{ user: User | null; exis
 }
 
 // Helper function to create user in database via API
-const createUserInDatabase = async (email: string, name: string, planId?: string): Promise<User | null> => {
+const createUserInDatabase = async (email: string, name: string, planId?: string, password?: string): Promise<User | null> => {
   try {
-    console.log('Attempting to create user in database:', { email, name })
+    console.log('Attempting to create user in database:', { email, name, hasPassword: !!password })
 
     const response = await fetch('/api/simple-auth/user', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, name, planId }),
+      body: JSON.stringify({ email, name, planId, password }),
     })
 
-    const data = await response.json()
+    let data
+    try {
+      data = await response.json()
+    } catch (parseError) {
+      // If response is not JSON, create a generic error
+      throw new Error(`Server error (${response.status}): ${response.statusText}`)
+    }
 
     if (!response.ok) {
       // Handle duplicate email error
@@ -65,9 +71,18 @@ const createUserInDatabase = async (email: string, name: string, planId?: string
         throw duplicateError
       }
 
-      // Handle other errors
-      const error = new Error(data.error || 'Failed to create user')
+      // Handle database configuration errors
+      if (response.status === 500 && data.message?.includes('DATABASE_URL')) {
+        const dbError: any = new Error('Erreur de configuration de la base de données. Veuillez contacter le support.')
+        dbError.code = 'DB_CONFIG_ERROR'
+        throw dbError
+      }
+
+      // Handle other errors with more details
+      const errorMessage = data.error || data.message || 'Failed to create user'
+      const error = new Error(errorMessage)
       ;(error as any).code = data.code || 'UNKNOWN_ERROR'
+      ;(error as any).details = data.details
       throw error
     }
 
@@ -84,6 +99,8 @@ const createUserInDatabase = async (email: string, name: string, planId?: string
       message: error?.message || 'Unknown error',
       code: error?.code || 'NO_CODE',
       name: error?.name || null,
+      details: error?.details || null,
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
     }
     console.error('Error creating user:', errorDetails)
     
@@ -136,7 +153,8 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
           return { success: true }
         } else {
           // User doesn't exist, create a new one
-          const newUser = await createUserInDatabase(email, email.split('@')[0])
+          // Note: signIn doesn't create users with passwords, only signUp does
+          const newUser = await createUserInDatabase(email, email.split('@')[0], undefined, password)
           if (newUser) {
             setUser(newUser)
             localStorage.setItem('simple-auth-user', JSON.stringify(newUser))
@@ -163,7 +181,8 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
         }
         
         // If database is completely unavailable, create a local user
-        const newUser = await createUserInDatabase(email, email.split('@')[0])
+        // Note: This fallback doesn't store password, only for testing
+        const newUser = await createUserInDatabase(email, email.split('@')[0], undefined, password)
         if (newUser) {
           setUser(newUser)
           localStorage.setItem('simple-auth-user', JSON.stringify(newUser))
@@ -186,7 +205,7 @@ export function SimpleAuthProvider({ children }: { children: React.ReactNode }) 
       }
 
       // Create user in database (or fetch existing if duplicate)
-      const newUser = await createUserInDatabase(email, name || email.split('@')[0], planId)
+      const newUser = await createUserInDatabase(email, name || email.split('@')[0], planId, password)
       if (newUser) {
         setUser(newUser)
         localStorage.setItem('simple-auth-user', JSON.stringify(newUser))

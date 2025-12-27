@@ -114,9 +114,43 @@ export async function POST(req: NextRequest) {
     }
 
     // Attach the payment method to the customer
-    await stripe.paymentMethods.attach(paymentMethodId, {
-      customer: customer.id,
-    })
+    try {
+      // Check if payment method is already attached to a customer
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId)
+      
+      if (paymentMethod.customer) {
+        if (paymentMethod.customer === customer.id) {
+          // Already attached to this customer, no action needed
+          console.log('Payment method already attached to customer')
+        } else {
+          // Attached to a different customer, detach first
+          try {
+            await stripe.paymentMethods.detach(paymentMethodId)
+            // Now attach to the current customer
+            await stripe.paymentMethods.attach(paymentMethodId, {
+              customer: customer.id,
+            })
+          } catch (detachError: any) {
+            console.error('Error detaching/reattaching payment method:', detachError)
+            throw new Error(`Failed to attach payment method: ${detachError.message}`)
+          }
+        }
+      } else {
+        // Not attached to any customer, attach it
+        await stripe.paymentMethods.attach(paymentMethodId, {
+          customer: customer.id,
+        })
+      }
+    } catch (attachError: any) {
+      // If payment method is already attached to this customer, that's fine
+      if (attachError.code === 'resource_already_exists' || attachError.code === 'payment_method_already_attached') {
+        // Payment method is already attached, continue
+        console.log('Payment method already attached (handled)')
+      } else {
+        console.error('Payment method attachment error:', attachError)
+        throw new Error(`Failed to attach payment method: ${attachError.message}`)
+      }
+    }
 
     // Calculer la date de fin d'engagement si applicable
     let cancelAtTimestamp: number | null = null
@@ -179,8 +213,31 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('Subscription creation error:', error)
+    console.error('Error details:', {
+      message: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      stack: error.stack,
+    })
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to create subscription'
+    if (error.message) {
+      errorMessage = error.message
+    } else if (error.type) {
+      errorMessage = `Stripe error: ${error.type}`
+    }
+    
     return NextResponse.json(
-      { error: error.message },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? {
+          type: error.type,
+          code: error.code,
+          message: error.message,
+        } : undefined
+      },
       { status: 500 }
     )
   }

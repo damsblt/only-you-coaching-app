@@ -118,14 +118,28 @@ function PaymentForm({
 
       const data = await response.json()
       
+      if (!response.ok) {
+        const errorMessage = data.error || `Erreur serveur (${response.status})`
+        console.error('Subscription creation failed:', errorMessage, data)
+        onError(errorMessage)
+        return
+      }
+      
       if (data.error) {
         onError(data.error)
         return
       }
 
+      if (!data.subscriptionId) {
+        onError('Réponse invalide du serveur')
+        return
+      }
+
       onSuccess(data.subscriptionId)
-    } catch (err) {
-      onError('Erreur lors de la création de l\'abonnement')
+    } catch (err: any) {
+      console.error('Subscription creation error:', err)
+      const errorMessage = err.message || 'Erreur lors de la création de l\'abonnement'
+      onError(errorMessage)
     }
   }
 

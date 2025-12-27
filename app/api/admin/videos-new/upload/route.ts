@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadToS3, generateVideoKey, generateThumbnailKey } from '@/lib/s3'
+import { isAuthorizedAdminUser, getUserEmailFromRequest } from '@/lib/admin-auth'
 
 // POST - Upload video and/or thumbnail files to S3
 export async function POST(request: NextRequest) {
+  // Vérifier l'autorisation
+  const email = getUserEmailFromRequest(request)
+  if (!email) {
+    return NextResponse.json(
+      { error: 'Email de l\'utilisateur requis' },
+      { status: 401 }
+    )
+  }
+
+  const authorized = await isAuthorizedAdminUser(email)
+  if (!authorized) {
+    return NextResponse.json(
+      { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires pour uploader des fichiers.' },
+      { status: 403 }
+    )
+  }
+
   try {
     const formData = await request.formData()
     const videoFile = formData.get('video') as File | null

@@ -464,7 +464,7 @@ export default function Home() {
       </section>
 
       {/* Simplified Pricing Section */}
-      <section className="py-20 bg-hero-gradient dark:bg-gray-900 relative overflow-hidden transition-colors">
+      <section id="tarifs" className="py-20 bg-hero-gradient dark:bg-gray-900 relative overflow-hidden transition-colors">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-12">
             <p className="text-accent-500 dark:text-accent-400 uppercase tracking-wider text-sm font-semibold mb-4">

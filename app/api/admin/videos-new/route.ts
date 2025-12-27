@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { isAuthorizedAdminUser, getUserEmailFromRequest } from '@/lib/admin-auth'
+
+// Helper pour vérifier l'autorisation
+async function checkAdminAuth(request: Request): Promise<{ authorized: boolean; email: string | null }> {
+  const email = getUserEmailFromRequest(request)
+  if (!email) {
+    return { authorized: false, email: null }
+  }
+  const authorized = await isAuthorizedAdminUser(email)
+  return { authorized, email }
+}
 
 // GET - List all videos_new with optional videoType filter
 export async function GET(request: NextRequest) {
+  // Vérifier l'autorisation pour les requêtes incluant les vidéos non publiées
+  const { searchParams } = new URL(request.url)
+  const includeUnpublished = searchParams.get('includeUnpublished') === 'true'
+  
+  if (includeUnpublished) {
+    const { authorized } = await checkAdminAuth(request)
+    if (!authorized) {
+      return NextResponse.json(
+        { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires.' },
+        { status: 403 }
+      )
+    }
+  }
   const { searchParams } = new URL(request.url)
   const videoType = searchParams.get('videoType')
   const includeUnpublished = searchParams.get('includeUnpublished') === 'true'
@@ -39,6 +63,15 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new video
 export async function POST(request: NextRequest) {
+  // Vérifier l'autorisation
+  const { authorized } = await checkAdminAuth(request)
+  if (!authorized) {
+    return NextResponse.json(
+      { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires pour créer des vidéos.' },
+      { status: 403 }
+    )
+  }
+
   try {
     const body = await request.json()
     const {
@@ -107,6 +140,15 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update a video
 export async function PUT(request: NextRequest) {
+  // Vérifier l'autorisation
+  const { authorized } = await checkAdminAuth(request)
+  if (!authorized) {
+    return NextResponse.json(
+      { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires pour modifier des vidéos.' },
+      { status: 403 }
+    )
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
@@ -155,6 +197,15 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete a video
 export async function DELETE(request: NextRequest) {
+  // Vérifier l'autorisation
+  const { authorized } = await checkAdminAuth(request)
+  if (!authorized) {
+    return NextResponse.json(
+      { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires pour supprimer des vidéos.' },
+      { status: 403 }
+    )
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
