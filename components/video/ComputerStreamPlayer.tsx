@@ -84,15 +84,20 @@ export default function ComputerStreamPlayer({
   // Detect mobile device
   useEffect(() => {
     const checkMobile = () => {
-      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
-                            window.innerWidth <= 768 ||
-                            ('ontouchstart' in window)
+      const isMobileDevice = window.innerWidth < 1024 || 
+        /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0)
       setIsMobile(isMobileDevice)
     }
     
     checkMobile()
     window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    window.addEventListener('orientationchange', checkMobile)
+    return () => {
+      window.removeEventListener('resize', checkMobile)
+      window.removeEventListener('orientationchange', checkMobile)
+    }
   }, [])
 
   // Load video source when component mounts
@@ -241,10 +246,12 @@ export default function ComputerStreamPlayer({
       // On mobile, handle fullscreen with orientation lock
       if (!document.fullscreenElement) {
         try {
-          // Step 1: Lock orientation to landscape first
+          // Step 1: Force orientation to landscape FIRST (before fullscreen)
           if (screen.orientation && screen.orientation.lock) {
             try {
               await screen.orientation.lock('landscape')
+              // Wait a bit for orientation to change
+              await new Promise(resolve => setTimeout(resolve, 300))
             } catch (err) {
               console.log('Screen orientation lock failed:', err)
             }
@@ -264,14 +271,29 @@ export default function ComputerStreamPlayer({
             }
           }
           
-          // Step 3: Hide browser UI by scrolling to top (triggers UI hide on mobile)
+          // Step 3: Force hide browser UI with multiple techniques
+          // Scroll to top to trigger UI hide
           window.scrollTo(0, 0)
           
-          // Step 4: Force viewport to use full screen
+          // Force viewport to use full screen
           const viewport = document.querySelector('meta[name="viewport"]')
           if (viewport) {
             viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
           }
+          
+          // Additional technique: force body to full height
+          document.body.style.height = '100vh'
+          document.body.style.height = '100dvh'
+          document.documentElement.style.height = '100vh'
+          document.documentElement.style.height = '100dvh'
+          document.body.style.overflow = 'hidden'
+          document.documentElement.style.overflow = 'hidden'
+          
+          // Try to hide address bar by scrolling after a delay
+          setTimeout(() => {
+            window.scrollTo(0, 1)
+            setTimeout(() => window.scrollTo(0, 0), 100)
+          }, 500)
           
           setIsFullscreen(true)
         } catch (err) {
@@ -289,6 +311,12 @@ export default function ComputerStreamPlayer({
           } else if ((document as any).msExitFullscreen) {
             await (document as any).msExitFullscreen()
           }
+          
+          // Restore body styles
+          document.body.style.height = ''
+          document.documentElement.style.height = ''
+          document.body.style.overflow = ''
+          document.documentElement.style.overflow = ''
           
           // Unlock orientation
           if (screen.orientation && screen.orientation.unlock) {
@@ -687,15 +715,15 @@ export default function ComputerStreamPlayer({
           )}
 
           {/* Scroll Indicator - TikTok style (mobile only, first video) */}
-          {isMobile && showScrollIndicator && !hasSwiped && currentIndex === 0 && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 pointer-events-none">
-              <div className="flex flex-col items-center gap-2 bg-black/50 backdrop-blur-sm rounded-full p-3 animate-bounce">
-                <ChevronUp className="w-5 h-5 text-white animate-pulse" />
-                <div className="w-1 h-8 bg-white/60 rounded-full"></div>
-                <ChevronDown className="w-5 h-5 text-white animate-pulse" />
+          {isMobile && showScrollIndicator && !hasSwiped && (currentIndex === 0 || currentIndex === undefined) && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
+              <div className="flex flex-col items-center gap-2 bg-black/70 backdrop-blur-md rounded-full p-4 shadow-2xl border-2 border-white/30">
+                <ChevronUp className="w-6 h-6 text-white animate-bounce" style={{ animationDuration: '1s' }} />
+                <div className="w-1.5 h-12 bg-white/80 rounded-full animate-pulse"></div>
+                <ChevronDown className="w-6 h-6 text-white animate-bounce" style={{ animationDuration: '1s', animationDelay: '0.5s' }} />
               </div>
-              <div className="absolute right-16 top-1/2 transform -translate-y-1/2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 whitespace-nowrap animate-fade-in">
-                <p className="text-white text-sm font-medium">Glissez pour naviguer</p>
+              <div className="absolute right-20 top-1/2 transform -translate-y-1/2 bg-black/80 backdrop-blur-md rounded-lg px-4 py-3 whitespace-nowrap shadow-xl border border-white/20">
+                <p className="text-white text-sm font-semibold">Glissez pour naviguer</p>
               </div>
             </div>
           )}

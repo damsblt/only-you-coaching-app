@@ -90,16 +90,19 @@ export default function PageHeader({
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [videoLoading, setVideoLoading] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
 
-  // Detect mobile screen size
+  // Detect mobile and tablet screen sizes
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
+    const checkScreenSize = () => {
+      const width = window.innerWidth
+      setIsMobile(width < 768) // mobile
+      setIsTablet(width >= 768 && width < 1024) // tablet
     }
     
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
   // Fetch video URL if videoS3Key is provided
@@ -171,6 +174,9 @@ export default function PageHeader({
             fill
             className="object-cover"
             priority={true}
+            style={{
+              objectPosition: (isMobile || isTablet) ? '35% center' : 'center'
+            }}
           />
         ) : null}
         {/* Overlay gradient for better text readability */}
