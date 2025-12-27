@@ -12,10 +12,11 @@ async function checkAdminAuth(request: Request): Promise<{ authorized: boolean; 
   return { authorized, email }
 }
 
-// GET - List all videos_new with optional videoType filter
+  // GET - List all videos_new with optional videoType filter
 export async function GET(request: NextRequest) {
   // Vérifier l'autorisation pour les requêtes incluant les vidéos non publiées
   const { searchParams } = new URL(request.url)
+  const videoType = searchParams.get('videoType')
   const includeUnpublished = searchParams.get('includeUnpublished') === 'true'
   
   if (includeUnpublished) {
@@ -27,9 +28,6 @@ export async function GET(request: NextRequest) {
       )
     }
   }
-  const { searchParams } = new URL(request.url)
-  const videoType = searchParams.get('videoType')
-  const includeUnpublished = searchParams.get('includeUnpublished') === 'true'
 
   try {
     let query = db.from('videos_new').select('*')
