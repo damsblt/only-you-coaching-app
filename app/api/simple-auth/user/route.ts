@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 // GET - Check if user exists
 export async function GET(request: NextRequest) {
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, name, planId } = body
+    const { email, name, planId, password } = body
 
     if (!email || !name) {
       return NextResponse.json(
@@ -132,22 +133,49 @@ export async function POST(request: NextRequest) {
     const userId = crypto.randomUUID()
     const now = new Date().toISOString()
 
-    console.log('Attempting to create user in database:', { email, name, userId })
+    // Hash password if provided
+    let hashedPassword: string | null = null
+    if (password) {
+      try {
+        hashedPassword = await bcrypt.hash(password, 10)
+        console.log('Password hashed successfully')
+      } catch (hashError: any) {
+        console.error('Error hashing password:', hashError)
+        return NextResponse.json(
+          { error: 'Failed to process password' },
+          { status: 500 }
+        )
+      }
+    }
 
-    const { data: newUser, error } = await db
+    console.log('Attempting to create user in database:', { email, name, userId, hasPassword: !!hashedPassword })
+
+    // Build insert object
+    const insertData: any = {
+      id: userId,
+      email,
+      name: name,
+      full_name: name,
+      role: 'USER',
+      planid: planId || 'essentiel',
+      created_at: now,
+      updated_at: now
+    }
+
+    // Add password only if provided and hashed
+    if (hashedPassword) {
+      insertData.password = hashedPassword
+    }
+
+    const insertResult = await db
       .from('users')
-      .insert({
-        id: userId,
-        email,
-        name: name,
-        role: 'USER',
-        planid: planId || 'essentiel',
-        updatedAt: now
-      })
+      .insert(insertData)
+    
+    const { data: newUser, error } = insertResult
 
     if (error) {
       // Better error logging - PostgreSQL errors may have different structure
-      const errorMessage = error.message || (error as any).detail || 'Unknown error'
+      const errorMessage = error.message || (error as any).detail || (error as any)?.message || 'Unknown error'
       const errorCode = error.code || (error as any).code || 'NO_CODE'
       const errorDetails = {
         message: errorMessage,
@@ -155,9 +183,10 @@ export async function POST(request: NextRequest) {
         details: (error as any).detail || null,
         hint: (error as any).hint || null,
         constraint: (error as any).constraint || null,
-        originalError: error
+        originalError: error,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error))
       }
-      console.error('Error creating user in database:', errorDetails)
+      console.error('❌ Error creating user in database:', errorDetails)
 
       // Handle duplicate email error (PostgreSQL unique constraint violation)
       // Error code 23505 = unique_violation
@@ -209,21 +238,25 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     // Enhanced error logging for production debugging
+    const errorMessage = error?.message || error?.toString() || 'Unknown error'
     const errorDetails = {
-      message: error?.message || 'Unknown error',
+      message: errorMessage,
       code: error?.code || 'NO_CODE',
       name: error?.name || null,
+      type: error?.constructor?.name || typeof error,
       stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
       // Include database connection info if available
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       databaseUrlLength: process.env.DATABASE_URL?.length || 0,
     }
     console.error('❌ Error in POST /api/simple-auth/user:', errorDetails)
+    console.error('❌ Full error object:', error)
     
+    // Return more specific error message
     return NextResponse.json(
       { 
-        error: 'Internal server error',
-        message: error?.message || 'Unknown error',
+        error: errorMessage,
+        message: errorMessage,
         // Only include detailed error info in development
         details: process.env.NODE_ENV === 'development' 
           ? errorDetails 

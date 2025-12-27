@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
 
 interface Video {
   id: string
@@ -30,6 +31,7 @@ interface Video {
 }
 
 export default function VideosContentAdmin() {
+  const { user: currentUser } = useSimpleAuth()
   const [programmeVideos, setProgrammeVideos] = useState<Video[]>([])
   const [muscleGroupVideos, setMuscleGroupVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,18 +71,30 @@ export default function VideosContentAdmin() {
 
   // Fetch videos
   const fetchVideos = async () => {
+    if (!currentUser?.email) return
+    
     try {
       setLoading(true)
       setError(null)
 
+      const emailParam = `&email=${encodeURIComponent(currentUser.email)}`
+
       // Fetch PROGRAMMES videos
-      const programmesResponse = await fetch('/api/admin/videos-new?videoType=PROGRAMMES&includeUnpublished=true')
+      const programmesResponse = await fetch(`/api/admin/videos-new?videoType=PROGRAMMES&includeUnpublished=true${emailParam}`, {
+        headers: {
+          'x-user-email': currentUser.email
+        }
+      })
       if (!programmesResponse.ok) throw new Error('Failed to fetch PROGRAMMES videos')
       const programmesData = await programmesResponse.json()
       setProgrammeVideos(programmesData)
 
       // Fetch MUSCLE_GROUPS videos
-      const muscleGroupResponse = await fetch('/api/admin/videos-new?videoType=MUSCLE_GROUPS&includeUnpublished=true')
+      const muscleGroupResponse = await fetch(`/api/admin/videos-new?videoType=MUSCLE_GROUPS&includeUnpublished=true${emailParam}`, {
+        headers: {
+          'x-user-email': currentUser.email
+        }
+      })
       if (!muscleGroupResponse.ok) throw new Error('Failed to fetch MUSCLE_GROUPS videos')
       const muscleGroupData = await muscleGroupResponse.json()
       setMuscleGroupVideos(muscleGroupData)
@@ -93,8 +107,10 @@ export default function VideosContentAdmin() {
   }
 
   useEffect(() => {
-    fetchVideos()
-  }, [])
+    if (currentUser?.email) {
+      fetchVideos()
+    }
+  }, [currentUser?.email])
 
   // Reset form when switching sections
   useEffect(() => {
@@ -111,9 +127,15 @@ export default function VideosContentAdmin() {
       setLoading(true)
       setError(null)
 
+      if (!currentUser?.email) {
+        setError('Vous devez être connecté pour créer/modifier des vidéos')
+        setLoading(false)
+        return
+      }
+
       const url = editingVideo
-        ? `/api/admin/videos-new?id=${editingVideo.id}`
-        : '/api/admin/videos-new'
+        ? `/api/admin/videos-new?id=${editingVideo.id}&email=${encodeURIComponent(currentUser.email)}`
+        : `/api/admin/videos-new?email=${encodeURIComponent(currentUser.email)}`
 
       const method = editingVideo ? 'PUT' : 'POST'
 
@@ -121,6 +143,7 @@ export default function VideosContentAdmin() {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'x-user-email': currentUser.email
         },
         body: JSON.stringify(formData),
       })
@@ -176,8 +199,17 @@ export default function VideosContentAdmin() {
         setUploadProgress(prev => Math.min(prev + 10, 90))
       }, 300)
 
-      const response = await fetch('/api/admin/videos-new/upload', {
+      if (!currentUser?.email) {
+        setError('Vous devez être connecté pour uploader des fichiers')
+        setUploading(false)
+        return
+      }
+
+      const response = await fetch(`/api/admin/videos-new/upload?email=${encodeURIComponent(currentUser.email)}`, {
         method: 'POST',
+        headers: {
+          'x-user-email': currentUser.email
+        },
         body: uploadFormData,
       })
 
@@ -282,10 +314,18 @@ export default function VideosContentAdmin() {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this video?')) return
 
+    if (!currentUser?.email) {
+      setError('Vous devez être connecté pour supprimer des vidéos')
+      return
+    }
+
     try {
       setLoading(true)
-      const response = await fetch(`/api/admin/videos-new?id=${id}`, {
+      const response = await fetch(`/api/admin/videos-new?id=${id}&email=${encodeURIComponent(currentUser.email)}`, {
         method: 'DELETE',
+        headers: {
+          'x-user-email': currentUser.email
+        }
       })
 
       if (!response.ok) {

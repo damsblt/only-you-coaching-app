@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getAllUsersWithSubscriptions } from '@/lib/access-control'
 import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
+import { isAuthorizedAdmin } from '@/lib/admin-auth'
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([])
@@ -13,6 +14,7 @@ export default function AdminUsersPage() {
   const [createSuccess, setCreateSuccess] = useState<string | null>(null)
   const [createdUserPassword, setCreatedUserPassword] = useState<string | null>(null)
   const [createdUserEmail, setCreatedUserEmail] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     name: ''
@@ -22,10 +24,20 @@ export default function AdminUsersPage() {
   const { user: currentUser, loading: authLoading } = useSimpleAuth()
 
   const fetchUsers = async () => {
-    if (currentUser) {
+    if (currentUser && currentUser.email) {
       try {
-        const response = await fetch('/api/admin/users')
+        const response = await fetch(`/api/admin/users?email=${encodeURIComponent(currentUser.email)}`, {
+          headers: {
+            'x-user-email': currentUser.email
+          }
+        })
         const data = await response.json()
+        if (!response.ok) {
+          if (response.status === 403) {
+            setCreateError('Accès refusé. Vous n\'avez pas les permissions nécessaires.')
+          }
+          return
+        }
         if (data.users) {
           setUsers(data.users)
         }
@@ -40,11 +52,60 @@ export default function AdminUsersPage() {
     fetchUsers()
   }, [currentUser])
 
+  const handleDeleteUser = async (userId: string, userEmail: string, userName: string) => {
+    if (!currentUser?.email) {
+      alert('Vous devez être connecté pour supprimer un utilisateur')
+      return
+    }
+
+    const confirmMessage = `Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName || userEmail}" ?\n\nCette action est irréversible et supprimera également tous les abonnements associés.`
+    
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setDeleting(userId)
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-email': currentUser.email
+        }
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de la suppression de l\'utilisateur')
+      }
+
+      // Rafraîchir la liste des utilisateurs
+      await fetchUsers()
+      
+      // Afficher un message de succès
+      setCreateSuccess(`Utilisateur "${userName || userEmail}" supprimé avec succès`)
+      setTimeout(() => setCreateSuccess(null), 5000)
+    } catch (error: any) {
+      console.error('Error deleting user:', error)
+      setCreateError(error.message || 'Erreur lors de la suppression de l\'utilisateur')
+      setTimeout(() => setCreateError(null), 5000)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreating(true)
     setCreateError(null)
     setCreateSuccess(null)
+
+    if (!currentUser || !currentUser.email) {
+      setCreateError('Vous devez être connecté pour créer un utilisateur')
+      setCreating(false)
+      return
+    }
 
     try {
       const response = await fetch('/api/admin/users', {
@@ -52,7 +113,10 @@ export default function AdminUsersPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          userEmail: currentUser.email // Passer l'email de l'utilisateur qui fait la requête
+        }),
       })
 
       const data = await response.json()
@@ -106,17 +170,18 @@ export default function AdminUsersPage() {
     )
   }
 
-  // Check if user is admin (you can add this check if needed)
-  // if (currentUser.user_metadata?.role !== 'ADMIN') {
-  //   return (
-  //     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-  //       <div className="text-center">
-  //         <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès Refusé</h1>
-  //         <p className="text-gray-600">Vous n'avez pas les permissions pour accéder à cette page.</p>
-  //       </div>
-  //     </div>
-  //   )
-  // }
+  // Vérifier que l'utilisateur est autorisé (email dans la liste autorisée)
+  if (!currentUser.email || !isAuthorizedAdmin(currentUser.email)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Accès Refusé</h1>
+          <p className="text-gray-600">Vous n'avez pas les permissions pour accéder à cette page.</p>
+          <p className="text-sm text-gray-500 mt-2">Seuls les administrateurs autorisés peuvent accéder à cette section.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -330,6 +395,9 @@ export default function AdminUsersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Fin d'Abonnement
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -394,6 +462,31 @@ export default function AdminUsersPage() {
                           new Date(user.subscriptionEnd).toLocaleDateString('fr-FR') : 
                           '-'
                         }
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {!user.isAdmin && (
+                          <button
+                            onClick={() => handleDeleteUser(user.id, user.email, user.name)}
+                            disabled={deleting === user.id}
+                            className={`transition-colors ${
+                              deleting === user.id
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-red-600 hover:text-red-900'
+                            }`}
+                            title={deleting === user.id ? 'Suppression en cours...' : 'Supprimer l\'utilisateur'}
+                          >
+                            {deleting === user.id ? (
+                              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -3,9 +3,31 @@ import { getAllUsersWithSubscriptions } from '@/lib/access-control'
 import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
+import { isAuthorizedAdminUser } from '@/lib/admin-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Récupérer l'email de l'utilisateur depuis les headers ou query params
+    const userEmail = request.headers.get('x-user-email') || 
+                     new URL(request.url).searchParams.get('email')
+    
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: 'Email de l\'utilisateur requis' },
+        { status: 401 }
+      )
+    }
+
+    // Vérifier que l'utilisateur est autorisé
+    const isAuthorized = await isAuthorizedAdminUser(userEmail)
+    if (!isAuthorized) {
+      console.log('❌ Accès refusé pour:', userEmail)
+      return NextResponse.json(
+        { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires.' },
+        { status: 403 }
+      )
+    }
+
     console.log('📥 GET /api/admin/users - Fetching users...')
     const users = await getAllUsersWithSubscriptions()
     console.log(`✅ Successfully fetched ${users.length} users`)
@@ -22,7 +44,24 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, name, password } = await req.json()
+    const { email, name, password, userEmail } = await req.json()
+
+    // Vérifier que l'utilisateur qui fait la requête est autorisé
+    if (!userEmail) {
+      return NextResponse.json(
+        { error: 'Email de l\'utilisateur requis' },
+        { status: 401 }
+      )
+    }
+
+    const isAuthorized = await isAuthorizedAdminUser(userEmail)
+    if (!isAuthorized) {
+      console.log('❌ Accès refusé pour la création d\'utilisateur:', userEmail)
+      return NextResponse.json(
+        { error: 'Accès refusé. Vous n\'avez pas les permissions nécessaires pour créer des utilisateurs.' },
+        { status: 403 }
+      )
+    }
 
     if (!email || !name) {
       return NextResponse.json(
