@@ -3,6 +3,7 @@
 import { Play, Clock, Music } from "lucide-react"
 import { Audio } from "@/types"
 import { formatDuration } from "@/lib/utils"
+import S3Image from "@/components/S3Image"
 
 interface AudioCardProps {
   audio: Audio
@@ -10,6 +11,15 @@ interface AudioCardProps {
 }
 
 export function AudioCard({ audio, onClick }: AudioCardProps) {
+  // Determine if thumbnail is an S3 key (starts with "Photos/") or a URL
+  const isS3Key = audio.thumbnail && (
+    audio.thumbnail.startsWith("Photos/") || 
+    audio.thumbnail.startsWith("Video/") ||
+    audio.thumbnail.startsWith("thumbnails/")
+  )
+  
+  const fallbackSrc = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"
+
   return (
     <div 
       className="bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer group transform hover:-translate-y-1"
@@ -17,11 +27,21 @@ export function AudioCard({ audio, onClick }: AudioCardProps) {
     >
       {/* Thumbnail */}
       <div className="relative aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-t-2xl overflow-hidden">
-        <img
-          src={audio.thumbnail || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"}
-          alt={audio.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-        />
+        {isS3Key && audio.thumbnail ? (
+          <S3Image
+            s3Key={audio.thumbnail}
+            alt={audio.title}
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-500"
+            fallbackSrc={fallbackSrc}
+          />
+        ) : (
+          <img
+            src={audio.thumbnail || fallbackSrc}
+            alt={audio.title}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          />
+        )}
         
         {/* Play Button Overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
