@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { X, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react"
 import { Audio } from "@/types"
 import { formatDuration } from "@/lib/utils"
+import S3Image from "@/components/S3Image"
 
 interface AudioPlayerProps {
   audio: Audio
@@ -151,12 +152,28 @@ export function AudioPlayer({ audio, onClose }: AudioPlayerProps) {
         {/* Audio Visualizer */}
         <div className="p-8 bg-gradient-to-br from-indigo-50 to-purple-50">
           <div className="flex items-center justify-center mb-8">
-            <div className="w-48 h-48 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center">
-              <img
-                src={audio.thumbnail || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"}
-                alt={audio.title}
-                className="w-40 h-40 rounded-full object-cover"
-              />
+            <div className="w-48 h-48 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center relative overflow-hidden">
+              {/* Determine if thumbnail is an S3 key (starts with "Photos/") or a URL */}
+              {audio.thumbnail && (
+                audio.thumbnail.startsWith("Photos/") || 
+                audio.thumbnail.startsWith("Video/") ||
+                audio.thumbnail.startsWith("thumbnails/")
+              ) ? (
+                <S3Image
+                  s3Key={audio.thumbnail}
+                  alt={audio.title}
+                  width={160}
+                  height={160}
+                  className="rounded-full object-cover"
+                  fallbackSrc="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"
+                />
+              ) : (
+                <img
+                  src={audio.thumbnail || "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"}
+                  alt={audio.title}
+                  className="w-40 h-40 rounded-full object-cover"
+                />
+              )}
             </div>
           </div>
 

@@ -29,13 +29,14 @@ export default function CoachingMentalPage() {
           fetch('/api/audio?category=Coaching mental')
         ])
         
-        // Get thumbnail images
-        let imageUrls: string[] = []
+        // Get thumbnail images (store S3 keys instead of URLs)
+        let imageKeys: string[] = []
         if (thumbnailsResponse.ok) {
           const thumbnailsData = await thumbnailsResponse.json()
-          imageUrls = thumbnailsData.images?.map((img: { url: string }) => img.url) || []
+          // Store S3 keys instead of URLs for proper S3Image component usage
+          imageKeys = thumbnailsData.images?.map((img: { key: string }) => img.key) || []
         }
-        setThumbnailImages(imageUrls)
+        setThumbnailImages(imageKeys)
         
         // Get audios
         const [data1, data2] = await Promise.all([
@@ -49,10 +50,10 @@ export default function CoachingMentalPage() {
           new Map(allAudios.map((audio: Audio) => [audio.id, audio])).values()
         )
         
-        // Map thumbnail images to audios by index
+        // Map thumbnail S3 keys to audios by index
         const audiosWithThumbnails = uniqueAudios.map((audio: Audio, index: number) => ({
           ...audio,
-          thumbnail: imageUrls[index] || audio.thumbnail
+          thumbnail: imageKeys[index] || audio.thumbnail
         }))
         
         setAudios(audiosWithThumbnails)
