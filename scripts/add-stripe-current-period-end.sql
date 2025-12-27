@@ -11,3 +11,4 @@ WHERE "stripeCurrentPeriodEnd" IS NULL AND "currentPeriodEnd" IS NOT NULL;
 
 
 
+

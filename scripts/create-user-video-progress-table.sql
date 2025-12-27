@@ -44,3 +44,4 @@ CREATE INDEX IF NOT EXISTS idx_user_video_progress_completed ON user_video_progr
 
 
 
+

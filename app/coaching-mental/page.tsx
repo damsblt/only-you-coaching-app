@@ -70,7 +70,7 @@ export default function CoachingMentalPage() {
     return (
       <>
         <PageHeader
-          imageS3Key="Photos/Illustration/element5-digital-OBbliBNuJlk-unsplash_edited.jpg"
+          imageS3Key="Photos/Illustration/vitaly-gariev-gnBMTzKGA3U-unsplash.jpg"
           title="Coaching Mental"
           subtitle="Chargement de votre collection de coaching mental..."
           height="fullScreen"
@@ -87,7 +87,7 @@ export default function CoachingMentalPage() {
   return (
     <>
       <PageHeader
-        imageS3Key="Photos/Illustration/element5-digital-OBbliBNuJlk-unsplash_edited.jpg"
+        imageS3Key="Photos/Illustration/vitaly-gariev-gnBMTzKGA3U-unsplash.jpg"
         title="Coaching Mental"
         subtitle="Découvrez notre collection de coaching mental pour développer votre confiance et améliorer votre état d'esprit."
         height="fullScreen"
