@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import Image from "next/image"
-import { ThemeToggle } from "@/components/ui/ThemeToggle"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
 import { Button } from "@/components/ui/Button"
 import { 
@@ -19,8 +18,8 @@ import {
   BookOpen,
   Mail,
   Phone,
-  LogOut,
-  LogIn
+  DoorOpen,
+  UserCircle
 } from "lucide-react"
 
 // Type for navigation items
@@ -239,7 +238,6 @@ export function Header() {
 
             {/* Desktop Actions */}
             <div className="hidden lg:flex items-center space-x-3">
-              <ThemeToggle />
               {loading ? (
                 <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
               ) : user ? (
@@ -262,7 +260,7 @@ export function Header() {
                     className="p-2 text-gray-700 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
                     title="Se déconnecter"
                   >
-                    <LogOut className="w-5 h-5" />
+                    <DoorOpen className="w-5 h-5" />
                   </button>
                 </div>
               ) : (
@@ -274,16 +272,37 @@ export function Header() {
                     className="flex items-center space-x-1"
                     onClick={handleSignInClick}
                   >
-                    <LogIn className="w-4 h-4" />
+                    <UserCircle className="w-4 h-4" />
                     <span>Se connecter</span>
                   </Button>
                 </div>
               )}
             </div>
 
-            {/* Mobile menu button */}
+            {/* Mobile menu button and auth buttons */}
             <div className="lg:hidden flex items-center space-x-2">
-              <ThemeToggle />
+              {loading ? (
+                <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+              ) : user ? (
+                <button
+                  onClick={handleSignOut}
+                  className="p-2 text-gray-700 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-full hover:bg-red-50 dark:hover:bg-red-900/20"
+                  title="Se déconnecter"
+                >
+                  <DoorOpen className="w-5 h-5" />
+                </button>
+              ) : (
+                <Button
+                  href="/auth/signin-simple"
+                  variant="ghost"
+                  size="sm"
+                  className="flex items-center space-x-1"
+                  onClick={handleSignInClick}
+                >
+                  <UserCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Se connecter</span>
+                </Button>
+              )}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 text-gray-700 dark:text-gray-300 hover:text-accent-500 dark:hover:text-accent-400 transition-colors rounded-full hover:bg-primary-50 dark:hover:bg-gray-700"
@@ -353,54 +372,26 @@ export function Header() {
                     ))}
                   </nav>
                   
-                  {/* Auth Section */}
-                  <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-                    {loading ? (
-                      <div className="w-full h-10 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-                    ) : user ? (
-                      <div className="space-y-3">
-                        <div className="text-sm text-gray-700 dark:text-gray-200">
-                          Bonjour, <span className="font-medium">{user.name || user.email?.split('@')[0]}</span>
-                        </div>
-                        {user.role === 'ADMIN' && (
-                          <Button
-                            href="/admin/users"
-                            variant="primary"
-                            size="sm"
-                            fullWidth
-                            onClick={() => setIsMenuOpen(false)}
-                          >
-                            Admin Dashboard
-                          </Button>
-                        )}
-                        <button
-                          onClick={() => {
-                            handleSignOut()
-                            setIsMenuOpen(false)
-                          }}
-                          className="flex items-center justify-center space-x-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors w-full"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          <span>Se déconnecter</span>
-                        </button>
+                  {/* User info section (only if logged in) */}
+                  {user && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+                      <div className="text-sm text-gray-700 dark:text-gray-200">
+                        Bonjour, <span className="font-medium">{user.name || user.email?.split('@')[0]}</span>
                       </div>
-                    ) : (
-                      <Button
-                        href="/auth/signin-simple"
-                        variant="ghost"
-                        size="sm"
-                        fullWidth
-                        className="flex items-center justify-center space-x-2"
-                        onClick={() => {
-                          handleSignInClick()
-                          setIsMenuOpen(false)
-                        }}
-                      >
-                        <LogIn className="w-4 h-4" />
-                        <span>Se connecter</span>
-                      </Button>
-                    )}
-                  </div>
+                      {user.role === 'ADMIN' && (
+                        <Button
+                          href="/admin/users"
+                          variant="primary"
+                          size="sm"
+                          fullWidth
+                          className="mt-3"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Admin Dashboard
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </>,
