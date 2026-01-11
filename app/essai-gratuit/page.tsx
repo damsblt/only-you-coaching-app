@@ -193,7 +193,7 @@ export default function EssaiGratuitPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+    <div id="top" className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <Section 
         gradient="soft" 
         title="Essai Gratuit" 

@@ -1,5 +1,4 @@
 import { Metadata } from 'next'
-import Image from 'next/image'
 import Link from 'next/link'
 import { MapPin, ArrowRight, Sparkles, Heart, Target, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -33,18 +32,6 @@ export default function AboutPage() {
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-8">
             Marie-Line Bouley
           </h1>
-          {/* Portrait Photo */}
-          <div className="flex justify-center mb-8">
-            <div className="relative w-64 h-64 rounded-full overflow-hidden shadow-xl border-4 border-white dark:border-gray-800">
-              <Image
-                src="/about/marie-line-portrait.jpg"
-                alt="Marie-Line Bouley, coach sportif"
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
-          </div>
         </div>
 
         {/* Qualifications */}
@@ -270,6 +257,7 @@ export default function AboutPage() {
           
           <Gallery
             localImages={[
+              // Photos existantes
               '/about/coaching-6.jpg',
               '/about/coaching-7.jpg',
               '/about/coaching-8.jpg',
@@ -281,6 +269,21 @@ export default function AboutPage() {
               '/about/coaching-14.jpg',
               '/about/coaching-15.jpg',
               '/about/coaching-16.jpg',
+              // Photos de différents clients
+              '/about/clients/heidi-1.png',
+              '/about/clients/heidi-2.png',
+              '/about/clients/heidi-3.png',
+              '/about/clients/thierry-1.png',
+              '/about/clients/thierry-2.png',
+              '/about/clients/client-1.jpg',
+              '/about/clients/client-2.jpg',
+              '/about/clients/client-3.jpg',
+              '/about/clients/client-4.jpg',
+              '/about/clients/client-5.jpg',
+              '/about/clients/client-6.jpg',
+              '/about/clients/session-1.png',
+              '/about/clients/session-2.png',
+              '/about/clients/session-3.png',
             ]}
           />
         </div>

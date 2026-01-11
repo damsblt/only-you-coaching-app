@@ -11,6 +11,9 @@ export default function Gallery({ localImages }: GalleryProps) {
   const [s3Images, setS3Images] = useState<string[]>([])
   const [allImages, setAllImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  // Carousel mode for About page - moved before early return
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
 
   useEffect(() => {
     // Fetch images from S3
@@ -60,6 +63,19 @@ export default function Gallery({ localImages }: GalleryProps) {
     setAllImages(shuffled.slice(0, 12))
   }, [localImages, s3Images])
 
+  // If no images at all, show local images as fallback
+  const imagesToShow = allImages.length > 0 ? allImages : localImages
+
+  useEffect(() => {
+    if (!isAutoPlaying || imagesToShow.length === 0) return
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % imagesToShow.length)
+    }, 4000) // Change image every 4 seconds
+
+    return () => clearInterval(interval)
+  }, [isAutoPlaying, imagesToShow.length])
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -72,23 +88,6 @@ export default function Gallery({ localImages }: GalleryProps) {
       </div>
     )
   }
-
-  // If no images at all, show local images as fallback
-  const imagesToShow = allImages.length > 0 ? allImages : localImages
-
-  // Carousel mode for About page
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true)
-
-  useEffect(() => {
-    if (!isAutoPlaying || imagesToShow.length === 0) return
-
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % imagesToShow.length)
-    }, 4000) // Change image every 4 seconds
-
-    return () => clearInterval(interval)
-  }, [isAutoPlaying, imagesToShow.length])
 
   const goToPrevious = () => {
     setCurrentIndex((prev) => (prev - 1 + imagesToShow.length) % imagesToShow.length)

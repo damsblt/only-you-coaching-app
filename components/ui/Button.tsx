@@ -39,7 +39,7 @@ export function Button({ href, variant = "primary", size = "md", fullWidth, clas
 
   if (href) {
     return (
-      <Link href={href} className={classes} {...(props as React.ComponentProps<typeof Link>)}>
+      <Link href={href} scroll={true} className={classes} {...(props as React.ComponentProps<typeof Link>)}>
         {children}
       </Link>
     )
