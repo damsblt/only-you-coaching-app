@@ -1,6 +1,6 @@
 "use client"
 
-import { Star, Quote } from "lucide-react"
+import { Star, Quote, ChevronDown, ChevronUp } from "lucide-react"
 import { useEffect, useState } from "react"
 
 interface Testimonial {
@@ -9,26 +9,28 @@ interface Testimonial {
   photo?: string
 }
 
+const MAX_PREVIEW_LENGTH = 250 // Nombre de caractères pour l'aperçu
+
 const testimonials: Testimonial[] = [
   {
     name: "JEAN YVES",
-    text: "L'entraînement proposé par Marie-Line m'a été extrêmement bénéfique. Sa manière de renforcer la musculature interne, particulièrement au niveau des jambes et de mon genou affaibli m'a apporté un grand soulagement. Marie-Line est une personne très sympathique dotée d'une grande empathie. Elle sait être exigeante avec calme et douceur. C'est une coach idéale.",
+    text: "L'entraînement proposé par Marie-Line m'a été extrêmement bénéfique. Sa manière de renforcer la musculature interne, particulièrement au niveau des jambes et de mon genou affaibli m'a apporté un grand soulagement. Marie-Line est une personne très sympathique dotée d'une grande empathie. Elle sait être exigeante avec calme et douceur. C'est une coach idéale. En bref, ces séances sont très utiles et supervisées avec compétence et amabilité. Je me dois de les recommander vivement. Un grand merci à Marie-Line pour tout ce qu'elle apporte à ses clients.",
   },
   {
     name: "LUCIENNE",
-    text: "Depuis plusieurs années, je bénéficie du coaching de Marie-Line. C'est une professionnelle expérimentée, attentive et fiable qui s'adapte aux besoins particuliers de chacun de ses clients. Mes problèmes de dos ne sont d'ailleurs plus qu'un vieux souvenir. Marie-Line a toujours répondu parfaitement à mes attentes.",
+    text: "Depuis plusieurs années, je bénéficie du coaching de Marie-Line. C'est une professionnelle expérimentée, attentive et fiable qui s'adapte aux besoins particuliers de chacun de ses clients. Mes problèmes de dos ne sont d'ailleurs plus qu'un vieux souvenir. Marie-Line a toujours répondu parfaitement à mes attentes. Elle est très créative et varie régulièrement ses exercices. Je recommande ses séances avec enthousiasme.",
   },
   {
     name: "VALERIE",
-    text: "J'ai un suivi de coaching avec Marie-line depuis passé 10 ans. Elle est vraiment une personne extraordinaire, à l'écoute de nos bobos, de notre corps, etc…Elle adapte systématiquement les exercices en fonction de nos besoins. J'ai commencé le coaching pour des raisons de mal au fond du dos. Depuis plus de 10 ans, je ne sais plus ce que c'est d'avoir mal au dos.",
+    text: "J'ai un suivi de coaching avec Marie-line depuis passé 10 ans. Elle est vraiment une personne extraordinaire, à l'écoute de nos bobos, de notre corps, etc…Elle adapte systématiquement les exercices en fonction de nos besoins. J'ai commencé le coaching pour des raisons de mal au fond du dos. Depuis plus de 10 ans, je ne sais plus ce que c'est d'avoir mal au dos. Je le conseil absolument.",
   },
   {
     name: "TRISTAN",
-    text: "J'ai été coaché par Marie-Line pendant plusieurs années et cela m'a été bénéfique sur de nombreux aspects. J'ai premièrement appris à contrôler mon corps en profondeur avec des corrections posturales spécifiques à chaque exercice. Marie-Line a été une clé dans ma progression et elle m'a permis d'être plus performant que jamais auparavant.",
+    text: "J'ai été coaché par Marie-Line pendant plusieurs années et cela m'a été bénéfique sur de nombreux aspects. J'ai premièrement appris à contrôler mon corps en profondeur avec des corrections posturales spécifiques à chaque exercice, des corrections qu'elle m'a enseignées avec passion et chaque fois avec des explications pour y donner un sens. Ensuite, Marie-Line a spécifié l'entraînement à ma pratique du VTT durant la saison estival pour que je garde de la précision dans mes gestes en descente afin d'être aussi rapide et sécuritaire que possible et durant la saison d'hiver elle a adapté ses séances pour répondre aux exigence du ski-alpinisme. Tout cela passe par des entraînements de force suivi de poste de coordination avec une part d'équilibre, de concentration et de contrôle. Tout cela a décuplé ma capacité multitâches et mon endurance mentale et physique. Si je devais rajouter qu'une chose ce serait que Marie-Line a été une clé dans ma progression et elle m'a permis d'être plus performant que jamais auparavant. Ses conseils et sa passion me suivront à vie. Un grand merci !",
   },
   {
     name: "YVONNE",
-    text: "Je me suis entraînée pour la première fois avec Marie Line il y a 16 ans, alors que j'étais enceinte de mon premier enfant. Pendant ces 13 années, l'entraînement a toujours été très varié, avec des exercices toujours nouveaux et intéressants. Je ne peux que recommander Marie Line comme entraîneur personnel, car elle est très professionnelle, sympathique, pleine d'humour et sensible.",
+    text: "Je me suis entraînée pour la première fois avec Marie Line il y a 16 ans, alors que j'étais enceinte de mon premier enfant. Comme j'avais été opérée du dos 4 ans auparavant et que j'étais enceinte, il était très important pour moi d'avoir une entraîneuse professionnelle à mes côtés, qui ferait des exercices adaptés à ma situation de santé et qui m'encadrerait également de manière professionnelle. Après une pause bébé de trois ans, j'ai recommencé à m'entraîner avec Marie Line. Pendant ces 13 années, l'entraînement a toujours été très varié, avec des exercices toujours nouveaux et intéressants. De nombreux exercices font travailler en même temps de nombreux muscles différents ainsi que l'équilibre, ce qui est très efficace. Les heures d'entraînement avec Marie Line passent très vite, car on s'amuse beaucoup avec elle et en même temps, on est toujours motivé et poussé vers de nouvelles limites. Et si j'ai mal aux poignets un jour, par exemple, Marie Line adapte immédiatement l'exercice pour que je puisse le faire sans douleur. Je ne peux que recommander Marie Line comme entraîneur personnel, car elle est très professionnelle, sympathique, pleine d'humour et sensible. Merci beaucoup Marie Line pour les bons moments que je passe avec toi !",
   },
   {
     name: "PIERRE ANDRE",
@@ -39,6 +41,28 @@ const testimonials: Testimonial[] = [
 export default function Testimonials() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
   const [failedPhotos, setFailedPhotos] = useState<Set<string>>(new Set())
+  const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(new Set())
+
+  const truncateText = (text: string, maxLength: number): string => {
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength).trim() + '...'
+  }
+
+  const isTextTruncated = (text: string): boolean => {
+    return text.length > MAX_PREVIEW_LENGTH
+  }
+
+  const toggleExpanded = (name: string) => {
+    setExpandedTestimonials(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(name)) {
+        newSet.delete(name)
+      } else {
+        newSet.add(name)
+      }
+      return newSet
+    })
+  }
 
   useEffect(() => {
     // Fetch signed URLs for testimonial photos
@@ -117,7 +141,7 @@ export default function Testimonials() {
             TÉMOIGNAGES CLIENTS
           </p>
           <h2 className="text-3xl md:text-4xl font-bold text-black dark:text-white mb-4">
-            Ce Que Disent Nos Clients
+            Ce que disent mes clients
           </h2>
           <p className="text-xl text-gray-700 dark:text-gray-300 max-w-3xl mx-auto mt-6">
             Découvrez les expériences de ceux qui ont transformé leur vie grâce à notre coaching personnalisé
@@ -125,23 +149,50 @@ export default function Testimonials() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {testimonials.map((testimonial, index) => (
-            <div
-              key={index}
-              className="curved-card bg-white dark:bg-gray-700 p-6 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-100 dark:border-gray-600 flex flex-col"
-            >
-              {/* Quote Icon */}
-              <div className="mb-4">
-                <Quote className="w-8 h-8 text-accent-500 dark:text-accent-400 opacity-50" />
-              </div>
+          {testimonials.map((testimonial, index) => {
+            const isExpanded = expandedTestimonials.has(testimonial.name)
+            const shouldTruncate = isTextTruncated(testimonial.text)
+            const displayText = shouldTruncate && !isExpanded 
+              ? truncateText(testimonial.text, MAX_PREVIEW_LENGTH)
+              : testimonial.text
 
-              {/* Testimonial Text */}
-              <p className="text-gray-700 dark:text-gray-300 mb-6 flex-grow leading-relaxed text-sm">
-                &quot;{testimonial.text}&quot;
-              </p>
+            return (
+              <div
+                key={index}
+                className="curved-card bg-white dark:bg-gray-700 p-6 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-100 dark:border-gray-600 flex flex-col"
+              >
+                {/* Quote Icon */}
+                <div className="mb-4">
+                  <Quote className="w-8 h-8 text-accent-500 dark:text-accent-400 opacity-50" />
+                </div>
 
-              {/* Author Info */}
-              <div className="flex items-center gap-4 pt-4 border-t border-secondary-200 dark:border-gray-600">
+                {/* Testimonial Text */}
+                <p className="text-gray-700 dark:text-gray-300 mb-4 flex-grow leading-relaxed text-sm">
+                  &quot;{displayText}&quot;
+                </p>
+
+                {/* Expand/Collapse Button */}
+                {shouldTruncate && (
+                  <button
+                    onClick={() => toggleExpanded(testimonial.name)}
+                    className="flex items-center gap-1 text-accent-500 dark:text-accent-400 hover:text-accent-600 dark:hover:text-accent-300 text-sm font-medium mb-4 transition-colors self-start"
+                  >
+                    {isExpanded ? (
+                      <>
+                        Voir moins
+                        <ChevronUp className="w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        Voir le commentaire complet
+                        <ChevronDown className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {/* Author Info */}
+                <div className="flex items-center gap-4 pt-4 border-t border-secondary-200 dark:border-gray-600 mt-auto">
                 {photoUrls[testimonial.name] && !failedPhotos.has(testimonial.name) ? (
                   <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border-2 border-accent-500 dark:border-accent-400">
                     <img
@@ -183,7 +234,8 @@ export default function Testimonials() {
                 </div>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>

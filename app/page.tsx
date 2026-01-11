@@ -59,11 +59,11 @@ export default function Home() {
                   ENTRAINEMENT SPORTIF PERSONNALISÉ
                 </p>
                 <h1 className="text-4xl md:text-6xl font-bold text-black dark:text-white leading-tight">
-                  Un Coach, Une Passion : Faire De Votre Remise En Forme Un Succès !
+                  <span className="whitespace-nowrap">Un coach, une passion :</span> Faire de votre remise en forme un succès !
                 </h1>
                 <p className="text-xl text-gray-700 dark:text-gray-300 leading-relaxed max-w-2xl">
-                  Transformez votre corps et votre esprit grâce à des cours de Pilates personnalisés, 
-                  des méditations guidées et un accompagnement professionnel.
+                  Transformez votre corps et votre esprit grâce à un concept conçu spécialement pour vous, 
+                  des méditations guidées, du coaching mental et un accompagnement professionnel.
                 </p>
               </div>
               
@@ -237,12 +237,6 @@ export default function Home() {
                   <span>RENFORCEMENT DES MUSCLES PROFONDS</span>
                 </li>
               </ul>
-              <Link
-                href="/programmes"
-                className="block text-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
-              >
-                EN SAVOIR PLUS
-              </Link>
             </div>
 
             {/* Programme 2: Perte De Poids */}
@@ -273,12 +267,6 @@ export default function Home() {
                   <span>ADAPTÉ AUX BESOINS DE CHACUN</span>
                 </li>
               </ul>
-              <Link
-                href="/programmes"
-                className="block text-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
-              >
-                EN SAVOIR PLUS
-              </Link>
             </div>
 
             {/* Programme 3: Spécifiques Sportifs */}
@@ -313,12 +301,6 @@ export default function Home() {
                   <span>ADAPTÉ POUR TOUS NIVEAUX</span>
                 </li>
               </ul>
-              <Link
-                href="/programmes"
-                className="block text-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
-              >
-                EN SAVOIR PLUS
-              </Link>
             </div>
 
             {/* Pilates */}
@@ -349,12 +331,6 @@ export default function Home() {
                   <span>RENFORCEMENT DES MUSCLES PROFONDS</span>
                 </li>
               </ul>
-              <Link
-                href="/programmes"
-                className="block text-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
-              >
-                EN SAVOIR PLUS
-              </Link>
             </div>
 
             {/* Golf */}
@@ -389,12 +365,6 @@ export default function Home() {
                   <span>ADAPTÉ POUR TOUS NIVEAUX</span>
                 </li>
               </ul>
-              <Link
-                href="/programmes"
-                className="block text-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
-              >
-                EN SAVOIR PLUS
-              </Link>
             </div>
           </div>
         </div>
@@ -478,11 +448,11 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Two CTA Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Three CTA Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             {/* Présentiel CTA */}
             <Link
-              href="/subscriptions/personnalise"
+              href="/souscriptions/personnalise"
               className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
             >
               <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
@@ -492,7 +462,7 @@ export default function Home() {
                 Mon Coaching Personnalisé En Présentiel
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-6">
-                Accompagnement personnalisé avec appels de coaching et programmes sur mesure
+                Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
               </p>
               <div className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold group-hover:translate-x-2 transition-transform">
                 Découvrir les offres
@@ -500,7 +470,27 @@ export default function Home() {
               </div>
             </Link>
 
-            {/* Online CTA */}
+            {/* Online CTA - Personnalisé */}
+            <Link
+              href="/souscriptions/personnalise"
+              className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
+            >
+              <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                <Users className="w-10 h-10 text-accent-500 dark:text-accent-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
+                ABONNEMENT ONLINE PERSONALISE
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 mb-6">
+                Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
+              </p>
+              <div className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold group-hover:translate-x-2 transition-transform">
+                Découvrir les offres
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </div>
+            </Link>
+
+            {/* Online CTA - Autonomie */}
             <Link
               href="/souscriptions/autonomie"
               className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
@@ -509,7 +499,7 @@ export default function Home() {
                 <Video className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
               <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
-                Abonnements Online
+                ABONNEMENT ONLINE AUTONOMIE
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Autonomie totale avec accès à toute la bibliothèque de contenus
@@ -547,12 +537,12 @@ export default function Home() {
               </h2>
               
               <p className="text-xl text-white/90 mb-8">
-                Rejoignez des milliers de personnes qui ont déjà découvert les bienfaits du Pilates.
+                Rejoignez des milliers de personnes qui ont déjà transformé leur vie grâce à notre accompagnement personnalisé.
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Button
-                  href="/souscriptions/personnalise"
+                  href="/essai-gratuit"
                   variant="white"
                   size="lg"
                   className="group shadow-xl"

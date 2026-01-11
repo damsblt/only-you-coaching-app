@@ -27,7 +27,7 @@ export function Footer() {
           <div className="space-y-4">
             <h3 className="text-2xl font-bold">Only You Coaching</h3>
             <p className="text-white/90 dark:text-gray-300 text-sm leading-relaxed">
-              Découvrez le Pilates avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.
+              Découvrez le coaching personnalisé avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-white/80 dark:text-gray-400 hover:text-white dark:hover:text-white transition-colors rounded-full hover:bg-white/10 dark:hover:bg-white/20 p-2">
@@ -46,11 +46,6 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">Liens rapides</h3>
             <ul className="space-y-3">
-              <li>
-                <Link href="/bibliotheque-videos" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
-                  Vidéos de Pilates
-                </Link>
-              </li>
               <li>
                 <Link href="/programmes" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
                   Programmes Prédéfinis
@@ -88,7 +83,10 @@ export function Footer() {
               </a>
               <div className="flex items-start space-x-3 text-white/90 dark:text-gray-300">
                 <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                <span className="text-sm">Suisse</span>
+                <div className="text-sm">
+                  <div>Conthey - Sion - Martigny</div>
+                  <div className="text-white/70">Suisse</div>
+                </div>
               </div>
             </div>
           </div>

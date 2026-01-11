@@ -14,7 +14,6 @@ export const pricingPlans = {
           "Accès à \"mes recettes\"",
           "Accès aux programmes prédéfinis",
           "3 Programmes d'entraînement personnalisés",
-          "1 appel de coaching par mois de 30 mn",
           "Vidéo des exercices et explicatif envoyé par mail",
           "Assistance Messagerie Sms – mail 5 jours/semaine"
         ]
@@ -30,7 +29,6 @@ export const pricingPlans = {
           "Accès à \"mes recettes\"",
           "Accès aux programmes prédéfinis",
           "3 Programmes d'entraînement personnalisés",
-          "1 appel de coaching par mois de 30 mn",
           "Vidéo des exercices et explicatif envoyé par mail",
           "Assistance Messagerie Sms – mail 5 jours/semaine",
           "Accès à la bibliothèque d'audios guidés",
@@ -49,7 +47,6 @@ export const pricingPlans = {
           "Accès à \"mes recettes\"",
           "Accès aux programmes prédéfinis",
           "3 Programmes d'entraînement personnalisés",
-          "1 appel de coaching par mois de 30 mn",
           "Vidéo des exercices et explicatif envoyé par mail",
           "Assistance Messagerie Sms – mail 5 jours/semaine",
           "Accès à la bibliothèque d'audios guidés",
@@ -72,7 +69,8 @@ export const pricingPlans = {
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\""
+          "Accès à \"mes recettes\"",
+          "1 appel de coaching par mois de 30 mn"
         ]
       },
       {
@@ -85,7 +83,8 @@ export const pricingPlans = {
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\""
+          "Accès à \"mes recettes\"",
+          "1 appel de coaching par mois de 30 mn"
         ]
       },
       {
@@ -98,7 +97,8 @@ export const pricingPlans = {
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\""
+          "Accès à \"mes recettes\"",
+          "1 appel de coaching par mois de 30 mn"
         ]
       }
     ]
