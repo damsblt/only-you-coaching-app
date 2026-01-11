@@ -90,7 +90,7 @@ export default function MethodePage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <PageHeader
-        imageS3Key="Photos/Illustration/balanced-stone.jpg"
+        imageS3Key="Photos/Fille blonde/ok (3).JPG"
         title="Ma méthode"
         subtitle="Une approche holistique unique alliant Pilates, nutrition et bien-être pour transformer votre corps et votre esprit"
         height="fullScreen"

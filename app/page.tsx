@@ -452,7 +452,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             {/* Présentiel CTA */}
             <Link
-              href="/souscriptions/personnalise"
+              href="/coaching-presentiel"
               className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
             >
               <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
@@ -542,7 +542,7 @@ export default function Home() {
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Button
-                  href="/essai-gratuit"
+                  href="/essai-gratuit#top"
                   variant="white"
                   size="lg"
                   className="group shadow-xl"

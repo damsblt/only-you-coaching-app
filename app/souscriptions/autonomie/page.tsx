@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle, ArrowRight } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 import { pricingPlans } from '../../../data/pricingPlans'
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -161,37 +161,6 @@ function AutonomieContent() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Free Trial CTA Section */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative bg-gradient-to-br from-accent-500 via-accent-600 to-burgundy-600 rounded-2xl shadow-2xl p-10 md:p-12 mb-12 overflow-hidden">
-            {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-            
-            <div className="relative z-10 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Pas encore convaincu ?
-              </h2>
-              
-              <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-3xl mx-auto mb-8">
-                Découvrez notre essai gratuit et explorez une sélection de notre contenu premium pour vous donner un avant-goût de ce qui vous attend !
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Button
-                  href="/essai-gratuit"
-                  variant="white"
-                  size="lg"
-                  className="group shadow-xl"
-                >
-                  Essayer gratuitement
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </Section>

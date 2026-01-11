@@ -15,7 +15,8 @@ export const pricingPlans = {
           "Accès aux programmes prédéfinis",
           "3 Programmes d'entraînement personnalisés",
           "Vidéo des exercices et explicatif envoyé par mail",
-          "Assistance Messagerie Sms – mail 5 jours/semaine"
+          "Assistance Messagerie Sms – mail 5 jours/semaine",
+          "1 appel de coaching par mois de 30 mn"
         ]
       },
       {
@@ -33,7 +34,8 @@ export const pricingPlans = {
           "Assistance Messagerie Sms – mail 5 jours/semaine",
           "Accès à la bibliothèque d'audios guidés",
           "Surveillance et conseil nutritionnel continue",
-          "Suivi des progrès"
+          "Suivi des progrès",
+          "1 appel de coaching par mois de 30 mn"
         ]
       },
       {
@@ -52,7 +54,8 @@ export const pricingPlans = {
           "Accès à la bibliothèque d'audios guidés",
           "Surveillance et conseil nutritionnel continue",
           "Suivi des progrès",
-          "1 Visite à domicile de présentation du programme"
+          "1 Visite à domicile de présentation du programme",
+          "1 appel de coaching par mois de 30 mn"
         ]
       }
     ]
