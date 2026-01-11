@@ -92,7 +92,7 @@ function AutonomieContent() {
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
         <Section 
           gradient="soft" 
-          title="Plan Autonomie en ligne" 
+          title="ABONNEMENT ONLINE AUTONOMIE" 
           subtitle="Chargement de vos options d'abonnement..."
         >
           <div className="flex items-center justify-center py-12">
@@ -113,7 +113,7 @@ function AutonomieContent() {
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <Section 
         gradient="soft" 
-        title="Plan Autonomie en ligne" 
+        title="ABONNEMENT ONLINE AUTONOMIE" 
         subtitle="Choisissez l'abonnement qui correspond à vos objectifs et à votre rythme"
       >
         {/* Indication du plan sélectionné */}
@@ -180,26 +180,10 @@ function AutonomieContent() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Y a-t-il des frais d'annulation ?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Non, vous pouvez annuler votre abonnement sans frais à tout moment.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Les séances sont-elles enregistrées ?
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
                 Oui, toutes les séances en ligne sont enregistrées et disponibles en replay.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Puis-je suspendre mon abonnement ?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">
-                Oui, vous pouvez suspendre votre abonnement pour une durée maximale de 3 mois.
               </p>
             </div>
           </div>

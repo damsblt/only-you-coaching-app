@@ -39,6 +39,7 @@ interface VideoData {
 export default function EssaiGratuitPage() {
   const [videos, setVideos] = useState<VideoData[]>([])
   const [audio, setAudio] = useState<Audio | null>(null)
+  const [mentalCoachingAudio, setMentalCoachingAudio] = useState<Audio | null>(null)
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null)
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null)
@@ -50,64 +51,98 @@ export default function EssaiGratuitPage() {
       try {
         setLoading(true)
 
-        // Fetch videos for different regions
-        const videoRegions = ['abdos', 'dos', 'fessiers-jambes']
-        const videoPromises = videoRegions.map(async (region) => {
+        // Fetch videos from programmes (same as /programmes page)
+        // Use videoType=programmes and get first video from different programme regions
+        const programmeRegions = ['abdos', 'brule-graisse', 'haute-intensite', 'machine']
+        const videoPromises = programmeRegions.map(async (region) => {
           try {
-            const response = await fetch(`/api/videos?region=${region}&videoType=muscle-groups`)
+            const response = await fetch(`/api/videos?videoType=programmes&region=${region}`)
             if (response.ok) {
               const data = await response.json()
-              // API returns array directly or wrapped in videos property
+              // API returns array directly
               const videos = Array.isArray(data) ? data : (data.videos || [])
               return videos.length > 0 ? videos[0] : null
             }
             return null
           } catch (error) {
-            console.error(`Error fetching video for region ${region}:`, error)
+            console.error(`Error fetching video for programme region ${region}:`, error)
             return null
           }
         })
 
-        // Fetch machine-related video (try searching for "machine" or use "bande" as fallback)
-        const machineVideoPromise = (async () => {
-          try {
-            // First try searching for "machine" in title or tags
-            const searchResponse = await fetch(`/api/videos?search=machine&videoType=muscle-groups`)
-            if (searchResponse.ok) {
-              const searchData = await searchResponse.json()
-              const videos = Array.isArray(searchData) ? searchData : (searchData.videos || [])
-              if (videos.length > 0) {
-                return videos[0]
-              }
-            }
-            // Fallback to "bande" region if machine search fails
-            const bandeResponse = await fetch(`/api/videos?region=bande&videoType=muscle-groups`)
-            if (bandeResponse.ok) {
-              const bandeData = await bandeResponse.json()
-              const videos = Array.isArray(bandeData) ? bandeData : (bandeData.videos || [])
-              return videos.length > 0 ? videos[0] : null
-            }
-            return null
-          } catch (error) {
-            console.error('Error fetching machine video:', error)
-            return null
-          }
-        })()
-
-        // Fetch one audio
-        const audioPromise = fetch('/api/audio')
-          .then((res) => res.ok ? res.json() : [])
-          .then((data) => Array.isArray(data) ? data[0] : null)
+        // Fetch one meditation audio (try multiple category variations)
+        const audioPromise = Promise.all([
+          fetch('/api/audio?category=Méditation Guidée'),
+          fetch('/api/audio?category=meditation_guidee'),
+          fetch('/api/audio') // Fallback: get all and filter
+        ])
+          .then(([res1, res2, res3]) => Promise.all([
+            res1.ok ? res1.json() : [],
+            res2.ok ? res2.json() : [],
+            res3.ok ? res3.json() : []
+          ]))
+          .then(([data1, data2, data3]) => {
+            // Combine all results
+            const allAudios = [
+              ...(Array.isArray(data1) ? data1 : []),
+              ...(Array.isArray(data2) ? data2 : []),
+              ...(Array.isArray(data3) ? data3 : [])
+            ]
+            
+            // Filter for meditation guidée category (check multiple variations)
+            const meditationAudios = allAudios.filter((audio: Audio) => 
+              audio.category === "meditation_guidee" || 
+              audio.category === "Méditation Guidée" ||
+              audio.category?.toLowerCase().includes('meditation')
+            )
+            
+            // Deduplicate by id
+            const uniqueAudios = Array.from(
+              new Map(meditationAudios.map((audio: Audio) => [audio.id, audio])).values()
+            )
+            
+            return uniqueAudios.length > 0 ? uniqueAudios[0] : null
+          })
           .catch((error) => {
-            console.error('Error fetching audio:', error)
+            console.error('Error fetching meditation audio:', error)
+            return null
+          })
+
+        // Fetch one coaching mental audio (try both category variations)
+        const mentalCoachingPromise = Promise.all([
+          fetch('/api/audio?category=Coaching Mental'),
+          fetch('/api/audio?category=Coaching mental')
+        ])
+          .then(([res1, res2]) => Promise.all([
+            res1.ok ? res1.json() : [],
+            res2.ok ? res2.json() : []
+          ]))
+          .then(([data1, data2]) => {
+            const allAudios = [...(Array.isArray(data1) ? data1 : []), ...(Array.isArray(data2) ? data2 : [])]
+            // Deduplicate by id
+            const uniqueAudios = Array.from(
+              new Map(allAudios.map((audio: Audio) => [audio.id, audio])).values()
+            )
+            return uniqueAudios.length > 0 ? uniqueAudios[0] : null
+          })
+          .catch((error) => {
+            console.error('Error fetching coaching mental audio:', error)
             return null
           })
 
         // Fetch one recipe
         const recipePromise = fetch('/api/recipes')
-          .then((res) => res.ok ? res.json() : { recipes: [] })
+          .then((res) => {
+            if (!res.ok) {
+              console.error('Recipes API response not ok:', res.status, res.statusText)
+              return { recipes: [] }
+            }
+            return res.json()
+          })
           .then((data) => {
+            console.log('Recipes API response:', data)
             const recipes = data.recipes || (Array.isArray(data) ? data : [])
+            console.log('Parsed recipes:', recipes.length, recipes)
             return recipes.length > 0 ? recipes[0] : null
           })
           .catch((error) => {
@@ -116,18 +151,27 @@ export default function EssaiGratuitPage() {
           })
 
         // Wait for all promises
-        const [abdosVideo, dosVideo, jambesVideo, machineVideo, audioData, recipeData] = await Promise.all([
+        const [video1, video2, video3, video4, audioData, mentalCoachingData, recipeData] = await Promise.all([
           ...videoPromises,
-          machineVideoPromise,
           audioPromise,
+          mentalCoachingPromise,
           recipePromise
         ])
 
         // Filter out null values and set videos
-        const fetchedVideos = [abdosVideo, dosVideo, jambesVideo, machineVideo].filter((v): v is VideoData => v !== null)
+        const fetchedVideos = [video1, video2, video3, video4].filter((v): v is VideoData => v !== null)
         setVideos(fetchedVideos)
         setAudio(audioData)
+        setMentalCoachingAudio(mentalCoachingData)
         setRecipe(recipeData)
+        
+        // Log for debugging
+        console.log('Free trial content loaded:', {
+          videos: fetchedVideos.length,
+          meditationAudio: audioData ? audioData.title : 'none',
+          coachingMentalAudio: mentalCoachingData ? mentalCoachingData.title : 'none',
+          recipe: recipeData ? recipeData.title : 'none'
+        })
       } catch (error) {
         console.error('Error fetching free trial content:', error)
       } finally {
@@ -158,9 +202,9 @@ export default function EssaiGratuitPage() {
         {/* Introduction */}
         <div className="mb-12 text-center">
           <p className="text-lg text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
-            Profitez de cet essai gratuit pour explorer nos vidéos d'entraînement, nos audios de méditation 
-            et nos recettes nutritives. Tous nos contenus sont conçus pour vous accompagner dans votre parcours 
-            vers une meilleure santé et un bien-être optimal.
+            Profitez de cet essai gratuit pour explorer nos vidéos d'entraînement, nos audios de méditation guidée, 
+            nos sessions de coaching mental et nos recettes nutritives. Tous nos contenus sont conçus pour vous accompagner 
+            dans votre parcours vers une meilleure santé et un bien-être optimal.
           </p>
         </div>
 
@@ -188,10 +232,10 @@ export default function EssaiGratuitPage() {
           )}
         </div>
 
-        {/* Audio Section */}
+        {/* Audio Section - Méditation Guidée */}
         <div className="mb-16">
           <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-8 text-center">
-            Audio de Bien-être
+            Méditation Guidée
           </h2>
           {audio ? (
             <div className="max-w-md mx-auto">
@@ -205,6 +249,35 @@ export default function EssaiGratuitPage() {
               <p className="text-gray-600 dark:text-gray-400">
                 L'audio sera disponible prochainement.
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Audio Section - Coaching Mental */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-8 text-center">
+            Coaching Mental
+          </h2>
+          {mentalCoachingAudio ? (
+            <div className="max-w-md mx-auto">
+              <AudioCard
+                audio={mentalCoachingAudio}
+                onClick={() => setSelectedAudio(mentalCoachingAudio)}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Découvrez nos sessions de coaching mental pour renforcer votre mental et optimiser vos performances.
+              </p>
+              <Button
+                href="/coaching-mental"
+                variant="primary"
+                size="md"
+              >
+                Découvrir le coaching mental
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
           )}
         </div>

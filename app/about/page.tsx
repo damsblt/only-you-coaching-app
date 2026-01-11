@@ -57,11 +57,13 @@ export default function AboutPage() {
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             {[
-              'Pilates instructeur',
-              'Nutrition-sport et performance',
-              'Golf physio trainer',
-              'Neuro psycho nutrition',
-              'Brain gym'
+              'Nutrition Sport et Performance UNIL Lausanne',
+              'Golf Physio Trainer: Sport Med Lyon',
+              'Neuro Spycho Nutrition Online DL',
+              'Personal Trainer IFAS et FISAF Nyon / Genève',
+              'Training Instructeur IFAS NYON',
+              'Pilatès Instructeur IFAS Nyon',
+              'AFAA ( sport et Fitness Association America)'
             ].map((qualification, index) => (
               <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-white/60 dark:bg-gray-700/60 hover:bg-white dark:hover:bg-gray-700 transition-colors">
                 <div className="w-2 h-2 rounded-full bg-accent-500 flex-shrink-0"></div>
@@ -176,26 +178,6 @@ export default function AboutPage() {
               </div>
             </div>
             
-            {/* Additional coaching images */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-lg group">
-                <Image
-                  src="/about/coaching-4.jpg"
-                  alt="Séance de coaching personnalisée"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-              <div className="relative w-full h-64 rounded-2xl overflow-hidden shadow-lg group">
-                <S3Image
-                  s3Key="Photos/Training/vlcsnap-2025-11-03-13h14m30s098.png"
-                  alt="Marie-Line coachant ses clients"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  fallbackSrc="/about/coaching-3.jpg"
-                />
-              </div>
-            </div>
           </div>
 
           {/* Call to Action */}

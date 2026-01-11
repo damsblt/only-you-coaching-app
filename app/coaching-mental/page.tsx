@@ -23,10 +23,12 @@ export default function CoachingMentalPage() {
         setLoading(true)
         
         // Fetch thumbnail images and audios in parallel
+        // Add cache-busting timestamp to ensure fresh data from Neon
+        const timestamp = Date.now()
         const [thumbnailsResponse, audioResponse1, audioResponse2] = await Promise.all([
           fetch('/api/gallery/list-folder-images?folder=Photos/Illustration/coaching mental'),
-          fetch('/api/audio?category=Coaching Mental'),
-          fetch('/api/audio?category=Coaching mental')
+          fetch(`/api/audio?category=Coaching Mental&_t=${timestamp}`, { cache: 'no-store' }),
+          fetch(`/api/audio?category=Coaching mental&_t=${timestamp}`, { cache: 'no-store' })
         ])
         
         // Get thumbnail images (store S3 keys instead of URLs)

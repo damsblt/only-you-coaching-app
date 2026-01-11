@@ -21,7 +21,9 @@ export default function MeditationGuideePage() {
   useEffect(() => {
     const fetchAudios = async () => {
       try {
-        const response = await fetch('/api/audio')
+        // Add cache-busting timestamp to ensure fresh data from Neon
+        const timestamp = Date.now()
+        const response = await fetch(`/api/audio?_t=${timestamp}`, { cache: 'no-store' })
         if (response.ok) {
           const data = await response.json()
           // Filter for meditation guidée category
