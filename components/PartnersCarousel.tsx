@@ -28,6 +28,11 @@ const partners: Partner[] = [
     name: "TATWA",
     logo: "/partners/TATWA.png",
     alt: "Logo TATWA"
+  },
+  {
+    name: "Harmonis",
+    logo: "/partners/Harmonis.jpeg",
+    alt: "Logo Harmonis"
   }
 ]
 
