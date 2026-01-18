@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Recipe } from '@/types/cms'
 import { Button } from '@/components/ui/Button'
 import RecipeBookletViewer from './RecipeBookletViewer'
@@ -190,16 +191,22 @@ export default function RecipeModal({ recipe, isOpen, onClose }: RecipeModalProp
           <div className="lg:w-1/2 relative bg-gray-50 dark:bg-gray-950">
             <div className="relative h-64 lg:h-full min-h-[300px]">
               {currentImage ? (
-                <img
+                <Image
                   src={currentImage}
                   alt={recipe.title}
-                  className={`w-full h-full object-contain transition-transform duration-300 ${
+                  fill
+                  className={`object-contain transition-transform duration-300 ${
                     isZoomed ? 'scale-150 cursor-zoom-out' : 'cursor-zoom-in'
                   }`}
                   onClick={() => setIsZoomed(!isZoomed)}
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  priority={currentImageIndex === 0}
+                  loading={currentImageIndex === 0 ? 'eager' : 'lazy'}
+                  quality={90}
                   onError={(e) => {
                     console.error('Image failed to load:', currentImage)
-                    e.currentTarget.style.display = 'none'
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
                   }}
                 />
               ) : (
@@ -275,10 +282,14 @@ export default function RecipeModal({ recipe, isOpen, onClose }: RecipeModalProp
                         : 'border-transparent hover:border-gray-300'
                     }`}
                   >
-                    <img
+                    <Image
                       src={image}
                       alt={`${recipe.title} ${index + 1}`}
+                      width={64}
+                      height={64}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      quality={75}
                     />
                   </button>
                 ))}

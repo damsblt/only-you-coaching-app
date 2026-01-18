@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
 import StripeCheckoutForm from '@/components/stripe/StripeCheckoutForm'
+import PromoCodeInput from '@/components/checkout/PromoCodeInput'
 import { pricingPlans } from '@/data/pricingPlans'
 import { CheckCircle, User, CreditCard, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -16,6 +17,13 @@ function CheckoutContent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [appliedPromo, setAppliedPromo] = useState<{
+    promoCodeId: string
+    code: string
+    discountAmount: number
+    finalAmount: number
+    stripeCouponId: string | null
+  } | null>(null)
 
   useEffect(() => {
     const planId = searchParams.get('planId')
@@ -32,7 +40,28 @@ function CheckoutContent() {
     }
   }, [searchParams, router])
 
-  const handlePaymentSuccess = (subscriptionId: string) => {
+  const handlePaymentSuccess = async (subscriptionId: string) => {
+    // Si un code promo a été appliqué, enregistrer son utilisation
+    if (appliedPromo && user) {
+      try {
+        await fetch('/api/promo-codes/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            promoCodeId: appliedPromo.promoCodeId,
+            userId: user.id,
+            subscriptionId,
+            discountAmount: appliedPromo.discountAmount,
+            originalAmount: getOriginalAmount(),
+            finalAmount: appliedPromo.finalAmount,
+          }),
+        })
+      } catch (err) {
+        console.error('Error recording promo code usage:', err)
+        // Ne pas échouer le paiement pour cette erreur
+      }
+    }
+
     setSuccess(true)
     setIsProcessing(false)
     // Redirect to success page after a short delay
@@ -44,6 +73,31 @@ function CheckoutContent() {
   const handlePaymentError = (errorMessage: string) => {
     setError(errorMessage)
     setIsProcessing(false)
+  }
+
+  // Helper pour extraire le montant original en centimes du prix
+  const getOriginalAmount = () => {
+    if (!selectedPlan) return 0
+    // Extraire le nombre du prix (ex: "69 CHF" -> 69)
+    const priceMatch = selectedPlan.price.match(/(\d+)/)
+    if (priceMatch) {
+      return parseInt(priceMatch[1]) * 100 // Convertir en centimes
+    }
+    return 0
+  }
+
+  const handlePromoApplied = (discount: {
+    promoCodeId: string
+    code: string
+    discountAmount: number
+    finalAmount: number
+    stripeCouponId: string | null
+  }) => {
+    setAppliedPromo(discount)
+  }
+
+  const handlePromoRemoved = () => {
+    setAppliedPromo(null)
   }
 
   if (loading) {
@@ -147,6 +201,19 @@ function CheckoutContent() {
               </div>
             </div>
 
+            {/* Promo Code Input */}
+            {user && selectedPlan && (
+              <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                <PromoCodeInput
+                  planId={selectedPlan.id}
+                  userId={user.id}
+                  originalAmount={getOriginalAmount()}
+                  onPromoApplied={handlePromoApplied}
+                  onPromoRemoved={handlePromoRemoved}
+                />
+              </div>
+            )}
+
             {/* User Info */}
             <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
@@ -187,10 +254,12 @@ function CheckoutContent() {
             <StripeCheckoutForm
               planId={selectedPlan.id}
               planName={selectedPlan.name}
-              planPrice={selectedPlan.price}
+              planPrice={appliedPromo ? `${(appliedPromo.finalAmount / 100).toFixed(2)} CHF` : selectedPlan.price}
+              originalPrice={selectedPlan.price}
               planDuration={selectedPlan.duration}
               planFeatures={selectedPlan.features}
               userId={user.id}
+              promoCode={appliedPromo?.stripeCouponId || null}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
             />

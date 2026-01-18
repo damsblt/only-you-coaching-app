@@ -12,6 +12,7 @@ interface S3ImageProps {
   width?: number
   height?: number
   style?: React.CSSProperties
+  sizes?: string // Pour les images responsives
 }
 
 // Cache global pour les URLs S3 (valide 6 heures)
@@ -31,7 +32,7 @@ const s3ImageCache = typeof window !== 'undefined' && globalThis.s3ImageCache
 
 const CACHE_DURATION = 6 * 60 * 60 * 1000 // 6 heures
 
-async function fetchS3ImageUrl(s3Key: string): Promise<string | null> {
+async function fetchS3ImageUrl(s3Key: string, highPriority: boolean = false): Promise<string | null> {
   // Utiliser le cache global partagé
   const cache = typeof window !== 'undefined' && globalThis.s3ImageCache 
     ? globalThis.s3ImageCache 
@@ -50,14 +51,21 @@ async function fetchS3ImageUrl(s3Key: string): Promise<string | null> {
     
     const apiUrl = `${baseUrl}/api/gallery/specific-photo?key=${encodeURIComponent(s3Key)}`
     
-    const response = await fetch(apiUrl, {
+    const fetchOptions: RequestInit = {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
       // Utiliser le cache HTTP pour accélérer les requêtes répétées
-      cache: 'default' // Utilise le cache du navigateur
-    })
+      cache: highPriority ? 'force-cache' : 'default'
+    }
+    
+    // Ajouter priority si supporté et si highPriority
+    if (highPriority) {
+      (fetchOptions as any).priority = 'high'
+    }
+    
+    const response = await fetch(apiUrl, fetchOptions)
     
     if (response.ok) {
       const data = await response.json()
@@ -83,14 +91,30 @@ export default function S3Image({
   width,
   height,
   style,
+  sizes,
   priority = false,
   loading: loadingProp
 }: S3ImageProps & { priority?: boolean; loading?: 'lazy' | 'eager' }) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // Initialiser avec le cache si disponible (synchrone pour les images prioritaires)
+  const cache = typeof window !== 'undefined' && globalThis.s3ImageCache 
+    ? globalThis.s3ImageCache 
+    : s3ImageCache
+  
+  const initialCached = cache.get(s3Key)
+  const initialUrl = initialCached && Date.now() - initialCached.timestamp < CACHE_DURATION 
+    ? initialCached.url 
+    : null
+
+  const [imageUrl, setImageUrl] = useState<string | null>(initialUrl)
+  const [isLoading, setIsLoading] = useState(!initialUrl)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    // Si on a déjà l'URL depuis le cache initial, pas besoin de fetch
+    if (initialUrl) {
+      return
+    }
+
     let cancelled = false
 
     const loadImage = async () => {
@@ -99,7 +123,7 @@ export default function S3Image({
         ? globalThis.s3ImageCache 
         : s3ImageCache
       
-      // Vérifier le cache immédiatement
+      // Vérifier le cache encore une fois
       const cached = cache.get(s3Key)
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         if (!cancelled) {
@@ -109,8 +133,8 @@ export default function S3Image({
         }
       }
 
-      // Sinon, fetch avec cache HTTP
-      const url = await fetchS3ImageUrl(s3Key)
+      // Sinon, fetch avec cache HTTP et priorité haute si priority=true
+      const url = await fetchS3ImageUrl(s3Key, priority)
       if (!cancelled) {
         if (url) {
           setImageUrl(url)
@@ -127,7 +151,7 @@ export default function S3Image({
     return () => {
       cancelled = true
     }
-  }, [s3Key])
+  }, [s3Key, initialUrl, priority])
 
   if (isLoading) {
     return (
@@ -149,6 +173,8 @@ export default function S3Image({
           height={fill ? undefined : height}
           className={className}
           style={style}
+          sizes={sizes || (fill ? '100vw' : undefined)}
+          quality={85}
         />
       )
     }
@@ -164,9 +190,11 @@ export default function S3Image({
       height={fill ? undefined : height}
       className={className}
       style={style}
-      unoptimized
+      sizes={sizes || (fill ? '100vw' : undefined)}
       priority={priority}
-      loading={loadingProp}
+      loading={loadingProp || (priority ? 'eager' : 'lazy')}
+      fetchPriority={priority ? 'high' : 'auto'}
+      quality={85}
       onError={() => {
         setError(true)
       }}

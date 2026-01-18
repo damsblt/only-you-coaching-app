@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSignedVideoUrl } from '@/lib/s3'
+import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
 
 /**
  * GET - Get signed URL for video thumbnail
@@ -33,14 +33,21 @@ export async function GET(
     try {
       const thumbnailUrl = new URL(video.thumbnail)
       
-      // If URL already has query parameters (signed URL), extract clean path
-      const encodedPath = thumbnailUrl.pathname
-      const decodedPath = decodeURIComponent(encodedPath)
-      const s3Key = decodedPath.substring(1) // Remove leading slash
+      // Extract S3 key from pathname
+      let s3Key: string
+      try {
+        // Decode pathname to handle URL encoding
+        const decodedPath = decodeURIComponent(thumbnailUrl.pathname)
+        s3Key = decodedPath.substring(1) // Remove leading slash
+      } catch (decodeError) {
+        // If decode fails, use pathname as-is
+        s3Key = thumbnailUrl.pathname.substring(1)
+      }
       
       // If it's in the thumbnails folder, use public URL (thumbnails are public)
       if (s3Key.startsWith('thumbnails/')) {
-        const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
+        // Use getPublicUrl which handles encoding properly
+        const publicUrl = getPublicUrl(s3Key)
         return NextResponse.json({ url: publicUrl })
       }
       
@@ -49,8 +56,14 @@ export async function GET(
 
       if (!signedUrlResult.success) {
         console.error('Failed to generate signed URL:', signedUrlResult.error)
-        // Return original URL as fallback
-        return NextResponse.json({ url: video.thumbnail })
+        // Try public URL as fallback
+        try {
+          const publicUrl = getPublicUrl(s3Key)
+          return NextResponse.json({ url: publicUrl })
+        } catch {
+          // Return original URL as final fallback
+          return NextResponse.json({ url: video.thumbnail })
+        }
       }
 
       return NextResponse.json({ url: signedUrlResult.url })

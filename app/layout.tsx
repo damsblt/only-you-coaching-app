@@ -18,13 +18,6 @@ export const metadata: Metadata = {
   description: "Découvrez le Pilates avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.",
   keywords: "pilates, coaching, méditation, fitness, bien-être, Marie-Line",
   authors: [{ name: "Marie-Line" }],
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: "cover",
-  },
   openGraph: {
     title: "Marie-Line Pilates - Coaching en ligne",
     description: "Découvrez le Pilates avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.",
@@ -37,6 +30,14 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -44,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
+      <body className="min-h-screen bg-white transition-colors">
         <ErrorBoundary>
           <Providers>
             <HeaderAssetsPreloader />

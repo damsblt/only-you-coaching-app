@@ -46,7 +46,7 @@ const PLANS_CONFIG = {
 export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe()
-    const { planId, userId, paymentMethodId } = await req.json()
+    const { planId, userId, paymentMethodId, promoCode } = await req.json()
     
     if (!userId || !paymentMethodId) {
       return NextResponse.json({ error: 'User ID and Payment Method ID required' }, { status: 400 })
@@ -160,8 +160,8 @@ export async function POST(req: NextRequest) {
       cancelAtTimestamp = Math.floor(commitmentEndDate.getTime() / 1000)
     }
 
-    // Create subscription
-    const subscription = await stripe.subscriptions.create({
+    // Préparer les données de création de subscription
+    const subscriptionData: any = {
       customer: customer.id,
       items: [
         {
@@ -177,11 +177,21 @@ export async function POST(req: NextRequest) {
         duration_months: plan.duration?.toString() || 'unlimited',
         commitment_period: plan.duration ? 'true' : 'false',
       },
-      // Pour plans à durée fixe, programmer l'annulation automatique à la fin de l'engagement
-      ...(cancelAtTimestamp && {
-        cancel_at: cancelAtTimestamp,
-      }),
-    })
+    }
+
+    // Appliquer le code promo si fourni
+    if (promoCode) {
+      subscriptionData.coupon = promoCode
+      subscriptionData.metadata.promo_code = promoCode
+    }
+
+    // Pour plans à durée fixe, programmer l'annulation automatique à la fin de l'engagement
+    if (cancelAtTimestamp) {
+      subscriptionData.cancel_at = cancelAtTimestamp
+    }
+
+    // Create subscription
+    const subscription = await stripe.subscriptions.create(subscriptionData)
 
     // Update user subscription in database
     try {

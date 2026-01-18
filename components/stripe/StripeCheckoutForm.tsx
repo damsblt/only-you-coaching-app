@@ -18,9 +18,11 @@ interface StripeCheckoutFormProps {
   planId: string
   planName: string
   planPrice: string
+  originalPrice?: string
   planDuration: string
   planFeatures: string[]
   userId: string
+  promoCode?: string | null
   onSuccess: (subscriptionId: string) => void
   onError: (error: string) => void
 }
@@ -29,9 +31,11 @@ interface PaymentFormProps {
   planId: string
   planName: string
   planPrice: string
+  originalPrice?: string
   planDuration: string
   planFeatures: string[]
   userId: string
+  promoCode?: string | null
   onSuccess: (subscriptionId: string) => void
   onError: (error: string) => void
 }
@@ -40,9 +44,11 @@ function PaymentForm({
   planId,
   planName,
   planPrice,
+  originalPrice,
   planDuration,
   planFeatures,
   userId,
+  promoCode,
   onSuccess,
   onError
 }: PaymentFormProps) {
@@ -112,7 +118,8 @@ function PaymentForm({
         body: JSON.stringify({ 
           planId, 
           userId, 
-          paymentMethodId 
+          paymentMethodId,
+          promoCode: promoCode || null
         }),
       })
 
@@ -211,9 +218,11 @@ export default function StripeCheckoutForm({
   planId,
   planName,
   planPrice,
+  originalPrice,
   planDuration,
   planFeatures,
   userId,
+  promoCode,
   onSuccess,
   onError
 }: StripeCheckoutFormProps) {
@@ -240,9 +249,11 @@ export default function StripeCheckoutForm({
         planId={planId}
         planName={planName}
         planPrice={planPrice}
+        originalPrice={originalPrice}
         planDuration={planDuration}
         planFeatures={planFeatures}
         userId={userId}
+        promoCode={promoCode}
         onSuccess={onSuccess}
         onError={onError}
       />

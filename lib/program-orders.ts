@@ -29,18 +29,35 @@ export const MACHINE_PROGRAM_ORDER: Record<number, string> = {
 
 /**
  * Ordre des vidéos pour le programme Abdos (SPECIAL ABDOMINAUX)
- * À compléter avec les IDs des vidéos dans l'ordre spécifié dans le fichier Word
+ * Basé sur l'ordre spécifié pour le programme abdos
+ * 
+ * Ordre: 45.1, 24.1, 2, 10.1, 25, 6, 45
  */
 export const ABDOS_PROGRAM_ORDER: Record<number, string> = {
-  // TODO: Ajouter l'ordre des vidéos après identification
+  1: '119e54f9-837b-42de-bc5f-a9c6d7bbe197', // Vidéo 45.1: Gainage planche à genoux au sol f  x
+  2: 'f13d7866-9033-457a-a9c7-d24759d3d988', // Vidéo 24.1: Gainage oblique au sol couché sur le dos + toucher talon
+  3: 'b715f139-e108-4c48-b79f-dc44350ef74c', // Vidéo 2: Crunch au sol + genoux à 90° x
+  4: 'c1be7fa5-dc69-4a49-8690-8e800b1442fa', // Vidéo 10.1: Extension de jambes tendues avec ballon au cheville et tête au sol
+  5: '2ee201f1-80cd-44f0-8c54-abbf35dd8a48', // Vidéo 25: Gainage oblique au sol sur les genoux  f   x
+  6: 'd8a4d9c0-6592-44c8-b7f9-fddeccdedb5d', // Vidéo 6: Reeverse genoux fléchit f
+  7: 'f2718923-efd3-4595-a502-20d719c1ebb9', // Vidéo 45: Gainage à quattre pattes
 }
 
 /**
  * Ordre des vidéos pour le programme Brûle Graisse (SPECIAL BRULE GRAISSE)
- * À compléter avec les IDs des vidéos dans l'ordre spécifié dans le fichier Word
+ * Basé sur l'ordre spécifié pour le programme brule-graisse
+ * 
+ * Ordre: 40, 23, 29, 5, 25, 10, 37, 17
  */
 export const BRULE_GRAISSE_PROGRAM_ORDER: Record<number, string> = {
-  // TODO: Ajouter l'ordre des vidéos après identification
+  1: '311284bc-98c4-4d36-85af-b40c2504370f', // Vidéo 40: Squat avec barre
+  2: '1d5a4f64-eb38-4482-b9d3-3a6e0a031b0c', // Vidéo 23: Jump sur le step
+  3: '7b9e2b3c-d977-485d-aaa5-64e7d9ef9358', // Vidéo 29: Pompe à genoux avec mains écartés
+  4: '17326c41-5273-4ee1-8307-e96ff50bb29f', // Vidéo 5: Mountain climber niveau 2
+  5: '8faae887-b8b9-43dc-aee8-56d0393f1f72', // Vidéo 25: Fente avant alternés 4 temps
+  6: 'bbba2fd7-f8a8-4e21-a69a-39b0d92e5b0a', // Vidéo 10: Course talon fesse
+  7: '31665a52-5cc4-4fa3-a7e2-c9c354907891', // Vidéo 37: Rowing position de squat + barre mains large
+  8: 'c125d1d5-4694-48d5-9bea-73805e64ca36', // Vidéo 17: Jumping jack touché sol niveau 1
 }
 
 /**

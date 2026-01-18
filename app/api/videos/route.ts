@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getSignedVideoUrl } from '@/lib/s3'
+import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
 import { sortVideosByProgramOrder } from '@/lib/program-orders'
 
 // Cache configuration - revalidate every 60 seconds
@@ -73,7 +73,8 @@ export async function GET(request: NextRequest) {
       }
       
       // Build query using Neon client
-      let query = db.from('videos_new').select(VIDEO_COLUMNS).order('title', { ascending: true })
+      // Note: We'll sort after fetching to handle exo_title (numeric) vs title (alphabetic)
+      let query = db.from('videos_new').select(VIDEO_COLUMNS)
 
       // Apply filters
       query = query.eq('isPublished', true)
@@ -95,12 +96,13 @@ export async function GET(request: NextRequest) {
         finalRegion = programme
       } else if (muscleGroup && muscleGroup !== 'all') {
         // Map UI muscle group names to database region values
-        const muscleGroupMap: { [key: string]: string } = {
+        const muscleGroupMap: { [key: string]: string} = {
           'Abdos': 'abdos',
           'Bande': 'bande',
           'Biceps': 'biceps',
           'Cardio': 'cardio',
           'Dos': 'dos',
+          'Épaules': 'epaules',
           'Fessiers et jambes': 'fessiers-jambes',
           'Machine': 'machine',
           'Pectoraux': 'pectoraux',
@@ -218,6 +220,23 @@ export async function GET(request: NextRequest) {
         sortedData = sortedData.slice(offset) // Only apply offset, no limit
       }
       console.log(`📋 Applied custom ordering for ${region} program: ${sortedData.length} videos after pagination`)
+    } else {
+      // Sort by exo_title if available (numeric), otherwise by title (alphabetic)
+      sortedData.sort((a, b) => {
+        // If both have exo_title, sort numerically
+        if (a.exo_title && b.exo_title) {
+          const numA = parseFloat(a.exo_title)
+          const numB = parseFloat(b.exo_title)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB
+          }
+        }
+        // If only one has exo_title, prioritize it
+        if (a.exo_title && !b.exo_title) return -1
+        if (!a.exo_title && b.exo_title) return 1
+        // Otherwise sort alphabetically by title
+        return (a.title || '').localeCompare(b.title || '')
+      })
     }
 
     // Process thumbnails - use public URLs for thumbnails folder, signed URLs for others
@@ -242,37 +261,35 @@ export async function GET(request: NextRequest) {
                 // No processing needed
               } else if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
                 // Check if it's an S3 URL
-                if (thumbnailUrl.search) {
-                  // If URL already has query parameters (signed URL), clean it up
-                  const encodedPath = thumbnailUrl.pathname
-                  const decodedPath = decodeURIComponent(encodedPath)
-                  const s3Key = decodedPath.substring(1) // Remove leading slash
-                  
-                  // If it's in the thumbnails folder, use public URL
-                  if (s3Key.startsWith('thumbnails/')) {
-                    const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${s3Key}`
-                    processedVideo.thumbnail = publicUrl
-                  } else {
-                    // For non-thumbnail files, generate a new signed URL
-                    const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                    if (signedUrlResult.success) {
-                      const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                      processedVideo.thumbnail = cleanUrl
-                    }
-                  }
+                let s3Key: string
+                
+                // Extract S3 key from URL pathname
+                try {
+                  // Decode pathname to handle URL encoding
+                  let decodedPath = decodeURIComponent(thumbnailUrl.pathname)
+                  s3Key = decodedPath.substring(1) // Remove leading slash
+                } catch (decodeError) {
+                  // If decode fails, try without decoding (might already be decoded)
+                  s3Key = thumbnailUrl.pathname.substring(1)
+                }
+                
+                // If URL has query parameters (signed URL), we still use the pathname
+                // The query params are just for authentication, the key is in pathname
+                
+                // If it's in the thumbnails folder, use public URL with proper encoding
+                if (s3Key.startsWith('thumbnails/')) {
+                  // Use getPublicUrl which handles encoding properly
+                  const publicUrl = getPublicUrl(s3Key)
+                  processedVideo.thumbnail = publicUrl
                 } else {
-                  // No query params - it's already a public URL
-                  const encodedPath = thumbnailUrl.pathname
-                  const decodedPath = decodeURIComponent(encodedPath)
-                  const s3Key = decodedPath.substring(1)
-                  
-                  if (!s3Key.startsWith('thumbnails/')) {
-                    // For non-thumbnail files, generate signed URL
-                    const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                    if (signedUrlResult.success) {
-                      const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                      processedVideo.thumbnail = cleanUrl
-                    }
+                  // For non-thumbnail files, generate a signed URL
+                  const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                  if (signedUrlResult.success) {
+                    const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                    processedVideo.thumbnail = cleanUrl
+                  } else {
+                    console.warn('Failed to generate signed URL for thumbnail:', video.id, s3Key, signedUrlResult.error)
+                    // Keep original URL as fallback
                   }
                 }
               }
@@ -280,21 +297,32 @@ export async function GET(request: NextRequest) {
               // Not a valid URL or error processing, keep original thumbnail
               console.warn('Thumbnail URL format not recognized for video', video.id, ':', video.thumbnail, 'Error:', urlError)
             }
+          } else {
+            // No thumbnail - log for debugging
+            console.debug('Video has no thumbnail:', video.id, video.title)
           }
 
           // Process videoUrl - keep Neon Storage URLs as is, they're already accessible
+          // For S3 URLs, we need to ensure they're properly formatted
           if (video.videoUrl) {
             try {
               const videoUrlObj = new URL(video.videoUrl)
               // Neon Storage URLs are already public and accessible, keep them as is
               if (videoUrlObj.hostname.includes('neon.tech') || videoUrlObj.hostname.includes('storage.neon')) {
                 // No processing needed for Neon Storage URLs
+              } else if (videoUrlObj.hostname.includes('s3') || videoUrlObj.hostname.includes('amazonaws.com')) {
+                // S3 URLs: The videoUrl is kept as-is, but the actual streaming is handled by /api/videos/[id]/stream
+                // The stream endpoint will extract the S3 key and generate a signed URL
+                // For now, we can optionally replace the videoUrl with the stream endpoint URL
+                // But this might break direct URL usage, so we keep the original URL
+                // The frontend should use /api/videos/${id}/stream for playback
               }
-              // S3 URLs are handled by the /api/videos/[id]/stream endpoint
             } catch (urlError) {
-              // Not a valid URL, keep original
+              // Not a valid URL, keep original but log warning
               console.warn('Video URL format not recognized for video', video.id, ':', video.videoUrl, 'Error:', urlError)
             }
+          } else {
+            console.warn('Video has no videoUrl:', video.id, video.title)
           }
 
           return processedVideo

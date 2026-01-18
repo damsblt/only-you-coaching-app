@@ -18,7 +18,7 @@ export default function VideosPage() {
   return (
     <>
       <PageHeader
-        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        videoS3Key="Photos/Illustration/1860009_Lunges_Resistance Training_Exercise_1920x1080 (1).mp4"
         title="Explorez Nos Vidéos de Pilates"
         subtitle="Bibliothèque d'exercices et programmes structurés pour votre pratique"
         height="fullScreen"

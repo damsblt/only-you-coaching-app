@@ -138,8 +138,21 @@ export function generateThumbnailKey(userId: string, videoKey: string): string {
 // Get public URL for a file
 export function getPublicUrl(key: string): string {
   // Use direct S3 URL since videos are now publicly accessible
-  // The key is already properly encoded, just use it as is
-  return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${key}`
+  // Encode each segment separately to handle special characters properly
+  const pathSegments = key.split('/')
+  const encodedSegments = pathSegments.map(segment => {
+    // Decode first in case it's already encoded, then re-encode properly
+    try {
+      const decoded = decodeURIComponent(segment)
+      return encodeURIComponent(decoded)
+    } catch {
+      // If decode fails, encode as-is
+      return encodeURIComponent(segment)
+    }
+  })
+  const encodedKey = encodedSegments.join('/')
+  
+  return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || 'eu-north-1'}.amazonaws.com/${encodedKey}`
 }
 
 // Check if an object exists in S3 (HEAD request)
