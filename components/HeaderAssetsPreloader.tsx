@@ -35,22 +35,34 @@ if (typeof window !== 'undefined') {
 
 async function preloadS3Image(s3Key: string): Promise<void> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    // Toujours utiliser l'origine actuelle pour éviter les problèmes CORS
+    const baseUrl = window.location.origin
     const apiUrl = `${baseUrl}/api/gallery/specific-photo?key=${encodeURIComponent(s3Key)}`
     
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
-      cache: 'default'
+      cache: 'force-cache', // Utiliser le cache agressivement
+      priority: 'high' as RequestPriority
     })
     
     if (response.ok) {
       const data = await response.json()
       if (data.url && globalThis.s3ImageCache) {
         globalThis.s3ImageCache.set(s3Key, { url: data.url, timestamp: Date.now() })
-        // Précharger l'image dans le navigateur
+        
+        // Précharger l'image dans le navigateur avec priorité haute
         const img = new Image()
+        img.fetchPriority = 'high'
         img.src = data.url
+        
+        // Utiliser aussi un link preload pour optimiser encore plus
+        const link = document.createElement('link')
+        link.rel = 'preload'
+        link.as = 'image'
+        link.href = data.url
+        link.fetchPriority = 'high'
+        document.head.appendChild(link)
       }
     }
   } catch (error) {
@@ -60,7 +72,8 @@ async function preloadS3Image(s3Key: string): Promise<void> {
 
 async function preloadS3Video(s3Key: string): Promise<void> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
+    // Toujours utiliser l'origine actuelle pour éviter les problèmes CORS
+    const baseUrl = window.location.origin
     const apiUrl = `${baseUrl}/api/videos/s3-video?key=${encodeURIComponent(s3Key)}`
     
     const response = await fetch(apiUrl, {
@@ -86,17 +99,14 @@ async function preloadS3Video(s3Key: string): Promise<void> {
 
 export default function HeaderAssetsPreloader() {
   useEffect(() => {
-    // Attendre que le DOM soit prêt
-    const preloadAssets = async () => {
-      // Délai court pour ne pas bloquer le rendu initial
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Précharger toutes les images en parallèle
+    // Précharger immédiatement, sans délai
+    const preloadAssets = () => {
+      // Précharger toutes les images en parallèle (priorité haute)
       const imagePromises = HEADER_ASSETS.images.map(s3Key => 
         preloadS3Image(s3Key).catch(() => {}) // Ignorer les erreurs silencieusement
       )
       
-      // Précharger toutes les vidéos en parallèle
+      // Précharger toutes les vidéos en parallèle (priorité normale)
       const videoPromises = HEADER_ASSETS.videos.map(s3Key => 
         preloadS3Video(s3Key).catch(() => {}) // Ignorer les erreurs silencieusement
       )
@@ -105,6 +115,7 @@ export default function HeaderAssetsPreloader() {
       Promise.all([...imagePromises, ...videoPromises]).catch(() => {})
     }
     
+    // Démarrer immédiatement le préchargement
     preloadAssets()
   }, [])
 

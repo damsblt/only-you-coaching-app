@@ -1,0 +1,512 @@
+/**
+ * Script pour trouver les correspondances entre les vidéos sans métadonnées dans Neon
+ * et les métadonnées dans les fichiers du dossier "01-métadonnées"
+ * Génère un rapport pour validation avant mise à jour
+ */
+
+require('dotenv').config({ path: '.env.local' })
+const { neon } = require('@neondatabase/serverless')
+const fs = require('fs')
+const path = require('path')
+
+const databaseUrl = process.env.DATABASE_URL
+
+if (!databaseUrl) {
+  console.error('❌ DATABASE_URL manquant dans .env.local')
+  process.exit(1)
+}
+
+const sql = neon(databaseUrl)
+
+// Chemin vers le fichier de métadonnées
+const METADATA_FILE = path.join(
+  __dirname,
+  '..',
+  'Dossier Cliente',
+  'Video',
+  'groupes-musculaires',
+  '01-métadonnées',
+  'metadonnees-completes.md'
+)
+
+/**
+ * Normalise un titre pour la comparaison (enlève accents, majuscules, caractères spéciaux)
+ */
+function normalizeTitle(title) {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Enlève les accents
+    .replace(/[^a-z0-9\s]/g, ' ') // Remplace les caractères spéciaux par des espaces
+    .replace(/\s+/g, ' ') // Normalise les espaces multiples
+    .trim()
+}
+
+/**
+ * Compare deux titres avec une tolérance aux variations
+ */
+function compareTitles(title1, title2) {
+  const norm1 = normalizeTitle(title1)
+  const norm2 = normalizeTitle(title2)
+  
+  // Correspondance exacte
+  if (norm1 === norm2) return { score: 100, type: 'exact' }
+  
+  // Correspondance partielle (un contient l'autre)
+  if (norm1.includes(norm2) || norm2.includes(norm1)) {
+    const longer = norm1.length > norm2.length ? norm1 : norm2
+    const shorter = norm1.length > norm2.length ? norm2 : norm1
+    const ratio = shorter.length / longer.length
+    return { score: Math.round(ratio * 90), type: 'partial' }
+  }
+  
+  // Correspondance par mots-clés
+  const words1 = norm1.split(/\s+/).filter(w => w.length > 2)
+  const words2 = norm2.split(/\s+/).filter(w => w.length > 2)
+  const commonWords = words1.filter(w => words2.includes(w))
+  
+  if (commonWords.length >= 3) {
+    return { score: 70 + (commonWords.length * 5), type: 'keywords' }
+  } else if (commonWords.length === 2) {
+    return { score: 50, type: 'keywords' }
+  } else if (commonWords.length === 1 && commonWords[0].length > 4) {
+    return { score: 30, type: 'single_keyword' }
+  }
+  
+  return { score: 0, type: 'none' }
+}
+
+/**
+ * Extrait les métadonnées d'un exercice depuis le texte
+ */
+function extractExerciseMetadata(text, exerciseTitle) {
+  const metadata = {
+    title: exerciseTitle,
+    muscleGroups: null,
+    startingPosition: null,
+    movement: null,
+    intensity: null,
+    series: null,
+    constraints: null,
+    theme: null
+  }
+
+  // Chercher "Muscle cible"
+  const muscleMatch = text.match(/Muscle cible\s*[:：]\s*([^\n]+)/i)
+  if (muscleMatch) {
+    const muscles = muscleMatch[1]
+      .split(/[,，]/)
+      .map(m => m.trim())
+      .filter(m => m)
+    metadata.muscleGroups = muscles
+  }
+
+  // Chercher "Position départ" ou "Position de départ"
+  const positionMatch = text.match(/Position\s+(?:de\s+)?départ\s*[:：]\s*([\s\S]*?)(?=\n\s*(?:Mouvement|Intensité|Série|Contre|Thème|$))/i)
+  if (positionMatch) {
+    metadata.startingPosition = positionMatch[1]
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l)
+      .join('. ')
+  }
+
+  // Chercher "Mouvement"
+  const movementMatch = text.match(/Mouvement\s*[:：]\s*([\s\S]*?)(?=\n\s*(?:Intensité|Série|Contre|Thème|$))/i)
+  if (movementMatch) {
+    metadata.movement = movementMatch[1]
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l)
+      .join('. ')
+  }
+
+  // Chercher "Intensité"
+  const intensityMatch = text.match(/Intensité\s*[:：.]\s*([^\n]+)/i)
+  if (intensityMatch) {
+    metadata.intensity = intensityMatch[1].trim()
+  }
+
+  // Chercher "Série"
+  const seriesMatch = text.match(/Série\s*[:：]\s*([^\n]+)/i)
+  if (seriesMatch) {
+    metadata.series = seriesMatch[1].trim()
+  }
+
+  // Chercher "Contre-indication"
+  const constraintsMatch = text.match(/Contre\s*[-]?\s*indication\s*[:：]\s*([^\n]+)/i)
+  if (constraintsMatch) {
+    metadata.constraints = constraintsMatch[1].trim()
+  }
+
+  // Chercher "Thème"
+  const themeMatch = text.match(/Thème\s*[:：]\s*([^\n]+)/i)
+  if (themeMatch) {
+    metadata.theme = themeMatch[1].trim()
+  }
+
+  return metadata
+}
+
+/**
+ * Trouve les exercices dans le fichier de métadonnées
+ */
+function parseMetadataFile(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8')
+  const exercises = []
+  
+  // Utiliser une regex pour trouver les exercices
+  // Format: Titre seul sur une ligne, suivi de "Muscle cible" ou directement des métadonnées
+  const exercisePattern = /^([A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸa-zàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ0-9\s\+\-\(\)\.]+)$\n\n(?:.*?\n)*?(?=^[A-ZÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸa-zàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ0-9\s\+\-\(\)\.]+$|^#|^---|$)/gm
+  
+  let match
+  while ((match = exercisePattern.exec(content)) !== null) {
+    const title = match[1].trim()
+    const exerciseContent = match[0]
+    
+    // Vérifier que c'est bien un exercice (contient "Muscle cible" ou "Position départ" ou "Mouvement")
+    if (exerciseContent.match(/Muscle\s+cible|Position\s+(?:de\s+)?départ|Mouvement/i)) {
+      const metadata = extractExerciseMetadata(exerciseContent, title)
+      if (metadata.muscleGroups || metadata.startingPosition || metadata.movement) {
+        exercises.push({
+          title: title,
+          normalizedTitle: normalizeTitle(title),
+          metadata: metadata,
+          rawText: exerciseContent
+        })
+      }
+    }
+  }
+  
+  // Si la regex n'a pas bien fonctionné, utiliser une approche ligne par ligne
+  if (exercises.length < 50) {
+    const lines = content.split('\n')
+    let currentExercise = null
+    let exerciseText = []
+    let inExercise = false
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      
+      // Détecter le début d'un exercice: ligne avec texte, suivie d'une ligne vide, puis "Muscle cible" ou "Position départ"
+      if (trimmed && 
+          !trimmed.startsWith('**') && 
+          !trimmed.startsWith('#') &&
+          !trimmed.startsWith('Source') &&
+          !trimmed.startsWith('---') &&
+          trimmed.length > 5 &&
+          i + 2 < lines.length &&
+          (lines[i + 1].trim() === '' || lines[i + 1].trim().match(/^Muscle\s+cible|^Position/i))) {
+        
+        // Si on a déjà un exercice, le sauvegarder
+        if (currentExercise && exerciseText.length > 0) {
+          const exerciseContent = exerciseText.join('\n')
+          const metadata = extractExerciseMetadata(exerciseContent, currentExercise)
+          if (metadata.muscleGroups || metadata.startingPosition || metadata.movement) {
+            exercises.push({
+              title: currentExercise,
+              normalizedTitle: normalizeTitle(currentExercise),
+              metadata: metadata,
+              rawText: exerciseContent
+            })
+          }
+        }
+        
+        // Nouvel exercice
+        currentExercise = trimmed
+        exerciseText = [line]
+        inExercise = true
+      } else if (inExercise) {
+        // Si on rencontre un nouveau titre potentiel (ligne seule avec texte), arrêter l'exercice précédent
+        if (trimmed && 
+            trimmed.length > 5 &&
+            !trimmed.match(/^Muscle|^Position|^Mouvement|^Intensité|^Série|^Contre|^Thème|^$/) &&
+            i + 1 < lines.length &&
+            lines[i + 1].trim() === '') {
+          // C'est probablement un nouveau titre, sauvegarder l'exercice précédent
+          if (currentExercise && exerciseText.length > 0) {
+            const exerciseContent = exerciseText.join('\n')
+            const metadata = extractExerciseMetadata(exerciseContent, currentExercise)
+            if (metadata.muscleGroups || metadata.startingPosition || metadata.movement) {
+              exercises.push({
+                title: currentExercise,
+                normalizedTitle: normalizeTitle(currentExercise),
+                metadata: metadata,
+                rawText: exerciseContent
+              })
+            }
+          }
+          currentExercise = trimmed
+          exerciseText = [line]
+        } else {
+          exerciseText.push(line)
+        }
+      }
+    }
+    
+    // Dernier exercice
+    if (currentExercise && exerciseText.length > 0) {
+      const exerciseContent = exerciseText.join('\n')
+      const metadata = extractExerciseMetadata(exerciseContent, currentExercise)
+      if (metadata.muscleGroups || metadata.startingPosition || metadata.movement) {
+        exercises.push({
+          title: currentExercise,
+          normalizedTitle: normalizeTitle(currentExercise),
+          metadata: metadata,
+          rawText: exerciseContent
+        })
+      }
+    }
+  }
+  
+  return exercises
+}
+
+/**
+ * Trouve la meilleure correspondance pour un titre de vidéo
+ */
+function findBestMatch(videoTitle, exercises) {
+  const matches = []
+  
+  for (const exercise of exercises) {
+    const comparison = compareTitles(videoTitle, exercise.title)
+    
+    if (comparison.score > 0) {
+      matches.push({
+        exercise: exercise,
+        score: comparison.score,
+        matchType: comparison.type
+      })
+    }
+  }
+  
+  // Trier par score décroissant
+  matches.sort((a, b) => b.score - a.score)
+  
+  return matches.length > 0 ? matches[0] : null
+}
+
+async function findMetadataMatches() {
+  try {
+    console.log('📖 Lecture du fichier de métadonnées...\n')
+    
+    if (!fs.existsSync(METADATA_FILE)) {
+      console.error(`❌ Fichier de métadonnées non trouvé: ${METADATA_FILE}`)
+      process.exit(1)
+    }
+    
+    const exercises = parseMetadataFile(METADATA_FILE)
+    console.log(`✅ ${exercises.length} exercices trouvés dans le fichier de métadonnées\n`)
+    
+    console.log('🔍 Recherche des vidéos sans métadonnées dans Neon...\n')
+    
+    // Récupérer les vidéos sans métadonnées critiques
+    const videos = await sql`
+      SELECT 
+        id, 
+        title, 
+        "muscleGroups", 
+        "startingPosition", 
+        movement, 
+        intensity, 
+        series, 
+        constraints, 
+        theme,
+        region,
+        category
+      FROM videos_new
+      WHERE "videoType" = 'MUSCLE_GROUPS'
+        AND "isPublished" = true
+        AND (
+          "muscleGroups" IS NULL 
+          OR array_length("muscleGroups", 1) IS NULL
+          OR "startingPosition" IS NULL 
+          OR "startingPosition" = ''
+          OR "movement" IS NULL 
+          OR "movement" = ''
+        )
+      ORDER BY title
+    `
+    
+    console.log(`📊 ${videos.length} vidéos sans métadonnées critiques trouvées\n`)
+    
+    // Trouver les correspondances
+    const matches = []
+    const noMatches = []
+    
+    console.log('🔍 Recherche des correspondances...\n')
+    
+    for (const video of videos) {
+      const match = findBestMatch(video.title, exercises)
+      
+      if (match && match.score >= 60) {
+        matches.push({
+          video: video,
+          match: match,
+          confidence: match.score >= 90 ? 'high' : match.score >= 70 ? 'medium' : 'low'
+        })
+      } else {
+        noMatches.push(video)
+      }
+    }
+    
+    // Générer le rapport
+    const outputDir = path.join(__dirname, '..', 'temp')
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true })
+    }
+    
+    // Rapport JSON
+    const jsonReport = {
+      generatedAt: new Date().toISOString(),
+      totalVideos: videos.length,
+      matchesFound: matches.length,
+      noMatches: noMatches.length,
+      matches: matches.map(m => ({
+        videoId: m.video.id,
+        videoTitle: m.video.title,
+        videoRegion: m.video.region,
+        matchTitle: m.match.exercise.title,
+        confidence: m.confidence,
+        score: m.match.score,
+        matchType: m.match.matchType,
+        metadata: m.match.exercise.metadata
+      })),
+      noMatches: noMatches.map(v => ({
+        id: v.id,
+        title: v.title,
+        region: v.region
+      }))
+    }
+    
+    const jsonFile = path.join(outputDir, 'metadata-matches.json')
+    fs.writeFileSync(jsonFile, JSON.stringify(jsonReport, null, 2), 'utf8')
+    
+    // Rapport texte pour validation
+    let textReport = `RAPPORT DE CORRESPONDANCES MÉTADONNÉES\n`
+    textReport += `Généré le: ${new Date().toLocaleString('fr-FR')}\n\n`
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `RÉSUMÉ\n`
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `Total vidéos sans métadonnées: ${videos.length}\n`
+    textReport += `Correspondances trouvées: ${matches.length}\n`
+    textReport += `Aucune correspondance: ${noMatches.length}\n\n`
+    
+    // Grouper par niveau de confiance
+    const highConfidence = matches.filter(m => m.confidence === 'high')
+    const mediumConfidence = matches.filter(m => m.confidence === 'medium')
+    const lowConfidence = matches.filter(m => m.confidence === 'low')
+    
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `CORRESPONDANCES HAUTE CONFIANCE (${highConfidence.length})\n`
+    textReport += `${'='.repeat(100)}\n\n`
+    
+    highConfidence.forEach((m, index) => {
+      textReport += `${index + 1}. VIDÉO: ${m.video.title}\n`
+      textReport += `   ID: ${m.video.id}\n`
+      textReport += `   Région: ${m.video.region || 'N/A'}\n`
+      textReport += `   → CORRESPONDANCE: ${m.match.exercise.title}\n`
+      textReport += `   Score: ${m.match.score}/100 (${m.match.matchType})\n`
+      textReport += `   Métadonnées trouvées:\n`
+      if (m.match.exercise.metadata.muscleGroups) {
+        textReport += `     - Muscle cible: ${m.match.exercise.metadata.muscleGroups.join(', ')}\n`
+      }
+      if (m.match.exercise.metadata.startingPosition) {
+        textReport += `     - Position départ: ${m.match.exercise.metadata.startingPosition.substring(0, 100)}...\n`
+      }
+      if (m.match.exercise.metadata.movement) {
+        textReport += `     - Mouvement: ${m.match.exercise.metadata.movement.substring(0, 100)}...\n`
+      }
+      if (m.match.exercise.metadata.intensity) {
+        textReport += `     - Intensité: ${m.match.exercise.metadata.intensity}\n`
+      }
+      if (m.match.exercise.metadata.series) {
+        textReport += `     - Série: ${m.match.exercise.metadata.series}\n`
+      }
+      if (m.match.exercise.metadata.constraints) {
+        textReport += `     - Contre-indication: ${m.match.exercise.metadata.constraints}\n`
+      }
+      if (m.match.exercise.metadata.theme) {
+        textReport += `     - Thème: ${m.match.exercise.metadata.theme}\n`
+      }
+      textReport += `   ✅ VALIDATION: [ ] OUI  [ ] NON\n\n`
+    })
+    
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `CORRESPONDANCES MOYENNE CONFIANCE (${mediumConfidence.length})\n`
+    textReport += `${'='.repeat(100)}\n\n`
+    
+    mediumConfidence.forEach((m, index) => {
+      textReport += `${index + 1}. VIDÉO: ${m.video.title}\n`
+      textReport += `   ID: ${m.video.id}\n`
+      textReport += `   Région: ${m.video.region || 'N/A'}\n`
+      textReport += `   → CORRESPONDANCE: ${m.match.exercise.title}\n`
+      textReport += `   Score: ${m.match.score}/100 (${m.match.matchType})\n`
+      textReport += `   Métadonnées trouvées:\n`
+      if (m.match.exercise.metadata.muscleGroups) {
+        textReport += `     - Muscle cible: ${m.match.exercise.metadata.muscleGroups.join(', ')}\n`
+      }
+      if (m.match.exercise.metadata.startingPosition) {
+        textReport += `     - Position départ: ${m.match.exercise.metadata.startingPosition.substring(0, 100)}...\n`
+      }
+      if (m.match.exercise.metadata.movement) {
+        textReport += `     - Mouvement: ${m.match.exercise.metadata.movement.substring(0, 100)}...\n`
+      }
+      textReport += `   ⚠️  VALIDATION: [ ] OUI  [ ] NON\n\n`
+    })
+    
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `CORRESPONDANCES FAIBLE CONFIANCE (${lowConfidence.length})\n`
+    textReport += `${'='.repeat(100)}\n\n`
+    
+    lowConfidence.forEach((m, index) => {
+      textReport += `${index + 1}. VIDÉO: ${m.video.title}\n`
+      textReport += `   ID: ${m.video.id}\n`
+      textReport += `   → CORRESPONDANCE: ${m.match.exercise.title}\n`
+      textReport += `   Score: ${m.match.score}/100 (${m.match.matchType})\n`
+      textReport += `   ⚠️  VALIDATION: [ ] OUI  [ ] NON\n\n`
+    })
+    
+    textReport += `${'='.repeat(100)}\n`
+    textReport += `AUCUNE CORRESPONDANCE TROUVÉE (${noMatches.length})\n`
+    textReport += `${'='.repeat(100)}\n\n`
+    
+    noMatches.forEach((v, index) => {
+      textReport += `${index + 1}. ${v.title} (ID: ${v.id}, Région: ${v.region || 'N/A'})\n`
+    })
+    
+    const textFile = path.join(outputDir, 'metadata-matches-validation.txt')
+    fs.writeFileSync(textFile, textReport, 'utf8')
+    
+    // Afficher un résumé
+    console.log('='.repeat(100))
+    console.log('📊 RÉSUMÉ DES CORRESPONDANCES')
+    console.log('='.repeat(100))
+    console.log(`Total vidéos sans métadonnées: ${videos.length}`)
+    console.log(`\n✅ Correspondances haute confiance: ${highConfidence.length}`)
+    console.log(`⚠️  Correspondances moyenne confiance: ${mediumConfidence.length}`)
+    console.log(`⚠️  Correspondances faible confiance: ${lowConfidence.length}`)
+    console.log(`❌ Aucune correspondance: ${noMatches.length}`)
+    console.log('='.repeat(100))
+    
+    console.log(`\n💾 Rapport JSON sauvegardé dans: ${jsonFile}`)
+    console.log(`💾 Rapport de validation sauvegardé dans: ${textFile}`)
+    console.log(`\n📝 Veuillez valider les correspondances dans le fichier de validation avant de procéder à la mise à jour.`)
+    
+  } catch (error) {
+    console.error('❌ Erreur lors de la recherche:', error)
+    process.exit(1)
+  }
+}
+
+// Exécuter le script
+findMetadataMatches()
+  .then(() => {
+    console.log('\n✅ Script terminé avec succès')
+    process.exit(0)
+  })
+  .catch((error) => {
+    console.error('\n❌ Erreur fatale:', error)
+    process.exit(1)
+  })

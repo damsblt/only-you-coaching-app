@@ -76,6 +76,10 @@ export default function ComputerStreamPlayer({
   const [hasSwiped, setHasSwiped] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   
+  // State for landscape orientation hint
+  const [showRotateHint, setShowRotateHint] = useState(false)
+  const [isPortrait, setIsPortrait] = useState(true)
+  
   // Minimum swipe distance to trigger navigation (in pixels)
   const MIN_SWIPE_DISTANCE = 50
   // Maximum horizontal movement to consider it a vertical swipe
@@ -89,6 +93,10 @@ export default function ComputerStreamPlayer({
         ('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0)
       setIsMobile(isMobileDevice)
+      
+      // Check orientation
+      const portrait = window.innerHeight > window.innerWidth
+      setIsPortrait(portrait)
     }
     
     checkMobile()
@@ -124,6 +132,62 @@ export default function ComputerStreamPlayer({
 
     loadVideo()
   }, [video.id])
+  
+  // Request landscape orientation and show hint on mobile when video starts playing
+  useEffect(() => {
+    if (isMobile && isPlaying && isPortrait) {
+      // Try to use Screen Orientation API to lock to landscape
+      const requestLandscape = async () => {
+        try {
+          // @ts-ignore - Screen Orientation API might not be in TypeScript definitions
+          if (screen?.orientation?.lock) {
+            // @ts-ignore
+            await screen.orientation.lock('landscape')
+            console.log('📱 Locked to landscape orientation')
+          } else {
+            // If API not available, show visual hint
+            setShowRotateHint(true)
+            
+            // Auto-hide hint after 5 seconds
+            const timer = setTimeout(() => {
+              setShowRotateHint(false)
+            }, 5000)
+            
+            return () => clearTimeout(timer)
+          }
+        } catch (error) {
+          console.log('⚠️ Could not lock orientation, showing hint instead')
+          setShowRotateHint(true)
+          
+          // Auto-hide hint after 5 seconds
+          const timer = setTimeout(() => {
+            setShowRotateHint(false)
+          }, 5000)
+          
+          return () => clearTimeout(timer)
+        }
+      }
+      
+      requestLandscape()
+    } else {
+      setShowRotateHint(false)
+    }
+    
+    // Cleanup: unlock orientation when video stops or component unmounts
+    return () => {
+      if (isMobile) {
+        try {
+          // @ts-ignore
+          if (screen?.orientation?.unlock) {
+            // @ts-ignore
+            screen.orientation.unlock()
+          }
+        } catch (error) {
+          console.log('⚠️ Could not unlock orientation')
+        }
+      }
+    }
+  }, [isMobile, isPlaying, isPortrait])
 
   // Video event handlers
   useEffect(() => {
@@ -449,6 +513,7 @@ export default function ComputerStreamPlayer({
   useEffect(() => {
     if (isMobile) {
       document.body.style.overflow = 'hidden'
+      
       return () => {
         document.body.style.overflow = ''
       }
@@ -530,7 +595,7 @@ export default function ComputerStreamPlayer({
 
   return (
     <div 
-      className="fixed inset-0 bg-black z-50 flex"
+      className={`fixed inset-0 bg-black z-50 flex`}
       ref={containerRef}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -740,6 +805,19 @@ export default function ComputerStreamPlayer({
                 ) : (
                   <SkipBack className="w-12 h-12 text-white" />
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Rotate Hint Overlay - Show on mobile when video plays in portrait */}
+          {showRotateHint && isMobile && isPortrait && (
+            <div className="rotate-hint-overlay">
+              <div className="rotate-hint-icon">
+                📱➡️📺
+              </div>
+              <div className="rotate-hint-text">
+                <p className="font-bold text-xl mb-2">Tournez votre téléphone</p>
+                <p>Pour une meilleure expérience, visionnez la vidéo en mode paysage</p>
               </div>
             </div>
           )}

@@ -63,21 +63,54 @@ export async function GET(
     let s3Key: string
     try {
       const videoUrl = new URL(video.videoUrl)
+      console.log('[stream] Parsing URL:', {
+        hostname: videoUrl.hostname,
+        pathname: videoUrl.pathname,
+        fullUrl: video.videoUrl
+      })
+      
       // Extract key from S3 URL (remove bucket name and region)
       // URL format: https://only-you-coaching.s3.eu-north-1.amazonaws.com/Video/groupes-musculaires/abdos/video-name-mp4
       // The pathname may be URL-encoded, so decode it to get the original key
-      const decodedPath = decodeURIComponent(videoUrl.pathname)
+      let decodedPath: string
+      try {
+        decodedPath = decodeURIComponent(videoUrl.pathname)
+      } catch (decodeError) {
+        // If decode fails, use pathname as-is (might already be decoded)
+        console.warn('[stream] Failed to decode pathname, using as-is:', videoUrl.pathname)
+        decodedPath = videoUrl.pathname
+      }
+      
       s3Key = decodedPath.substring(1) // Remove leading slash
       console.log('[stream] extracted S3 key:', s3Key)
       
       // Validate that we have a proper S3 key
-      if (!s3Key || !s3Key.startsWith('Video/')) {
-        console.error('[stream] invalid S3 key format:', s3Key)
-        return NextResponse.json({ error: 'Invalid video key format' }, { status: 500 })
+      // Check for both "Video/" and "video/" (case-insensitive check)
+      const normalizedKey = s3Key.trim()
+      if (!normalizedKey) {
+        console.error('[stream] Empty S3 key extracted from URL:', video.videoUrl)
+        return NextResponse.json({ error: 'Invalid video key format: empty key' }, { status: 500 })
       }
+      
+      // Check if it starts with Video/ (case-insensitive)
+      const keyLower = normalizedKey.toLowerCase()
+      if (!keyLower.startsWith('video/')) {
+        console.error('[stream] invalid S3 key format - does not start with Video/:', normalizedKey)
+        console.error('[stream] Full URL was:', video.videoUrl)
+        return NextResponse.json({ 
+          error: 'Invalid video key format', 
+          details: `Key "${normalizedKey}" does not start with "Video/"` 
+        }, { status: 500 })
+      }
+      
+      // Use the normalized key
+      s3Key = normalizedKey
     } catch (urlError) {
       console.error('[stream] invalid video URL:', video.videoUrl, 'error:', urlError)
-      return NextResponse.json({ error: 'Invalid video URL' }, { status: 500 })
+      return NextResponse.json({ 
+        error: 'Invalid video URL', 
+        details: urlError instanceof Error ? urlError.message : 'Unknown error' 
+      }, { status: 500 })
     }
 
     // Generate signed URL for S3 access (videos require authentication)

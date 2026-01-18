@@ -18,7 +18,7 @@ export default function AudioPage() {
   return (
     <>
       <PageHeader
-        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        imageS3Key="Photos/Illustration/vitaly-gariev-gnBMTzKGA3U-unsplash.jpg"
         title="Améliorez Votre Bien-être Mental et Émotionnel"
         subtitle="Découvrez nos programmes exclusifs de méditation guidée et de coaching mental"
         height="fullScreen"

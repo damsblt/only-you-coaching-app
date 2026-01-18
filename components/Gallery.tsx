@@ -76,6 +76,54 @@ export default function Gallery({ localImages }: GalleryProps) {
     return () => clearInterval(interval)
   }, [isAutoPlaying, imagesToShow.length])
 
+  // Précharger les images suivantes pour une transition plus fluide
+  useEffect(() => {
+    if (imagesToShow.length === 0) return
+
+    const preloadLinks: HTMLLinkElement[] = []
+
+    const preloadImages = () => {
+      // Nettoyer les liens de préchargement précédents
+      preloadLinks.forEach(link => {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link)
+        }
+      })
+      preloadLinks.length = 0
+
+      // Précharger l'image suivante et celle d'après
+      const nextIndex = (currentIndex + 1) % imagesToShow.length
+      const nextNextIndex = (currentIndex + 2) % imagesToShow.length
+      
+      const imagesToPreload = [imagesToShow[nextIndex]]
+      if (imagesToShow.length > 2) {
+        imagesToPreload.push(imagesToShow[nextNextIndex])
+      }
+
+      imagesToPreload.forEach((src) => {
+        if (src) {
+          const link = document.createElement('link')
+          link.rel = 'preload'
+          link.as = 'image'
+          link.href = src
+          document.head.appendChild(link)
+          preloadLinks.push(link)
+        }
+      })
+    }
+
+    preloadImages()
+
+    // Nettoyer à la destruction
+    return () => {
+      preloadLinks.forEach(link => {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link)
+        }
+      })
+    }
+  }, [currentIndex, imagesToShow])
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -103,26 +151,34 @@ export default function Gallery({ localImages }: GalleryProps) {
     <div className="relative">
       {/* Carousel Container */}
       <div className="relative w-full h-96 md:h-[500px] rounded-2xl overflow-hidden shadow-xl">
-        {imagesToShow.map((src, index) => (
-          <div
-            key={`${src}-${index}`}
-            className={`absolute inset-0 transition-opacity duration-500 ${
-              index === currentIndex ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            <Image
-              src={src}
-              alt={`Séance de coaching ${index + 1}`}
-              fill
-              className="object-cover"
-              unoptimized={src.startsWith('http')}
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.style.display = 'none'
-              }}
-            />
-          </div>
-        ))}
+        {imagesToShow.map((src, index) => {
+          // Charger immédiatement l'image actuelle et la suivante, lazy load les autres
+          const isCurrentOrNext = index === currentIndex || index === (currentIndex + 1) % imagesToShow.length
+          
+          return (
+            <div
+              key={`${src}-${index}`}
+              className={`absolute inset-0 transition-opacity duration-500 ${
+                index === currentIndex ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              <Image
+                src={src}
+                alt={`Séance de coaching ${index + 1}`}
+                fill
+                className="object-cover"
+                sizes="100vw"
+                priority={index === currentIndex}
+                loading={isCurrentOrNext ? 'eager' : 'lazy'}
+                quality={85}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                }}
+              />
+            </div>
+          )
+        })}
         
         {/* Navigation Arrows */}
         {imagesToShow.length > 1 && (

@@ -14,7 +14,7 @@ const { execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
-const s3Client = new S3Client({ region: process.env.AWS_REGION || 'eu-north-1' })
+const s3Client = new S3Client({ region: 'eu-north-1' })
 const sql = neon(process.env.DATABASE_URL)
 const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'only-you-coaching'
 
@@ -29,18 +29,42 @@ async function generateThumbnail(videoBuffer, timestamp = 5) {
   try {
     // Write video buffer to temp file
     fs.writeFileSync(tempVideoPath, videoBuffer)
+    console.log(`   Video written to temp file: ${tempVideoPath} (${videoBuffer.length} bytes)`)
     
-    // Generate thumbnail using ffmpeg
-    // Extract frame at 5 seconds (or 10% of video if shorter)
-    const ffmpegCommand = `ffmpeg -i "${tempVideoPath}" -ss ${timestamp} -vframes 1 -q:v 2 "${tempThumbnailPath}" -y 2>&1`
+    // Try multiple timestamps if needed
+    const timestamps = [timestamp, 1, 0.5, 0.1]
+    let thumbnailGenerated = false
     
-    try {
-      execSync(ffmpegCommand, { timeout: 30000 }) // 30 second timeout
-    } catch (ffmpegError) {
-      // If ffmpeg fails, try at 1 second
-      console.warn('⚠️  FFmpeg failed at 5s, trying at 1s:', ffmpegError.message)
-      const fallbackCommand = `ffmpeg -i "${tempVideoPath}" -ss 1 -vframes 1 -q:v 2 "${tempThumbnailPath}" -y 2>&1`
-      execSync(fallbackCommand, { timeout: 30000 })
+    for (const ts of timestamps) {
+      try {
+        // Generate thumbnail using ffmpeg
+        const ffmpegCommand = `ffmpeg -i "${tempVideoPath}" -ss ${ts} -vframes 1 -q:v 2 "${tempThumbnailPath}" -y 2>&1`
+        console.log(`   Trying ffmpeg at ${ts}s...`)
+        const output = execSync(ffmpegCommand, { timeout: 30000, encoding: 'utf8' })
+        
+        // Check if thumbnail file was created
+        if (fs.existsSync(tempThumbnailPath)) {
+          const stats = fs.statSync(tempThumbnailPath)
+          if (stats.size > 0) {
+            console.log(`   ✅ Thumbnail generated at ${ts}s (${stats.size} bytes)`)
+            thumbnailGenerated = true
+            break
+          } else {
+            console.warn(`   ⚠️  Thumbnail file exists but is empty at ${ts}s`)
+            fs.unlinkSync(tempThumbnailPath)
+          }
+        } else {
+          console.warn(`   ⚠️  Thumbnail file not created at ${ts}s`)
+        }
+      } catch (ffmpegError) {
+        console.warn(`   ⚠️  FFmpeg failed at ${ts}s:`, ffmpegError.message)
+        // Try next timestamp
+        continue
+      }
+    }
+    
+    if (!thumbnailGenerated) {
+      throw new Error('Failed to generate thumbnail at any timestamp')
     }
     
     // Read thumbnail file
@@ -92,14 +116,21 @@ function generateThumbnailKey(s3Key) {
 async function findVideoByS3Key(s3Key) {
   try {
     // Search for video where videoUrl contains the S3 key
-    // The videoUrl format is: https://bucket.s3.region.amazonaws.com/{s3Key}
-    const searchPattern = `%${s3Key}%`
-    const result = await sql.query(
-      'SELECT id, "videoUrl", thumbnail FROM videos_new WHERE "videoUrl" LIKE $1 LIMIT 1',
-      [searchPattern]
-    )
-    const rows = result.rows || result
-    return rows && rows.length > 0 ? rows[0] : null
+    // The videoUrl in database is URL-encoded, so we need to encode the key too
+    const encodedKey = encodeURIComponent(s3Key)
+      .replace(/%2F/g, '/') // Keep slashes unencoded
+      .replace(/'/g, '%27')  // Encode single quotes
+    
+    const searchPattern = `%${encodedKey}%`
+    console.log(`   Searching for pattern: ${searchPattern.substring(0, 80)}...`)
+    
+    const result = await sql`
+      SELECT id, "videoUrl", thumbnail 
+      FROM videos_new 
+      WHERE "videoUrl" LIKE ${searchPattern} 
+      LIMIT 1
+    `
+    return result && result.length > 0 ? result[0] : null
   } catch (error) {
     console.error('❌ Error finding video:', error)
     return null
@@ -111,12 +142,13 @@ async function findVideoByS3Key(s3Key) {
  */
 async function updateVideoThumbnail(videoId, thumbnailUrl) {
   try {
-    const result = await sql.query(
-      'UPDATE videos_new SET thumbnail = $1, "updatedAt" = NOW() WHERE id = $2 RETURNING id',
-      [thumbnailUrl, videoId]
-    )
-    const rows = result.rows || result
-    if (rows && rows.length > 0) {
+    const result = await sql`
+      UPDATE videos_new 
+      SET thumbnail = ${thumbnailUrl}, "updatedAt" = NOW() 
+      WHERE id = ${videoId} 
+      RETURNING id
+    `
+    if (result && result.length > 0) {
       console.log(`✅ Updated thumbnail for video ${videoId}`)
       return true
     }
@@ -137,12 +169,18 @@ exports.handler = async (event) => {
     // Process each S3 event
     for (const record of event.Records) {
       const bucket = record.s3.bucket.name
-      const s3Key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '))
+      const rawKey = record.s3.object.key
+      const s3Key = decodeURIComponent(rawKey.replace(/\+/g, ' '))
       
       console.log(`📦 Processing: s3://${bucket}/${s3Key}`)
+      console.log(`   Raw key: ${rawKey}`)
+      console.log(`   Decoded key: ${s3Key}`)
+      console.log(`   Last 10 chars: "${s3Key.slice(-10)}"`)
+      const videoMatch = s3Key.match(/\.(mp4|mov|avi)$/i)
+      console.log(`   Video match: ${videoMatch ? 'YES' : 'NO'}`)
       
       // Only process video files
-      if (!s3Key.match(/\.(mp4|mov|avi)$/i)) {
+      if (!videoMatch) {
         console.log('⏭️  Skipping non-video file')
         continue
       }
@@ -153,9 +191,9 @@ exports.handler = async (event) => {
         continue
       }
       
-      // Skip if not in programmes-predefinis folder
-      if (!s3Key.includes('programmes-predefinis/')) {
-        console.log('⏭️  Skipping non-programme video')
+      // Process only videos in programmes-predefinis or groupes-musculaires folders
+      if (!s3Key.includes('programmes-predefinis/') && !s3Key.includes('groupes-musculaires/')) {
+        console.log('⏭️  Skipping video (not in programmes-predefinis or groupes-musculaires)')
         continue
       }
       
@@ -197,13 +235,15 @@ exports.handler = async (event) => {
         const thumbnailKey = generateThumbnailKey(s3Key)
         console.log(`📤 Uploading thumbnail to: ${thumbnailKey}`)
         
-        // Upload thumbnail to S3
+        // Upload thumbnail to S3 with public-read access
         const putObjectCommand = new PutObjectCommand({
           Bucket: bucket,
           Key: thumbnailKey,
           Body: thumbnailBuffer,
           ContentType: 'image/jpeg',
-          CacheControl: 'max-age=31536000' // Cache for 1 year
+          CacheControl: 'max-age=31536000', // Cache for 1 year
+          // Note: With Object Ownership (Bucket owner enforced), ACLs are not supported
+          // The bucket policy should handle public access
         })
         
         await s3Client.send(putObjectCommand)

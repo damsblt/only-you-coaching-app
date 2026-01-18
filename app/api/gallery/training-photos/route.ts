@@ -30,12 +30,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ photos: [] })
     }
 
-    // List all objects in Photos/Training/ folder
+    // List all objects in Photos/Training/gallery/ folder
     let response
     try {
       const command = new ListObjectsV2Command({
         Bucket: BUCKET_NAME,
-        Prefix: 'Photos/Training/',
+        Prefix: 'Photos/Training/gallery/',
         MaxKeys: 100,
       })
       response = await s3Client.send(command)
@@ -45,19 +45,24 @@ export async function GET(request: NextRequest) {
     }
     
     if (!response.Contents || response.Contents.length === 0) {
-      console.log('No photos found in Photos/Training/ folder')
+      console.log('No photos found in Photos/Training/gallery/ folder')
       return NextResponse.json({ photos: [] })
     }
 
     // Filter for image files only
-    const imageFiles = response.Contents
+    let imageFiles = response.Contents
       .map(obj => obj.Key)
       .filter((key): key is string => !!key)
       .filter(key => {
         const ext = key.split('.').pop()?.toLowerCase()
         return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext || '')
       })
-      .sort(() => Math.random() - 0.5) // Randomize order
+    
+    // Fisher-Yates shuffle for better randomization
+    for (let i = imageFiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [imageFiles[i], imageFiles[j]] = [imageFiles[j], imageFiles[i]]
+    }
 
     console.log(`Found ${imageFiles.length} training photos in S3`)
 

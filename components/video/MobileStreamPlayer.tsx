@@ -60,6 +60,10 @@ export default function MobileStreamPlayer({
   const [showControls, setShowControls] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  
+  // State for landscape orientation hint
+  const [showRotateHint, setShowRotateHint] = useState(false)
+  const [isPortrait, setIsPortrait] = useState(true)
 
   // Load video source when component mounts
   useEffect(() => {
@@ -84,7 +88,76 @@ export default function MobileStreamPlayer({
     }
 
     loadVideo()
+    
+    // Check orientation on mount and when orientation changes
+    const checkOrientation = () => {
+      const portrait = window.innerHeight > window.innerWidth
+      setIsPortrait(portrait)
+    }
+    
+    checkOrientation()
+    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('orientationchange', checkOrientation)
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
   }, [video.id])
+  
+  // Request landscape orientation and show hint when video starts playing
+  useEffect(() => {
+    if (isPlaying && isPortrait) {
+      // Try to use Screen Orientation API to lock to landscape
+      const requestLandscape = async () => {
+        try {
+          // @ts-ignore - Screen Orientation API might not be in TypeScript definitions
+          if (screen?.orientation?.lock) {
+            // @ts-ignore
+            await screen.orientation.lock('landscape')
+            console.log('📱 Locked to landscape orientation')
+          } else {
+            // If API not available, show visual hint
+            setShowRotateHint(true)
+            
+            // Auto-hide hint after 5 seconds
+            const timer = setTimeout(() => {
+              setShowRotateHint(false)
+            }, 5000)
+            
+            return () => clearTimeout(timer)
+          }
+        } catch (error) {
+          console.log('⚠️ Could not lock orientation, showing hint instead')
+          setShowRotateHint(true)
+          
+          // Auto-hide hint after 5 seconds
+          const timer = setTimeout(() => {
+            setShowRotateHint(false)
+          }, 5000)
+          
+          return () => clearTimeout(timer)
+        }
+      }
+      
+      requestLandscape()
+    } else {
+      setShowRotateHint(false)
+    }
+    
+    // Cleanup: unlock orientation when video stops or component unmounts
+    return () => {
+      try {
+        // @ts-ignore
+        if (screen?.orientation?.unlock) {
+          // @ts-ignore
+          screen.orientation.unlock()
+        }
+      } catch (error) {
+        console.log('⚠️ Could not unlock orientation')
+      }
+    }
+  }, [isPlaying, isPortrait])
 
   // Video event handlers
   useEffect(() => {
@@ -380,6 +453,19 @@ export default function MobileStreamPlayer({
               </span>
             </div>
           </div>
+          
+          {/* Rotate Hint Overlay - Show on mobile when video plays in portrait */}
+          {showRotateHint && isPortrait && (
+            <div className="rotate-hint-overlay">
+              <div className="rotate-hint-icon">
+                📱➡️📺
+              </div>
+              <div className="rotate-hint-text">
+                <p className="font-bold text-xl mb-2">Tournez votre téléphone</p>
+                <p>Pour une meilleure expérience, visionnez la vidéo en mode paysage</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -56,7 +56,7 @@ export default function ProgrammesPage() {
     {
       id: "abdos",
       name: "abdos",
-      displayName: "Abdos",
+      displayName: "Spécial abdominaux",
       description: "Renforcez vos abdominaux avec des exercices ciblés",
       icon: <Target className="h-8 w-8" />,
       color: "bg-blue-500",
@@ -86,7 +86,7 @@ export default function ProgrammesPage() {
     {
       id: "machine",
       name: "machine",
-      displayName: "Machine",
+      displayName: "Spécial machines",
       description: "Exercices avec machines spécialisées",
       icon: <Target className="h-8 w-8" />,
       color: "bg-purple-500",
@@ -96,7 +96,7 @@ export default function ProgrammesPage() {
     {
       id: "rehabilitation-dos",
       name: "rehabilitation-dos",
-      displayName: "Réhabilitation du Dos",
+      displayName: "Spécial dos + réhabilitation",
       description: "Exercices thérapeutiques pour le dos",
       icon: <Users className="h-8 w-8" />,
       color: "bg-teal-500",
@@ -106,7 +106,7 @@ export default function ProgrammesPage() {
     {
       id: "cuisses-abdos-fessiers",
       name: "cuisses-abdos-fessiers",
-      displayName: "Cuisses, Abdos, Fessiers",
+      displayName: "Cuisse, Abdos, Fessier",
       description: "Tonifiez le bas du corps",
       icon: <Target className="h-8 w-8" />,
       color: "bg-indigo-500",
@@ -116,7 +116,7 @@ export default function ProgrammesPage() {
     {
       id: "dos-abdos",
       name: "dos-abdos",
-      displayName: "Dos & Abdos",
+      displayName: "Spécial dos et abdominaux",
       description: "Renforcez le tronc complet",
       icon: <Target className="h-8 w-8" />,
       color: "bg-cyan-500",
@@ -126,7 +126,7 @@ export default function ProgrammesPage() {
     {
       id: "femmes",
       name: "femmes",
-      displayName: "Femmes",
+      displayName: "Spécifique femme",
       description: "Programmes spécialement conçus pour les femmes",
       icon: <Users className="h-8 w-8" />,
       color: "bg-rose-500",
@@ -136,7 +136,7 @@ export default function ProgrammesPage() {
     {
       id: "homme",
       name: "homme",
-      displayName: "Homme",
+      displayName: "Spécifique homme",
       description: "Programmes adaptés aux hommes",
       icon: <Users className="h-8 w-8" />,
       color: "bg-slate-500",
@@ -146,20 +146,10 @@ export default function ProgrammesPage() {
     {
       id: "jambes",
       name: "jambes",
-      displayName: "Jambes",
+      displayName: "Spécial jambes",
       description: "Renforcez et tonifiez vos jambes",
       icon: <Target className="h-8 w-8" />,
       color: "bg-emerald-500",
-      videoCount: 0,
-      thumbnail: ""
-    },
-    {
-      id: "cuisses-abdos",
-      name: "cuisses-abdos",
-      displayName: "Cuisses & Abdos",
-      description: "Ciblez cuisses et abdominaux",
-      icon: <Target className="h-8 w-8" />,
-      color: "bg-violet-500",
       videoCount: 0,
       thumbnail: ""
     }

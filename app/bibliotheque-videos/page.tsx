@@ -67,7 +67,7 @@ export default function VideosPage() {
     videoType: "muscle-groups" // Only fetch MUSCLE_GROUPS videos
   })
 
-  const muscleGroups = ["all", "Abdos", "Bande", "Biceps", "Cardio", "Dos", "Fessiers et jambes", "Machine", "Pectoraux", "Streching", "Triceps"]
+  const muscleGroups = ["all", "Fessiers et jambes", "Dos", "Pectoraux", "Abdos", "Biceps", "Triceps", "Épaules", "Bande", "Machine", "Cardio", "Streching"]
 
 
   const filteredVideos = videos

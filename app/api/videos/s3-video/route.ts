@@ -12,9 +12,35 @@ export async function GET(request: NextRequest) {
   try {
     // Use public URLs directly for production (signed URLs require proper IAM permissions)
     // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*
-    const decodedKey = decodeURIComponent(key)
-    const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
+    
+    // Decode the key first to handle any double-encoding
+    let decodedKey: string
+    try {
+      decodedKey = decodeURIComponent(key)
+    } catch {
+      // If decoding fails, use the key as-is
+      decodedKey = key
+    }
+    
+    // Encode each segment of the path separately to handle special characters
+    // This properly handles spaces, parentheses, and other special characters
+    const pathSegments = decodedKey.split('/')
+    const encodedSegments = pathSegments.map(segment => {
+      // Encode the segment, but preserve forward slashes
+      return encodeURIComponent(segment)
+    })
+    const encodedKey = encodedSegments.join('/')
+    
+    console.log('S3 Video URL request:', {
+      originalKey: key,
+      decodedKey: decodedKey,
+      encodedKey: encodedKey
+    })
+    
     const publicUrl = getPublicUrl(encodedKey)
+    
+    console.log('Generated public URL:', publicUrl)
+    
     return NextResponse.json(
       { url: publicUrl },
       {
@@ -26,17 +52,21 @@ export async function GET(request: NextRequest) {
     )
   } catch (error) {
     console.error('Error generating video URL:', error)
-    // Fallback to public URL on error
+    console.error('Key that failed:', key)
+    
+    // Fallback: try simpler encoding
     try {
-      const decodedKey = decodeURIComponent(key)
-      const encodedKey = decodedKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
-      const publicUrl = getPublicUrl(encodedKey)
+      const simpleEncodedKey = encodeURIComponent(key)
+      const publicUrl = getPublicUrl(simpleEncodedKey)
+      console.log('Fallback URL:', publicUrl)
       return NextResponse.json({ url: publicUrl })
     } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError)
       return NextResponse.json(
         { 
           error: 'Internal server error',
-          message: error instanceof Error ? error.message : 'Unknown error'
+          message: error instanceof Error ? error.message : 'Unknown error',
+          key: key
         },
         { status: 500 }
       )
