@@ -39,9 +39,8 @@ interface Video {
 }
 
 export default function VideosPage() {
-  const [searchInput, setSearchInput] = useState("")
-  const [searchTerm, setSearchTerm] = useState("")
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>("all")
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("all")
   const [viewMode, setViewMode] = useState<'grid' | 'feed' | 'mobile' | 'legacy-feed'>('grid')
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0)
   const [isScrolling, setIsScrolling] = useState(false)
@@ -62,12 +61,24 @@ export default function VideosPage() {
   // Fetch only MUSCLE_GROUPS videos for the library
   const { videos, isLoading: loading, error } = useVideos({
     muscleGroup: selectedMuscleGroup,
-    difficulty: "all",
-    search: searchTerm,
+    difficulty: selectedDifficulty,
+    search: "",
     videoType: "muscle-groups" // Only fetch MUSCLE_GROUPS videos
   })
 
   const muscleGroups = ["all", "Fessiers et jambes", "Dos", "Pectoraux", "Abdos", "Biceps", "Triceps", "Épaules", "Bande", "Machine", "Cardio", "Streching"]
+  const difficulties = [
+    { value: "all", label: "Tous les niveaux" },
+    { value: "BEGINNER", label: "Débutant" },
+    { value: "INTERMEDIATE", label: "Intermédiaire" },
+    { value: "ADVANCED", label: "Avancé" }
+  ]
+
+  // Handle search button click
+  const handleSearch = () => {
+    // The search is handled automatically by the useVideos hook when selectedMuscleGroup or selectedDifficulty changes
+    // This function can be used for any additional search logic if needed
+  }
 
 
   const filteredVideos = videos
@@ -829,47 +840,53 @@ export default function VideosPage() {
 
         {/* Search and Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-8 border border-gray-100 dark:border-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Search */}
-            <div className="relative flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Rechercher une vidéo..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setSearchTerm(searchInput)
-                    }
-                  }}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <Button
-                onClick={() => setSearchTerm(searchInput)}
-                variant="primary"
-                size="md"
-                className="px-6"
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            {/* Muscle Group Filter */}
+            <div className="flex-1 w-full md:w-auto">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Groupe musculaire
+              </label>
+              <select
+                value={selectedMuscleGroup}
+                onChange={(e) => setSelectedMuscleGroup(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
-                <Search className="w-5 h-5 mr-2" />
-                Rechercher
-              </Button>
+                {muscleGroups.map((muscleGroup) => (
+                  <option key={muscleGroup} value={muscleGroup}>
+                    {muscleGroup === "all" ? "Tous les groupes musculaires" : muscleGroup}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Muscle Group Filter */}
-            <select
-              value={selectedMuscleGroup}
-              onChange={(e) => setSelectedMuscleGroup(e.target.value)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            {/* Difficulty Filter */}
+            <div className="flex-1 w-full md:w-auto">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Niveau
+              </label>
+              <select
+                value={selectedDifficulty}
+                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                {difficulties.map((difficulty) => (
+                  <option key={difficulty.value} value={difficulty.value}>
+                    {difficulty.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Button */}
+            <Button
+              onClick={handleSearch}
+              variant="primary"
+              size="md"
+              className="px-6 w-full md:w-auto"
             >
-              {muscleGroups.map((muscleGroup) => (
-                <option key={muscleGroup} value={muscleGroup}>
-                  {muscleGroup === "all" ? "Tous les groupes musculaires" : muscleGroup}
-                </option>
-              ))}
-            </select>
+              <Search className="w-5 h-5 mr-2" />
+              Rechercher
+            </Button>
           </div>
         </div>
 
