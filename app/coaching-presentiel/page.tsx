@@ -40,13 +40,15 @@ export default function CoachingPresentielPage() {
 
           {/* Call to Action Button */}
           <div className="flex justify-center">
-            <Link
+            <Button
               href="/contact"
-              className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold text-lg uppercase tracking-wide hover:underline transition-all group"
+              variant="primary"
+              size="lg"
+              className="group"
             >
               JE PRENDS CONTACT
-              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-2 transition-transform" />
-            </Link>
+              <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
           </div>
         </div>
       </Section>
