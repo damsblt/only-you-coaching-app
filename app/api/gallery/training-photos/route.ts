@@ -30,46 +30,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ photos: [] })
     }
 
-    // List all objects in Photos/Training/gallery/ folder
-    let response
+    // List all objects in Photos/Training/gallery/ folder with pagination
+    const imageFiles: string[] = []
+    let continuationToken: string | undefined = undefined
+    
     try {
-      const command = new ListObjectsV2Command({
-        Bucket: BUCKET_NAME,
-        Prefix: 'Photos/Training/gallery/',
-        MaxKeys: 100,
-      })
-      response = await s3Client.send(command)
+      do {
+        const command = new ListObjectsV2Command({
+          Bucket: BUCKET_NAME,
+          Prefix: 'Photos/Training/gallery/',
+          ContinuationToken: continuationToken,
+        })
+        const response = await s3Client.send(command)
+        
+        if (response.Contents && response.Contents.length > 0) {
+          // Filter for image files only
+          const batchImages = response.Contents
+            .map(obj => obj.Key)
+            .filter((key): key is string => !!key)
+            .filter(key => {
+              const ext = key.split('.').pop()?.toLowerCase()
+              return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext || '')
+            })
+          
+          imageFiles.push(...batchImages)
+        }
+        
+        continuationToken = response.NextContinuationToken
+      } while (continuationToken)
     } catch (error) {
       console.error('❌ Error listing S3 objects:', error)
       return NextResponse.json({ photos: [] })
     }
     
-    if (!response.Contents || response.Contents.length === 0) {
+    if (imageFiles.length === 0) {
       console.log('No photos found in Photos/Training/gallery/ folder')
       return NextResponse.json({ photos: [] })
     }
 
-    // Filter for image files only
-    let imageFiles = response.Contents
-      .map(obj => obj.Key)
-      .filter((key): key is string => !!key)
-      .filter(key => {
-        const ext = key.split('.').pop()?.toLowerCase()
-        return ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext || '')
-      })
-    
-    // Fisher-Yates shuffle for better randomization
-    for (let i = imageFiles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [imageFiles[i], imageFiles[j]] = [imageFiles[j], imageFiles[i]]
-    }
+    // Remove duplicates by S3 key (case-insensitive comparison)
+    const uniqueImageFiles = Array.from(
+      new Map(
+        imageFiles.map(key => [key.toLowerCase(), key])
+      ).values()
+    )
 
-    console.log(`Found ${imageFiles.length} training photos in S3`)
+    console.log(`Found ${uniqueImageFiles.length} unique training photos in S3 (${imageFiles.length} total before deduplication)`)
 
     // Generate URLs for each image
     const photoUrls: string[] = []
 
-    for (const s3Key of imageFiles) {
+    for (const s3Key of uniqueImageFiles) {
       try {
         // Use public URLs directly for production (signed URLs require proper IAM permissions)
         // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*

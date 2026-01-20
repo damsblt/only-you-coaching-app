@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 
 interface GalleryProps {
-  localImages: string[]
+  localImages?: string[]
 }
 
-export default function Gallery({ localImages }: GalleryProps) {
+export default function Gallery({ localImages = [] }: GalleryProps) {
   const [s3Images, setS3Images] = useState<string[]>([])
-  const [allImages, setAllImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   // Carousel mode for About page - moved before early return
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -50,21 +49,17 @@ export default function Gallery({ localImages }: GalleryProps) {
     fetchS3Images()
   }, [])
 
-  useEffect(() => {
-    // Mix local and S3 images randomly
-    // Always include local images, even if S3 fails
-    const mixedImages = [...localImages, ...s3Images]
-    
-    // Shuffle the array to mix them up
-    const shuffled = [...mixedImages].sort(() => Math.random() - 0.5)
-    
-    // Take up to 12 images (or all if less)
-    // If we have fewer than 12, we'll show what we have
-    setAllImages(shuffled.slice(0, 12))
-  }, [localImages, s3Images])
-
-  // If no images at all, show local images as fallback
-  const imagesToShow = allImages.length > 0 ? allImages : localImages
+  // Use S3 images if available, otherwise fallback to local images
+  // Memoize to prevent infinite loops
+  const imagesToShow = useMemo(() => {
+    if (s3Images.length > 0) {
+      return s3Images
+    }
+    if (localImages.length > 0) {
+      return localImages
+    }
+    return []
+  }, [s3Images, localImages])
 
   useEffect(() => {
     if (!isAutoPlaying || imagesToShow.length === 0) return
@@ -170,7 +165,7 @@ export default function Gallery({ localImages }: GalleryProps) {
                 sizes="100vw"
                 priority={index === currentIndex}
                 loading={isCurrentOrNext ? 'eager' : 'lazy'}
-                quality={85}
+                quality={75}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement
                   target.style.display = 'none'
