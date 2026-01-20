@@ -174,7 +174,7 @@ export default function S3Image({
           className={className}
           style={style}
           sizes={sizes || (fill ? '100vw' : undefined)}
-          quality={85}
+          quality={75}
         />
       )
     }

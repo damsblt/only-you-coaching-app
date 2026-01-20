@@ -255,37 +255,7 @@ export default function AboutPage() {
             </p>
           </div>
           
-          <Gallery
-            localImages={[
-              // Photos existantes
-              '/about/coaching-6.jpg',
-              '/about/coaching-7.jpg',
-              '/about/coaching-8.jpg',
-              '/about/coaching-9.jpg',
-              '/about/coaching-10.jpg',
-              '/about/coaching-11.jpg',
-              '/about/coaching-12.jpg',
-              '/about/coaching-13.jpg',
-              '/about/coaching-14.jpg',
-              '/about/coaching-15.jpg',
-              '/about/coaching-16.jpg',
-              // Photos de différents clients
-              '/about/clients/heidi-1.png',
-              '/about/clients/heidi-2.png',
-              '/about/clients/heidi-3.png',
-              '/about/clients/thierry-1.png',
-              '/about/clients/thierry-2.png',
-              '/about/clients/client-1.jpg',
-              '/about/clients/client-2.jpg',
-              '/about/clients/client-3.jpg',
-              '/about/clients/client-4.jpg',
-              '/about/clients/client-5.jpg',
-              '/about/clients/client-6.jpg',
-              '/about/clients/session-1.png',
-              '/about/clients/session-2.png',
-              '/about/clients/session-3.png',
-            ]}
-          />
+          <Gallery />
         </div>
 
         {/* Where to Find Me Section */}
