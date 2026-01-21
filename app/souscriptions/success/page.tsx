@@ -12,6 +12,9 @@ function SubscriptionSuccessContent() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null)
 
   useEffect(() => {
+    // Scroll to top when page loads
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    
     if (sessionId || subscriptionId) {
       // Here you could fetch subscription details from your API
       // For now, we'll just show a success message

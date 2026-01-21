@@ -45,6 +45,15 @@ const PLANS_CONFIG = {
 
 export async function POST(req: NextRequest) {
   try {
+    // Verify Stripe configuration
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY is not configured')
+      return NextResponse.json(
+        { error: 'Configuration Stripe manquante. Veuillez contacter le support.' },
+        { status: 500 }
+      )
+    }
+
     const stripe = getStripe()
     const { planId, userId, paymentMethodId, promoCode } = await req.json()
     
@@ -222,21 +231,29 @@ export async function POST(req: NextRequest) {
       status: subscription.status 
     })
   } catch (error: any) {
-    console.error('Subscription creation error:', error)
+    console.error('❌ Subscription creation error:', error)
     console.error('Error details:', {
       message: error.message,
       type: error.type,
       code: error.code,
       statusCode: error.statusCode,
-      stack: error.stack,
+      raw: error.raw,
     })
     
     // Provide more specific error messages
-    let errorMessage = 'Failed to create subscription'
-    if (error.message) {
+    let errorMessage = 'Une erreur est survenue lors de la création de l\'abonnement'
+    
+    // Handle specific Stripe error types
+    if (error.type === 'StripeConnectionError') {
+      errorMessage = 'Impossible de se connecter à Stripe. Vérifiez votre connexion internet et vos clés API.'
+      console.error('⚠️ STRIPE_SECRET_KEY may be invalid or missing')
+    } else if (error.type === 'StripeAuthenticationError') {
+      errorMessage = 'Erreur d\'authentification Stripe. Vérifiez vos clés API.'
+      console.error('⚠️ STRIPE_SECRET_KEY is invalid')
+    } else if (error.message) {
       errorMessage = error.message
     } else if (error.type) {
-      errorMessage = `Stripe error: ${error.type}`
+      errorMessage = `Erreur Stripe: ${error.type}`
     }
     
     return NextResponse.json(
@@ -246,6 +263,7 @@ export async function POST(req: NextRequest) {
           type: error.type,
           code: error.code,
           message: error.message,
+          raw: error.raw,
         } : undefined
       },
       { status: 500 }
