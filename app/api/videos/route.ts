@@ -276,11 +276,20 @@ export async function GET(request: NextRequest) {
                 // If URL has query parameters (signed URL), we still use the pathname
                 // The query params are just for authentication, the key is in pathname
                 
-                // If it's in the thumbnails folder, use public URL with proper encoding
+                // If it's in the thumbnails folder, generate a signed URL for production
+                // This ensures thumbnails work in both localhost and production
                 if (s3Key.startsWith('thumbnails/')) {
-                  // Use getPublicUrl which handles encoding properly
-                  const publicUrl = getPublicUrl(s3Key)
-                  processedVideo.thumbnail = publicUrl
+                  // Generate signed URL for thumbnails (valid for 24 hours)
+                  // This works regardless of bucket policy or encoding issues
+                  const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
+                  if (signedUrlResult.success) {
+                    const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
+                    processedVideo.thumbnail = cleanUrl
+                  } else {
+                    console.warn('Failed to generate signed URL for thumbnail:', video.id, s3Key, signedUrlResult.error)
+                    // Keep original URL as fallback
+                    processedVideo.thumbnail = video.thumbnail
+                  }
                 } else {
                   // For non-thumbnail files, generate a signed URL
                   const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
