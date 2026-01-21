@@ -12,9 +12,8 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <PageHeader
-        imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
+        imageS3Key="Photos/Training/ok (8).JPG"
         title="Contactez-nous"
-        subtitle="Avez-vous des questions sur le Pilates ? Besoin d'aide pour choisir un programme adapté à vos besoins ? Marie-Line et son équipe sont là pour vous accompagner dans votre parcours bien-être."
         height="fullScreen"
       />
       <Section 

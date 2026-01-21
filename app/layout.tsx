@@ -49,7 +49,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <Providers>
             <HeaderAssetsPreloader />
-            <div className="relative flex flex-col min-h-screen overflow-x-hidden">
+            <div className="relative flex flex-col min-h-screen overflow-x-hidden overflow-y-auto">
               <Header />
               <main className="flex-1">
                 {children}
