@@ -451,10 +451,7 @@ export default function Home() {
           {/* Three CTA Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             {/* Présentiel CTA */}
-            <Link
-              href="/coaching-presentiel"
-              className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
-            >
+            <div className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all border-2 border-secondary-200 dark:border-gray-600 text-center group">
               <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <Users className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
@@ -464,17 +461,17 @@ export default function Home() {
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
               </p>
-              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <Link
+                href="/coaching-presentiel"
+                className="inline-flex items-center justify-center px-8 py-4 bg-footer-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 curved-button hover:bg-footer-600"
+              >
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
-              </div>
-            </Link>
+              </Link>
+            </div>
 
             {/* Online CTA - Personnalisé */}
-            <Link
-              href="/souscriptions/personnalise"
-              className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
-            >
+            <div className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all border-2 border-secondary-200 dark:border-gray-600 text-center group">
               <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <Users className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
@@ -484,17 +481,17 @@ export default function Home() {
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
               </p>
-              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <Link
+                href="/souscriptions/personnalise"
+                className="inline-flex items-center justify-center px-8 py-4 bg-footer-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 curved-button hover:bg-footer-600"
+              >
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
-              </div>
-            </Link>
+              </Link>
+            </div>
 
             {/* Online CTA - Autonomie */}
-            <Link
-              href="/souscriptions/autonomie"
-              className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all transform hover:scale-105 border-2 border-secondary-200 dark:border-gray-600 text-center group"
-            >
+            <div className="curved-card bg-white dark:bg-gray-800 p-8 hover:shadow-organic transition-all border-2 border-secondary-200 dark:border-gray-600 text-center group">
               <div className="w-20 h-20 border-2 border-accent-500 dark:border-accent-400 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
                 <Video className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
@@ -504,11 +501,14 @@ export default function Home() {
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Autonomie totale avec accès à toute la bibliothèque de contenus
               </p>
-              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <Link
+                href="/souscriptions/autonomie"
+                className="inline-flex items-center justify-center px-8 py-4 bg-footer-500 text-white font-semibold shadow-organic hover:shadow-floating transition-all transform hover:scale-105 curved-button hover:bg-footer-600"
+              >
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
-              </div>
-            </Link>
+              </Link>
+            </div>
           </div>
 
           {/* Help CTA */}
