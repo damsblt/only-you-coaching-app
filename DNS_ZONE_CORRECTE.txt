@@ -1,0 +1,16 @@
+; Domain: only-you-coaching.com
+; Exported (y-m-d hh:mm:ss): 2026-01-21 21:53:41
+; Actual version
+
+$TTL 3600
+@                 IN SOA   ns11.infomaniak.ch. hostmaster.infomaniak.ch. (2026011110 10800 3600 605800 3600)
+             300  IN A     216.198.79.1
+             3600 IN MX 5  mta-gw.infomaniak.ch.
+             3600 IN NS    ns11.infomaniak.ch.
+             3600 IN NS    ns12.infomaniak.ch.
+             3600 IN TXT   "brevo-code:0e2b9c2bc22f1ecabe928f64b79c34ee"
+             3600 IN TXT   "v=spf1 include:spf.infomaniak.ch -all"
+autoconfig   3600 IN CNAME infomaniak.com.
+autodiscover 3600 IN CNAME infomaniak.com.
+www          3600 IN CNAME cname.vercel-dns.com.
+_dmarc       3600 IN TXT   "v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com"

@@ -12,11 +12,13 @@ export async function PATCH(
     const { id } = params
 
     // Récupérer le code promo actuel
-    const { data: currentPromoCode } = await db
+    const result = await db
       .from('promo_codes')
       .select('*')
       .eq('id', id)
       .single()
+    
+    const currentPromoCode = result.data
 
     if (!currentPromoCode) {
       return NextResponse.json({ error: 'Promo code not found' }, { status: 404 })
@@ -35,12 +37,13 @@ export async function PATCH(
     updateData.updated_at = new Date().toISOString()
 
     // Mettre à jour dans la base de données
-    const { data: updatedPromoCode, error } = await db
+    const updateResult = await db
       .from('promo_codes')
       .update(updateData)
       .eq('id', id)
-      .select()
-      .single()
+    
+    const updatedPromoCode = updateResult.data
+    const error = updateResult.error
 
     if (error) {
       console.error('Error updating promo code:', error)
@@ -75,21 +78,27 @@ export async function GET(
     const { id } = params
 
     // Récupérer le code promo
-    const { data: promoCode, error } = await db
+    const result = await db
       .from('promo_codes')
       .select('*')
       .eq('id', id)
       .single()
+    
+    const promoCode = result.data
+    const error = result.error
 
     if (error || !promoCode) {
       return NextResponse.json({ error: 'Promo code not found' }, { status: 404 })
     }
 
     // Récupérer les statistiques d'utilisation
-    const { data: usage, error: usageError } = await db
+    const usageResult = await db
       .from('promo_code_usage')
       .select('*')
       .eq('promo_code_id', id)
+      .execute()
+    
+    const usage = usageResult.data
 
     const stats = {
       totalUses: usage?.length || 0,

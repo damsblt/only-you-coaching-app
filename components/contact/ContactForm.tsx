@@ -35,23 +35,40 @@ export function ContactForm() {
     e.preventDefault()
     setIsSubmitting(true)
     
-    // Simuler l'envoi du formulaire
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setIsSubmitting(false)
-    setIsSubmitted(true)
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false)
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: ""
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       })
-    }, 3000)
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'envoi du message')
+      }
+
+      setIsSubmitting(false)
+      setIsSubmitted(true)
+      
+      // Reset form after 8 seconds (au lieu de 3)
+      setTimeout(() => {
+        setIsSubmitted(false)
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          subject: "",
+          message: ""
+        })
+      }, 8000)
+    } catch (error: any) {
+      console.error('Erreur lors de l\'envoi:', error)
+      setIsSubmitting(false)
+      alert(error.message || 'Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer.')
+    }
   }
 
   if (isSubmitted) {

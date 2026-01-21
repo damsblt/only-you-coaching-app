@@ -459,12 +459,12 @@ export default function Home() {
                 <Users className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
               <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
-                Mon Coaching Personnalisé En Présentiel
+                Coaching personnalisé en présentiel
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
               </p>
-              <div className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
               </div>
@@ -479,12 +479,12 @@ export default function Home() {
                 <Users className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
               <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
-                ABONNEMENT ONLINE PERSONALISE
+                Abonnement en ligne personnalisé
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Accompagnement personnalisé avec programmes sur mesure adaptés à vos besoins spécifiques
               </p>
-              <div className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
               </div>
@@ -499,12 +499,12 @@ export default function Home() {
                 <Video className="w-10 h-10 text-accent-500 dark:text-accent-400" />
               </div>
               <h3 className="text-2xl font-bold text-black dark:text-white mb-4">
-                ABONNEMENT ONLINE AUTONOMIE
+                Abonnement en ligne en autonomie
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-6">
                 Autonomie totale avec accès à toute la bibliothèque de contenus
               </p>
-              <div className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold group-hover:translate-x-2 transition-transform">
+              <div className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold group-hover:translate-x-2 transition-transform">
                 Découvrir les offres
                 <ArrowRight className="ml-2 w-5 h-5" />
               </div>
@@ -515,7 +515,7 @@ export default function Home() {
           <div className="text-center">
             <Link
               href="/contact"
-              className="inline-flex items-center text-accent-500 dark:text-accent-400 font-semibold hover:underline"
+              className="inline-flex items-center text-footer-500 dark:text-footer-400 font-semibold hover:underline"
             >
               J&apos;AI BESOIN D&apos;AIDE POUR CHOISIR MON COACHING !
             </Link>

@@ -39,13 +39,6 @@ async function executeQuery(queryStr: string, params: any[] = []): Promise<any[]
     throw new Error('Database client is not initialized')
   }
   
-  if (params.length === 0) {
-    // No parameters, use simple query as template literal
-    // Create a proper TemplateStringsArray
-    const parts = [queryStr]
-    const templateArray = parts as any
-    templateArray.raw = parts
-    return await (sql as any)(templateArray)
   }
   
   // Convert parameterized query ($1, $2, etc.) to template literal
@@ -341,12 +334,7 @@ class QueryBuilder {
         if (val === null || val === undefined) {
           return null
         }
-        // Don't stringify arrays - PostgreSQL handles them natively
-        if (Array.isArray(val)) {
-          return val
-        }
-        // Only stringify objects (not arrays)
-        if (typeof val === 'object' && val.constructor === Object) {
+        if (Array.isArray(val) || (typeof val === 'object' && val.constructor === Object)) {
           return JSON.stringify(val)
         }
         return val
@@ -415,10 +403,7 @@ class QueryBuilder {
         const value = data[key]
         if (value === null || value === undefined) {
           setValues.push(null)
-        } else if (Array.isArray(value)) {
-          // Don't stringify arrays - PostgreSQL handles them natively
-          setValues.push(value)
-        } else if (typeof value === 'object' && value.constructor === Object) {
+        } else if (Array.isArray(value) || (typeof value === 'object' && value.constructor === Object)) {
           setValues.push(JSON.stringify(value))
         } else {
           setValues.push(value)
@@ -563,12 +548,7 @@ export async function insert(table: string, data: Record<string, any>): Promise<
       if (val === null || val === undefined) {
         return null
       }
-      // Don't stringify arrays - PostgreSQL handles them natively
-      if (Array.isArray(val)) {
-        return val
-      }
-      // Only stringify objects (not arrays)
-      if (typeof val === 'object' && val.constructor === Object) {
+      if (Array.isArray(val) || (typeof val === 'object' && val.constructor === Object)) {
         return JSON.stringify(val)
       }
       return val
