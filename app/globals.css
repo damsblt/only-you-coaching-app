@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure body and html allow scrolling by default */
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100vh;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100vh;
+}
+
 /* TikTok-style video feed scrolling */
 .video-feed-container {
   scroll-snap-type: y mandatory;
@@ -21,10 +37,7 @@
   position: relative;
 }
 
-/* Smooth scrolling for video feed */
-html {
-  scroll-behavior: smooth;
-}
+/* Smooth scrolling for video feed - already set above */
 
 /* Hide scrollbar for video feed */
 .video-feed-container::-webkit-scrollbar {
@@ -137,13 +150,13 @@ html {
     object-position: center center !important;
   }
   
-  /* Hide browser UI in landscape mode */
-  body {
+  /* Ensure video container takes full screen */
+  .video-feed-container {
     overflow: hidden !important;
   }
   
-  /* Ensure video container takes full screen */
-  .video-feed-container {
+  /* Hide browser UI in landscape mode - ONLY when body has hide-app-chrome class (set by JS) */
+  body.hide-app-chrome {
     overflow: hidden !important;
   }
 }
