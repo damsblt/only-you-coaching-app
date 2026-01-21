@@ -161,7 +161,7 @@ export default function Gallery({ localImages = [] }: GalleryProps) {
                 src={src}
                 alt={`Séance de coaching ${index + 1}`}
                 fill
-                className="object-cover"
+                className="object-contain"
                 sizes="100vw"
                 priority={index === currentIndex}
                 loading={isCurrentOrNext ? 'eager' : 'lazy'}

@@ -4,17 +4,16 @@ import { Section } from '@/components/ui/Section'
 import PageHeader from '@/components/layout/PageHeader'
 
 export const metadata: Metadata = {
-  title: 'Contact - Marie-Line Pilates',
-  description: 'Contactez Marie-Line pour toute question sur le Pilates, les programmes ou les abonnements',
+  title: 'Contact - Only You Coaching',
+  description: 'Contactez Marie-Line pour toute question sur les programmes ou les abonnements',
 }
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <PageHeader
-        imageS3Key="Photos/Training/ok (8).JPG"
         title="Contactez-nous"
-        height="fullScreen"
+        height="small"
       />
       <Section 
         gradient="soft"

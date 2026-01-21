@@ -72,10 +72,10 @@ export function ContactForm() {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-100 dark:border-gray-700">
       <div className="text-center mb-8">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-          Contactez Marie-Line
+          Formulaire de contact
         </h2>
         <p className="text-gray-600 dark:text-gray-300">
-          Avez-vous des questions sur le Pilates ? Besoin d'aide pour choisir un programme ? 
+          Avez-vous des questions ? Besoin d'aide pour choisir un programme ? 
           N'hésitez pas à nous contacter !
         </p>
       </div>
