@@ -155,13 +155,14 @@ function SignInForm() {
           <div className="mt-6 text-center">
             <Button
               onClick={() => {
-                router.push('/#tarifs')
+                const planId = searchParams.get('planId') || 'avance'
+                router.push(`/auth/signup?planId=${planId}`)
               }}
               variant="ghost"
               size="sm"
               className="text-blue-600 hover:text-blue-700 text-sm underline"
             >
-              Pas de compte ? Voir les abonnements
+              Pas de compte ? Créer un compte
             </Button>
           </div>
         </div>

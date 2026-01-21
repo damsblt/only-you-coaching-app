@@ -1,0 +1,64 @@
+; Domain: only-you-coaching.com
+; Configuration DNS pour Vercel (Version avec ALIAS si supporté)
+; Exported (y-m-d hh:mm:ss): 2026-01-21 21:47:14
+; Updated for Vercel deployment
+
+$TTL 3600
+@                 IN SOA   ns11.infomaniak.ch. hostmaster.infomaniak.ch. (2026011110 10800 3600 605800 3600)
+
+; ============================================
+; ENREGISTREMENTS POUR VERCEL
+; ============================================
+
+; Domaine racine (@) - only-you-coaching.com
+; OPTION RECOMMANDÉE : ALIAS vers Vercel (si Infomaniak le supporte)
+; Cela permet de conserver les enregistrements MX, NS, etc.
+@             3600  IN ALIAS cname.vercel-dns.com.
+
+; OU si ALIAS n'est pas supporté, utilisez l'enregistrement A :
+; @             300  IN A     76.76.21.21
+; @             300  IN AAAA  2606:4700:3034::ac43:97a2
+
+; Sous-domaine www - www.only-you-coaching.com
+; CNAME vers Vercel (recommandé par Vercel)
+www          3600  IN CNAME cname.vercel-dns.com.
+
+; ============================================
+; ENREGISTREMENTS EXISTANTS (à conserver)
+; ============================================
+
+; Serveurs de noms
+             3600 IN NS    ns11.infomaniak.ch.
+             3600 IN NS    ns12.infomaniak.ch.
+
+; Mail
+             3600 IN MX 5  mta-gw.infomaniak.ch.
+
+; Enregistrements TXT (SPF, Brevo, DMARC)
+             3600 IN TXT   "brevo-code:0e2b9c2bc22f1ecabe928f64b79c34ee"
+             3600 IN TXT   "v=spf1 include:spf.infomaniak.ch -all"
+_dmarc       3600 IN TXT   "v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com"
+
+; Autres CNAME
+autoconfig   3600 IN CNAME infomaniak.com.
+autodiscover 3600 IN CNAME infomaniak.com.
+
+; ============================================
+; NOTES IMPORTANTES
+; ============================================
+;
+; 1. Cette version utilise ALIAS pour le domaine racine (@)
+;    Si Infomaniak ne supporte pas ALIAS, utilisez DNS_CONFIG_VERCEL.txt
+;
+; 2. L'ALIAS permet de pointer vers cname.vercel-dns.com tout en conservant
+;    les enregistrements MX, NS, TXT, etc. (contrairement à CNAME)
+;
+; 3. Le CNAME pour www pointe vers cname.vercel-dns.com (recommandé par Vercel)
+;
+; 4. Après avoir mis à jour les enregistrements DNS :
+;    - Attendez la propagation DNS (peut prendre jusqu'à 48h, généralement quelques minutes)
+;    - Vérifiez dans Vercel Dashboard que les domaines sont validés
+;    - Cliquez sur "Refresh" dans Vercel pour forcer la vérification
+;
+; 5. La redirection www → non-www sera gérée automatiquement par Vercel
+;    si vous avez configuré les deux domaines dans Vercel Dashboard

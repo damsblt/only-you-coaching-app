@@ -15,11 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Récupérer le code promo
-    const { data: promoCode, error: promoError } = await db
+    const promoResult = await db
       .from('promo_codes')
       .select('*')
       .eq('code', code.toUpperCase())
       .single()
+    
+    const promoCode = promoResult.data
+    const promoError = promoResult.error
 
     if (promoError || !promoCode) {
       return NextResponse.json(
@@ -74,11 +77,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Vérifier si l'utilisateur a déjà utilisé ce code
-    const { data: existingUsage } = await db
+    const usageResult = await db
       .from('promo_code_usage')
       .select('id')
       .eq('promo_code_id', promoCode.id)
       .eq('user_id', userId)
+      .execute()
+    
+    const existingUsage = usageResult.data
 
     if (existingUsage && existingUsage.length >= (promoCode.max_uses_per_user || 1)) {
       return NextResponse.json({

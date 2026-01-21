@@ -22,12 +22,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que l'utilisateur n'a pas déjà utilisé ce code
-    const { data: existingUsage } = await db
+    const existingResult = await db
       .from('promo_code_usage')
       .select('id')
       .eq('promo_code_id', promoCodeId)
       .eq('user_id', userId)
       .single()
+    
+    const existingUsage = existingResult.data
 
     if (existingUsage) {
       return NextResponse.json(
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enregistrer l'utilisation
-    const { data: usage, error: usageError } = await db
+    const usageResult = await db
       .from('promo_code_usage')
       .insert({
         promo_code_id: promoCodeId,
@@ -47,8 +49,9 @@ export async function POST(request: NextRequest) {
         original_amount: originalAmount,
         final_amount: finalAmount,
       })
-      .select()
-      .single()
+    
+    const usage = usageResult.data
+    const usageError = usageResult.error
 
     if (usageError) {
       console.error('Error recording promo code usage:', usageError)
@@ -59,16 +62,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Incrémenter le compteur d'utilisations du code promo
-    const { error: updateError } = await db
+    // Récupérer d'abord le compteur actuel
+    const promoDataResult = await db
       .from('promo_codes')
-      .update({
-        current_uses: db.raw('current_uses + 1')
-      })
+      .select('current_uses')
       .eq('id', promoCodeId)
+      .single()
+    
+    const promoData = promoDataResult.data
 
-    if (updateError) {
-      console.error('Error updating promo code usage count:', updateError)
-      // Ne pas échouer la requête pour cette erreur
+    if (promoData) {
+      const updateResult = await db
+        .from('promo_codes')
+        .update({
+          current_uses: (promoData.current_uses || 0) + 1
+        })
+        .eq('id', promoCodeId)
+
+      if (updateResult.error) {
+        console.error('Error updating promo code usage count:', updateResult.error)
+        // Ne pas échouer la requête pour cette erreur
+      }
     }
 
     return NextResponse.json({

@@ -72,6 +72,7 @@ module.exports = {
         },
         footer: {
           DEFAULT: '#39334D',  // Bleu du footer
+          400: '#4A4458',
           500: '#39334D',
           600: '#2D2738',
           700: '#211D2A',

@@ -1,0 +1,92 @@
+; Domain: only-you-coaching.com
+; Configuration DNS pour Vercel - MISE À JOUR
+; Exported (y-m-d hh:mm:ss): 2026-01-21 21:53:41
+; Updated with Vercel requirements from dashboard
+
+$TTL 3600
+@                 IN SOA   ns11.infomaniak.ch. hostmaster.infomaniak.ch. (2026011110 10800 3600 605800 3600)
+
+; ============================================
+; ENREGISTREMENTS POUR VERCEL (selon dashboard)
+; ============================================
+
+; Domaine racine (@) - only-you-coaching.com
+; REQUIS par Vercel : A record vers la nouvelle IP recommandée
+@             300  IN A     216.198.79.1
+
+; Sous-domaine www - www.only-you-coaching.com
+; Option 1 : CNAME vers Vercel (si vous gardez Infomaniak comme gestionnaire DNS)
+www          3600  IN CNAME cname.vercel-dns.com.
+
+; Option 2 : Si vous voulez utiliser Vercel DNS (nameservers Vercel)
+; Vous devrez changer les nameservers dans Infomaniak vers :
+; ns1.vercel-dns.com
+; ns2.vercel-dns.com
+; Dans ce cas, vous n'avez pas besoin du CNAME ci-dessus
+
+; ============================================
+; ENREGISTREMENTS EXISTANTS (à CONSERVER)
+; ============================================
+
+; Serveurs de noms (gardez Infomaniak si vous utilisez Option 1)
+             3600 IN NS    ns11.infomaniak.ch.
+             3600 IN NS    ns12.infomaniak.ch.
+
+; Mail (IMPORTANT : à conserver pour que l'email fonctionne)
+             3600 IN MX 5  mta-gw.infomaniak.ch.
+
+; Enregistrements TXT (SPF, Brevo, DMARC)
+             3600 IN TXT   "brevo-code:0e2b9c2bc22f1ecabe928f64b79c34ee"
+             3600 IN TXT   "v=spf1 include:spf.infomaniak.ch -all"
+_dmarc       3600 IN TXT   "v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com"
+
+; Autres CNAME
+autoconfig   3600 IN CNAME infomaniak.com.
+autodiscover 3600 IN CNAME infomaniak.com.
+
+; ============================================
+; ENREGISTREMENTS À SUPPRIMER
+; ============================================
+; Supprimez ces lignes de votre configuration actuelle :
+; @             300  IN A     83.166.133.33
+; @             300  IN AAAA  2001:1600:4:11::8f
+; www          300  IN A     83.166.133.33
+; www          300  IN AAAA  2001:1600:4:11::8f
+
+; ============================================
+; RÉSUMÉ DES MODIFICATIONS
+; ============================================
+; 1. Domaine racine (@) : 
+;    - SUPPRIMEZ : A 83.166.133.33
+;    - SUPPRIMEZ : AAAA 2001:1600:4:11::8f
+;    - AJOUTEZ : A 216.198.79.1 (nouvelle IP Vercel recommandée)
+;
+; 2. Sous-domaine www :
+;    - SUPPRIMEZ : A 83.166.133.33
+;    - SUPPRIMEZ : AAAA 2001:1600:4:11::8f
+;    - AJOUTEZ : CNAME cname.vercel-dns.com.
+;
+; 3. CONSERVEZ tous les autres enregistrements (NS, MX, TXT, etc.)
+
+; ============================================
+; NOTES IMPORTANTES
+; ============================================
+;
+; 1. L'IP 216.198.79.1 est la NOUVELLE IP recommandée par Vercel
+;    L'ancienne IP 76.76.21.21 fonctionne toujours mais n'est plus recommandée
+;
+; 2. Pour www.only-you-coaching.com, vous avez 2 options :
+;    a) Garder Infomaniak DNS : Utilisez CNAME vers cname.vercel-dns.com
+;    b) Utiliser Vercel DNS : Changez les nameservers vers ns1.vercel-dns.com et ns2.vercel-dns.com
+;
+; 3. Si vous gardez Infomaniak DNS (Option 2a), vous conservez le contrôle
+;    de tous vos enregistrements (MX, TXT, etc.) dans Infomaniak
+;
+; 4. Après avoir mis à jour les enregistrements DNS :
+;    - Attendez la propagation DNS (quelques minutes à quelques heures)
+;    - Allez dans Vercel Dashboard → Settings → Domains
+;    - Cliquez sur "Refresh" pour chaque domaine
+;    - Le statut devrait passer de "Invalid Configuration" à "Valid"
+;
+; 5. La redirection www → non-www sera gérée automatiquement par Vercel
+;    si vous avez configuré les deux domaines dans Vercel Dashboard

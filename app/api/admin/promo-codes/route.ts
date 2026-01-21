@@ -1,24 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, remove } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
 
 // GET - Liste tous les codes promo (admin uniquement)
 export async function GET(request: NextRequest) {
   try {
-    const { data: promoCodes, error } = await db
+    console.log('📋 GET /api/admin/promo-codes - Fetching promo codes...')
+    
+    const result = await db
       .from('promo_codes')
       .select('*')
       .order('created_at', { ascending: false })
+      .execute()
 
-    if (error) {
-      console.error('Error fetching promo codes:', error)
-      return NextResponse.json({ error: 'Failed to fetch promo codes' }, { status: 500 })
+    console.log('📊 Query result:', result)
+
+    if (result.error) {
+      console.error('❌ Error fetching promo codes:', result.error)
+      return NextResponse.json({ 
+        error: 'Failed to fetch promo codes',
+        details: result.error 
+      }, { status: 500 })
     }
 
-    return NextResponse.json({ promoCodes })
+    console.log(`✅ Found ${result.data?.length || 0} promo codes`)
+    return NextResponse.json({ promoCodes: result.data || [] })
   } catch (error: any) {
-    console.error('Error in GET /api/admin/promo-codes:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('❌ Exception in GET /api/admin/promo-codes:', error)
+    return NextResponse.json({ 
+      error: error.message || 'Internal server error',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 })
   }
 }
 
@@ -55,11 +67,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier si le code existe déjà
-    const { data: existingCode } = await db
+    const existingResult = await db
       .from('promo_codes')
       .select('id')
       .eq('code', code.toUpperCase())
       .single()
+    
+    const existingCode = existingResult.data
 
     if (existingCode) {
       return NextResponse.json(
@@ -105,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insérer dans la base de données
-    const { data: newPromoCode, error: insertError } = await db
+    const insertResult = await db
       .from('promo_codes')
       .insert({
         code: code.toUpperCase(),
@@ -120,8 +134,9 @@ export async function POST(request: NextRequest) {
         description: description || null,
         is_active: true,
       })
-      .select()
-      .single()
+    
+    const newPromoCode = insertResult.data
+    const insertError = insertResult.error
 
     if (insertError) {
       console.error('Error inserting promo code:', insertError)
@@ -146,11 +161,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Récupérer le code promo pour supprimer aussi le coupon Stripe
-    const { data: promoCode } = await db
+    const result = await db
       .from('promo_codes')
       .select('stripe_coupon_id')
       .eq('id', id)
       .single()
+    
+    const promoCode = result.data
 
     // Supprimer le coupon Stripe si présent
     if (promoCode?.stripe_coupon_id) {
@@ -164,13 +181,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Supprimer de la base de données
-    const { error } = await db
-      .from('promo_codes')
-      .delete()
-      .eq('id', id)
+    const deleteResult = await remove('promo_codes', { id })
 
-    if (error) {
-      console.error('Error deleting promo code:', error)
+    if (deleteResult.error) {
+      console.error('Error deleting promo code:', deleteResult.error)
       return NextResponse.json({ error: 'Failed to delete promo code' }, { status: 500 })
     }
 
