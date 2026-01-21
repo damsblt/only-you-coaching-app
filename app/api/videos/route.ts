@@ -250,48 +250,25 @@ export async function GET(request: NextRequest) {
         batch.map(async (video) => {
           let processedVideo = { ...video }
 
-          // Process thumbnail URL
+          // Process thumbnail URL - generate signed URLs for S3 thumbnails
+          // This ensures thumbnails work in both localhost and production
           if (video.thumbnail) {
             try {
               const thumbnailUrl = new URL(video.thumbnail)
               
-              // Check if it's a Neon Storage URL (keep as is - they're already accessible)
-              if (thumbnailUrl.hostname.includes('neon.tech') || thumbnailUrl.hostname.includes('storage.neon')) {
-                // Neon Storage URLs are already public and accessible, keep them as is
-                // No processing needed
-              } else if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
-                // Check if it's an S3 URL
-                let s3Key: string
-                
+              // Check if it's an S3 URL
+              if (thumbnailUrl.hostname.includes('s3') || thumbnailUrl.hostname.includes('amazonaws.com')) {
                 // Extract S3 key from URL pathname
+                let s3Key: string
                 try {
-                  // Decode pathname to handle URL encoding
-                  let decodedPath = decodeURIComponent(thumbnailUrl.pathname)
+                  const decodedPath = decodeURIComponent(thumbnailUrl.pathname)
                   s3Key = decodedPath.substring(1) // Remove leading slash
-                } catch (decodeError) {
-                  // If decode fails, try without decoding (might already be decoded)
+                } catch {
                   s3Key = thumbnailUrl.pathname.substring(1)
                 }
                 
-                // If URL has query parameters (signed URL), we still use the pathname
-                // The query params are just for authentication, the key is in pathname
-                
-                // If it's in the thumbnails folder, generate a signed URL for production
-                // This ensures thumbnails work in both localhost and production
+                // Generate signed URL for thumbnails (valid for 24 hours)
                 if (s3Key.startsWith('thumbnails/')) {
-                  // Generate signed URL for thumbnails (valid for 24 hours)
-                  // This works regardless of bucket policy or encoding issues
-                  const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                  if (signedUrlResult.success) {
-                    const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                    processedVideo.thumbnail = cleanUrl
-                  } else {
-                    console.warn('Failed to generate signed URL for thumbnail:', video.id, s3Key, signedUrlResult.error)
-                    // Keep original URL as fallback
-                    processedVideo.thumbnail = video.thumbnail
-                  }
-                } else {
-                  // For non-thumbnail files, generate a signed URL
                   const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
                   if (signedUrlResult.success) {
                     const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
@@ -302,9 +279,10 @@ export async function GET(request: NextRequest) {
                   }
                 }
               }
+              // For non-S3 URLs (like Neon Storage), keep as-is
             } catch (urlError) {
-              // Not a valid URL or error processing, keep original thumbnail
-              console.warn('Thumbnail URL format not recognized for video', video.id, ':', video.thumbnail, 'Error:', urlError)
+              // If URL parsing fails, keep original
+              console.warn('Failed to parse thumbnail URL for video', video.id, ':', urlError)
             }
           } else {
             // No thumbnail - log for debugging
