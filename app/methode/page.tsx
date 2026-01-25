@@ -92,7 +92,7 @@ export default function MethodePage() {
       <PageHeader
         imageS3Key="Photos/Training/ok (3).JPG"
         title="Ma méthode"
-        subtitle="Une approche holistique unique alliant Pilates, nutrition et bien-être pour transformer votre corps et votre esprit"
+        subtitle="Only You Coaching – une approche holistique sur mesure alliant exercice physique, nutrition et travail mental pour transformer durablement le corps et l'esprit"
         height="fullScreen"
       />
       <Section 

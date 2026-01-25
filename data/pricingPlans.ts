@@ -72,8 +72,7 @@ export const pricingPlans = {
         features: [
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\"",
-          "1 appel de coaching par mois de 30 mn"
+          "Accès à \"mes recettes\""
         ]
       },
       {
@@ -86,8 +85,7 @@ export const pricingPlans = {
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\"",
-          "1 appel de coaching par mois de 30 mn"
+          "Accès à \"mes recettes\""
         ]
       },
       {
@@ -100,8 +98,7 @@ export const pricingPlans = {
           "Accès à la bibliothèque de vidéos d'exercices",
           "Accès aux programmes prédéfinis",
           "Accès à la bibliothèque d'audios guidés",
-          "Accès à \"mes recettes\"",
-          "1 appel de coaching par mois de 30 mn"
+          "Accès à \"mes recettes\""
         ]
       }
     ]

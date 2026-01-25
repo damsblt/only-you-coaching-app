@@ -60,17 +60,43 @@ function extractRegionFromKey(key: string): string | null {
 }
 
 /**
- * Generate title from filename
+ * Extract video number and title from filename
+ * Returns { number: number | null, title: string }
+ * Format: "1. Titre de l'exercice.mp4" or "10.1 Titre de l'exercice.mp4"
+ */
+function extractNumberAndTitle(filename: string): { number: number | null, title: string } {
+  const nameWithoutExt = filename.replace(/\.(mp4|mov|avi)$/i, '')
+  
+  // Format 1: "10.1 Titre..." (numéro décimal avec titre sur la même ligne)
+  let match = nameWithoutExt.match(/^(\d+\.\d+)\s+(.+)$/)
+  if (match) {
+    return {
+      number: parseFloat(match[1]),
+      title: match[2].trim()
+    }
+  }
+  
+  // Format 2: "10. Titre..." (numéro entier avec titre sur la même ligne)
+  match = nameWithoutExt.match(/^(\d+)\.\s*(.+)$/)
+  if (match) {
+    return {
+      number: parseInt(match[1], 10),
+      title: match[2].trim()
+    }
+  }
+  
+  // Pas de numéro, tout le nom est le titre
+  return { number: null, title: nameWithoutExt }
+}
+
+/**
+ * Generate title from filename (legacy function, kept for compatibility)
  * Removes leading numbers (including decimals like 10.1) and capitalizes only first letter
  */
 function generateTitle(filename: string): string {
-  // Remove extension
-  const nameWithoutExt = filename.split('.').slice(0, -1).join('.')
-  // Remove leading numbers (including decimals like 10.1, 10.2) followed by optional dot and space
-  // Matches: "10.1 ", "10.1. ", "2. ", "10. "
-  const cleaned = nameWithoutExt.replace(/^\d+(\.\d+)?\.?\s*/, '')
+  const { title } = extractNumberAndTitle(filename)
   // Replace dashes and underscores with spaces
-  const withSpaces = cleaned.replace(/[-_]/g, ' ')
+  const withSpaces = title.replace(/[-_]/g, ' ')
   // Capitalize only the first letter, rest lowercase
   if (withSpaces.length === 0) return withSpaces
   return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1).toLowerCase()
@@ -216,6 +242,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
+    // Default to programmes-predefinis to maintain backward compatibility
+    // For groupes-musculaires, pass prefix explicitly in the request body
     const prefix = body.prefix || 'Video/programmes-predefinis/machine/'
 
     // List all objects in the specified folder
@@ -257,21 +285,39 @@ export async function POST(request: NextRequest) {
         
         // Extract metadata from path and filename
         const region = extractRegionFromKey(key) || 'machine'
-        const title = generateTitle(filename)
+        const { number: videoNumber, title } = extractNumberAndTitle(filename)
         
         // Determine video type and category based on path
         const videoType = key.includes('programmes-predefinis') ? 'PROGRAMMES' : 'MUSCLE_GROUPS'
         const category = key.includes('programmes-predefinis') ? 'Predefined Programs' : 'Muscle Groups'
         
-        // Check if video already exists (by videoUrl or title)
-        const { data: existingVideos } = await db
-          .from('videos_new')
-          .select('id')
-          .or(`videoUrl.ilike.%${key}%,title.ilike.%${title}%`)
-          .single()
+        // Check if video already exists (by videoUrl or videoNumber + region)
+        let existingVideo = null
+        if (videoNumber !== null) {
+          const { data: existingByNumber } = await db
+            .from('videos_new')
+            .select('id')
+            .eq('videoNumber', videoNumber)
+            .eq('region', region)
+            .eq('videoType', 'MUSCLE_GROUPS') // ⚠️ IMPORTANT: Only check MUSCLE_GROUPS to avoid conflicts with PROGRAMMES
+            .limit(1)
+            .execute()
+          existingVideo = existingByNumber && existingByNumber.length > 0 ? existingByNumber[0] : null
+        }
+        
+        if (!existingVideo) {
+          const { data: existingByUrl } = await db
+            .from('videos_new')
+            .select('id')
+            .eq('videoType', 'MUSCLE_GROUPS') // ⚠️ IMPORTANT: Only check MUSCLE_GROUPS
+            .ilike('videoUrl', `%${key}%`)
+            .limit(1)
+            .execute()
+          existingVideo = existingByUrl && existingByUrl.length > 0 ? existingByUrl[0] : null
+        }
 
-        if (existingVideos && existingVideos.length > 0) {
-          console.log(`Video already exists: ${title}`)
+        if (existingVideo) {
+          console.log(`Video already exists: ${title} (${videoNumber || 'no number'})`)
           skippedCount++
           continue
         }
@@ -293,6 +339,11 @@ export async function POST(request: NextRequest) {
           isPublished: true, // Auto-publish synced videos
           createdAt: now,
           updatedAt: now,
+        }
+        
+        // Add videoNumber if extracted
+        if (videoNumber !== null) {
+          videoData.videoNumber = videoNumber
         }
         
         // Insert video using QueryBuilder

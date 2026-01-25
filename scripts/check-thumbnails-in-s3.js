@@ -1,151 +1,248 @@
 #!/usr/bin/env node
-
 /**
- * Script pour vérifier si les thumbnails existent dans S3
+ * Script pour vérifier les thumbnails dans S3
+ * Liste tous les thumbnails et compare avec les vidéos
  */
 
-const { createClient } = require('@supabase/supabase-js')
-const { S3Client, HeadObjectCommand } = require('@aws-sdk/client-s3')
-const path = require('path')
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import dotenv from 'dotenv'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
 
-// Charger les variables d'environnement depuis .env.local
-require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') })
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
-// Configuration
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const awsRegion = process.env.AWS_REGION || 'eu-north-1'
-const bucketName = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
-const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID
-const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+// Load environment variables
+dotenv.config({ path: join(__dirname, '..', '.env.local') })
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variables d\'environnement Supabase manquantes')
+const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
+const AWS_REGION = process.env.AWS_REGION || 'eu-north-1'
+
+const hasAwsCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+
+if (!hasAwsCredentials) {
+  console.error('❌ AWS credentials not configured')
+  console.error('   Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in .env.local')
   process.exit(1)
 }
-
-if (!awsAccessKeyId || !awsSecretAccessKey) {
-  console.error('❌ Variables d\'environnement AWS manquantes')
-  process.exit(1)
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: { persistSession: false }
-})
 
 const s3Client = new S3Client({
-  region: awsRegion,
+  region: AWS_REGION,
   credentials: {
-    accessKeyId: awsAccessKeyId,
-    secretAccessKey: awsSecretAccessKey,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 })
 
 /**
- * Extrait la clé S3 depuis l'URL (essaye les deux versions : encodée et décodée)
+ * Lister tous les objets dans S3 avec un préfixe
  */
-function extractS3Key(url) {
-  try {
-    const urlObj = new URL(url)
-    const encodedKey = urlObj.pathname.substring(1) // Enlever le slash initial
-    const decodedKey = decodeURIComponent(encodedKey)
-    return { encoded: encodedKey, decoded: decodedKey }
-  } catch (error) {
-    return null
-  }
+async function listObjects(prefix) {
+  const objects = []
+  let continuationToken = undefined
+  
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    })
+    
+    const response = await s3Client.send(command)
+    
+    if (response.Contents) {
+      objects.push(...response.Contents)
+    }
+    
+    continuationToken = response.NextContinuationToken
+  } while (continuationToken)
+  
+  return objects
 }
 
 /**
- * Vérifie si un objet existe dans S3 (essaye les deux versions : encodée et décodée)
+ * Extraire la région depuis la clé S3
  */
-async function checkS3ObjectExists(keys) {
-  // Essayer d'abord la version décodée (la plus probable)
-  try {
-    const command = new HeadObjectCommand({
-      Bucket: bucketName,
-      Key: keys.decoded,
-    })
-    await s3Client.send(command)
-    return { exists: true, key: keys.decoded, error: null }
-  } catch (error) {
-    if (error.name === 'NotFound') {
-      // Essayer la version encodée
-      try {
-        const command2 = new HeadObjectCommand({
-          Bucket: bucketName,
-          Key: keys.encoded,
-        })
-        await s3Client.send(command2)
-        return { exists: true, key: keys.encoded, error: null }
-      } catch (error2) {
-        return { exists: false, key: null, error: error2.name || error2.message }
-      }
-    }
-    return { exists: false, key: null, error: error.name || error.message }
+function extractRegion(key) {
+  const parts = key.split('/')
+  // Format: Video/groupes-musculaires/{region}/...
+  // Format: thumbnails/Video/groupes-musculaires/{region}/...
+  if (parts.length >= 3 && parts[1] === 'groupes-musculaires') {
+    return parts[2]
   }
+  return null
+}
+
+/**
+ * Extraire le nom de fichier vidéo depuis la clé thumbnail
+ */
+function getVideoKeyFromThumbnail(thumbnailKey) {
+  // thumbnails/Video/groupes-musculaires/abdos/1. Titre-thumb.jpg
+  // -> Video/groupes-musculaires/abdos/1. Titre.mp4
+  if (!thumbnailKey.startsWith('thumbnails/')) {
+    return null
+  }
+  
+  const withoutPrefix = thumbnailKey.substring('thumbnails/'.length)
+  const withoutSuffix = withoutPrefix.replace(/-thumb\.jpg$/i, '')
+  
+  // Essayer différentes extensions
+  const extensions = ['.mp4', '.mov', '.avi']
+  for (const ext of extensions) {
+    const potentialKey = withoutSuffix + ext
+    return potentialKey
+  }
+  
+  return withoutSuffix + '.mp4' // Default
 }
 
 async function main() {
-  console.log('🔍 Vérification des thumbnails dans S3...\n')
-
-  // Récupérer quelques vidéos avec leurs thumbnails
-  const { data: videos, error } = await supabase
-    .from('videos_new')
-    .select('id, title, thumbnail')
-    .eq('isPublished', true)
-    .not('thumbnail', 'is', null)
-    .limit(10)
-
-  if (error) {
-    console.error('❌ Erreur:', error)
-    process.exit(1)
-  }
-
-  console.log(`📥 Vérification de ${videos.length} thumbnails...\n`)
-
-  let exists = 0
-  let notExists = 0
-
-  for (const video of videos) {
-    const s3Keys = extractS3Key(video.thumbnail)
-    if (!s3Keys) {
-      console.log(`📹 ${video.title}`)
-      console.log(`   ❌ Impossible d'extraire la clé S3`)
-      notExists++
-      continue
-    }
-
-    console.log(`📹 ${video.title}`)
-    console.log(`   Clé encodée: ${s3Keys.encoded.substring(0, 60)}...`)
-    console.log(`   Clé décodée: ${s3Keys.decoded.substring(0, 60)}...`)
-    
-    const result = await checkS3ObjectExists(s3Keys)
-    
-    if (result.exists) {
-      exists++
-      console.log(`   ✅ Existe dans S3 (clé utilisée: ${result.key.substring(0, 60)}...)`)
-    } else {
-      notExists++
-      console.log(`   ❌ N'existe pas dans S3 (${result.error})`)
-    }
-    console.log()
-  }
-
-  console.log('='.repeat(50))
-  console.log('📊 Résumé:')
-  console.log(`   ✅ Existent dans S3: ${exists}`)
-  console.log(`   ❌ N'existent pas: ${notExists}`)
-  console.log(`   📊 Total: ${videos.length}`)
-  console.log('='.repeat(50))
+  console.log('🔍 Vérification des thumbnails dans S3\n')
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
   
-  if (notExists > 0) {
-    console.log('\n💡 Les fichiers n\'existent pas dans S3 aux chemins attendus.')
-    console.log('   Cela peut expliquer pourquoi ils ne sont pas accessibles publiquement.')
+  try {
+    // 1. Lister toutes les vidéos
+    console.log('📹 Récupération des vidéos...')
+    const videos = await listObjects('Video/groupes-musculaires/')
+    const videoFiles = videos.filter(v => 
+      v.Key && v.Key.match(/\.(mp4|mov|avi)$/i) && !v.Key.includes('thumbnails/')
+    )
+    
+    console.log(`   ✅ ${videoFiles.length} vidéos trouvées\n`)
+    
+    // 2. Lister tous les thumbnails
+    console.log('🖼️  Récupération des thumbnails...')
+    const thumbnails = await listObjects('thumbnails/Video/groupes-musculaires/')
+    const thumbnailFiles = thumbnails.filter(t => 
+      t.Key && t.Key.match(/\.(jpg|jpeg|png)$/i)
+    )
+    
+    console.log(`   ✅ ${thumbnailFiles.length} thumbnails trouvés\n`)
+    
+    // 3. Analyser par région
+    console.log('📊 Analyse par région :\n')
+    
+    const videosByRegion = new Map()
+    const thumbnailsByRegion = new Map()
+    
+    for (const video of videoFiles) {
+      const region = extractRegion(video.Key) || 'unknown'
+      if (!videosByRegion.has(region)) {
+        videosByRegion.set(region, [])
+      }
+      videosByRegion.get(region).push(video)
+    }
+    
+    for (const thumbnail of thumbnailFiles) {
+      const region = extractRegion(thumbnail.Key) || 'unknown'
+      if (!thumbnailsByRegion.has(region)) {
+        thumbnailsByRegion.set(region, [])
+      }
+      thumbnailsByRegion.get(region).push(thumbnail)
+    }
+    
+    // Afficher les statistiques par région
+    const allRegions = new Set([...videosByRegion.keys(), ...thumbnailsByRegion.keys()])
+    
+    let totalVideos = 0
+    let totalThumbnails = 0
+    
+    for (const region of Array.from(allRegions).sort()) {
+      const videoCount = videosByRegion.get(region)?.length || 0
+      const thumbnailCount = thumbnailsByRegion.get(region)?.length || 0
+      const percentage = videoCount > 0 ? ((thumbnailCount / videoCount) * 100).toFixed(1) : 0
+      
+      totalVideos += videoCount
+      totalThumbnails += thumbnailCount
+      
+      const status = videoCount === thumbnailCount ? '✅' : videoCount > thumbnailCount ? '⚠️' : '❌'
+      console.log(`   ${status} ${region.padEnd(20)} : ${videoCount.toString().padStart(3)} vidéos, ${thumbnailCount.toString().padStart(3)} thumbnails (${percentage}%)`)
+    }
+    
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+    console.log('📊 Résumé global :\n')
+    console.log(`   📹 Total vidéos : ${totalVideos}`)
+    console.log(`   🖼️  Total thumbnails : ${totalThumbnails}`)
+    console.log(`   📈 Taux de couverture : ${totalVideos > 0 ? ((totalThumbnails / totalVideos) * 100).toFixed(1) : 0}%`)
+    console.log(`   ❌ Thumbnails manquants : ${Math.max(0, totalVideos - totalThumbnails)}\n`)
+    
+    // 4. Vérifier les correspondances
+    console.log('🔗 Vérification des correspondances...\n')
+    
+    const videoKeys = new Set(videoFiles.map(v => v.Key))
+    const thumbnailKeys = new Set(thumbnailFiles.map(t => t.Key))
+    
+    let matchedCount = 0
+    let unmatchedVideos = []
+    let unmatchedThumbnails = []
+    
+    for (const thumbnail of thumbnailFiles) {
+      const videoKey = getVideoKeyFromThumbnail(thumbnail.Key)
+      if (videoKey && videoKeys.has(videoKey)) {
+        matchedCount++
+      } else {
+        unmatchedThumbnails.push(thumbnail.Key)
+      }
+    }
+    
+    for (const video of videoFiles) {
+      const expectedThumbnailKey = `thumbnails/${video.Key.replace(/\.(mp4|mov|avi)$/i, '-thumb.jpg')}`
+      if (!thumbnailKeys.has(expectedThumbnailKey)) {
+        unmatchedVideos.push(video.Key)
+      }
+    }
+    
+    console.log(`   ✅ Thumbnails correspondants : ${matchedCount}`)
+    console.log(`   ❌ Vidéos sans thumbnail : ${unmatchedVideos.length}`)
+    console.log(`   ⚠️  Thumbnails orphelins : ${unmatchedThumbnails.length}\n`)
+    
+    // 5. Afficher quelques exemples de vidéos sans thumbnail
+    if (unmatchedVideos.length > 0) {
+      console.log('📋 Exemples de vidéos sans thumbnail (premiers 10) :\n')
+      unmatchedVideos.slice(0, 10).forEach((key, i) => {
+        const region = extractRegion(key) || 'unknown'
+        const filename = key.split('/').pop()
+        console.log(`   ${i + 1}. [${region}] ${filename}`)
+      })
+      if (unmatchedVideos.length > 10) {
+        console.log(`   ... et ${unmatchedVideos.length - 10} autres\n`)
+      } else {
+        console.log('')
+      }
+    }
+    
+    // 6. Recommandations
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
+    console.log('💡 Recommandations :\n')
+    
+    if (totalThumbnails === 0) {
+      console.log('   ⚠️  Aucun thumbnail trouvé dans S3')
+      console.log('   → Vérifier que la Lambda est bien configurée et déclenchée')
+      console.log('   → Vérifier les logs CloudWatch de la Lambda')
+    } else if (totalThumbnails < totalVideos) {
+      console.log(`   ⚠️  ${totalVideos - totalThumbnails} vidéos n'ont pas de thumbnail`)
+      console.log('   → La Lambda peut encore être en train de générer les thumbnails')
+      console.log('   → Attendre quelques minutes et relancer ce script')
+    } else if (totalThumbnails === totalVideos) {
+      console.log('   ✅ Toutes les vidéos ont un thumbnail !')
+      console.log('   → Vous pouvez maintenant synchroniser les thumbnails vers Neon')
+    } else {
+      console.log(`   ⚠️  ${totalThumbnails - totalVideos} thumbnails en trop`)
+      console.log('   → Certains thumbnails peuvent être orphelins (vidéos supprimées)')
+    }
+    
+    console.log('')
+    
+  } catch (error) {
+    console.error('❌ Erreur:', error.message)
+    if (error.stack) {
+      console.error(error.stack)
+    }
+    process.exit(1)
   }
 }
 
-main().catch((error) => {
-  console.error('❌ Erreur fatale:', error)
+main().catch(error => {
+  console.error('❌ Erreur:', error)
   process.exit(1)
 })
-

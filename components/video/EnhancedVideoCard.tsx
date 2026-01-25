@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Play, Target } from "lucide-react"
 import { getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import { formatIntensity } from "@/utils/formatIntensity"
 
 interface EnhancedVideo {
   id: string
@@ -109,7 +110,7 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
             {video.intensity && (
               <div>
                 <span className="font-semibold text-gray-700 dark:text-gray-300">Intensité: </span>
-                <span className="text-gray-600 dark:text-gray-400">{video.intensity}</span>
+                <span className="text-gray-600 dark:text-gray-400">{formatIntensity(video.intensity)}</span>
               </div>
             )}
             {video.series && (

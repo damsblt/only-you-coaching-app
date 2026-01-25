@@ -9,6 +9,7 @@ import MobileStreamPlayer from "@/components/video/MobileStreamPlayer"
 import { Section } from "@/components/ui/Section"
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
+import { formatIntensity } from "@/utils/formatIntensity"
 
 interface Video {
   id: string
@@ -976,7 +977,7 @@ export default function RegionPage() {
                               {video.intensity && (
                                 <div>
                                   <span className="font-semibold text-gray-700 dark:text-gray-300">Intensité: </span>
-                                  <span className="text-gray-600 dark:text-gray-400">{video.intensity}</span>
+                                  <span className="text-gray-600 dark:text-gray-400">{formatIntensity(video.intensity)}</span>
                                 </div>
                               )}
                               {video.series && (

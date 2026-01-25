@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
+import { formatIntensity } from "@/utils/formatIntensity"
 
 interface Video {
   id: string
@@ -531,7 +532,7 @@ export default function ListingPlayer({
                   {video.intensity && (
                     <div>
                       <span className="font-semibold text-gray-700">Intensité: </span>
-                      <span className="text-gray-600">{video.intensity}</span>
+                      <span className="text-gray-600">{formatIntensity(video.intensity)}</span>
                     </div>
                   )}
                   {video.series && (

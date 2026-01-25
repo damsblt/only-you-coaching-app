@@ -8,7 +8,7 @@
  * - Environment variables: DATABASE_URL, AWS_REGION
  */
 
-const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3')
+const { S3Client, GetObjectCommand, PutObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3')
 const { neon } = require('@neondatabase/serverless')
 const { execSync } = require('child_process')
 const fs = require('fs')
@@ -98,16 +98,19 @@ function extractVideoId(s3Key) {
 
 /**
  * Generate thumbnail S3 key from video S3 key
+ * Preserves the same folder structure:
+ * Video/groupes-musculaires/{region}/{filename}.mp4
+ * -> thumbnails/Video/groupes-musculaires/{region}/{filename}-thumb.jpg
  */
 function generateThumbnailKey(s3Key) {
-  const videoId = extractVideoId(s3Key)
-  // Extract path without filename
-  const pathParts = s3Key.split('/')
-  pathParts.pop() // Remove filename
-  const basePath = pathParts.join('/')
+  // Remove extension and add -thumb.jpg
+  // Example: Video/groupes-musculaires/abdos/1. Titre.mp4
+  // -> thumbnails/Video/groupes-musculaires/abdos/1. Titre-thumb.jpg
+  const thumbnailKey = s3Key
+    .replace(/\.(mp4|mov|avi)$/i, '-thumb.jpg') // Replace extension with -thumb.jpg
+    .replace(/^Video\//, 'thumbnails/Video/') // Add thumbnails/ prefix
   
-  // Create thumbnail path: same path but in thumbnails/ folder
-  return `thumbnails/${basePath}/${videoId}-thumb.jpg`
+  return thumbnailKey
 }
 
 /**
@@ -197,21 +200,42 @@ exports.handler = async (event) => {
         continue
       }
       
-      // Find video in database
-      const video = await findVideoByS3Key(s3Key)
+      // Check if thumbnail already exists in S3
+      const thumbnailKey = generateThumbnailKey(s3Key)
+      console.log(`🔍 Checking if thumbnail already exists: ${thumbnailKey}`)
       
-      if (!video) {
-        console.log(`⚠️  Video not found in database for key: ${s3Key}`)
-        console.log(`   This is normal if the video hasn't been synced to Neon yet.`)
+      // Check if thumbnail already exists in S3
+      try {
+        const headCommand = new HeadObjectCommand({
+          Bucket: bucket,
+          Key: thumbnailKey
+        })
+        
+        await s3Client.send(headCommand)
+        console.log('ℹ️  Thumbnail already exists in S3, skipping')
         continue
+      } catch (headError) {
+        // Thumbnail doesn't exist (404 is expected), continue with generation
+        if (headError.name === 'NotFound' || headError.$metadata?.httpStatusCode === 404) {
+          console.log('📝 Thumbnail does not exist, will generate it')
+        } else {
+          console.log(`⚠️  Error checking thumbnail existence: ${headError.message}, proceeding anyway`)
+        }
       }
       
-      console.log(`✅ Found video: ${video.id}`)
+      // Try to find video in database (optional - for updating database if video exists)
+      const video = await findVideoByS3Key(s3Key)
       
-      // Check if thumbnail already exists
-      if (video.thumbnail) {
-        console.log('ℹ️  Video already has a thumbnail, skipping')
-        continue
+      if (video) {
+        console.log(`✅ Found video in database: ${video.id}`)
+        
+        // Check if video already has a thumbnail in database
+        if (video.thumbnail) {
+          console.log('ℹ️  Video already has a thumbnail in database, but will still generate/update in S3')
+        }
+      } else {
+        console.log(`ℹ️  Video not found in database (will generate thumbnail anyway)`)
+        console.log(`   The thumbnail will be synced to Neon later via /api/videos/sync-thumbnails-from-s3`)
       }
       
       try {
@@ -231,11 +255,10 @@ exports.handler = async (event) => {
         const thumbnailBuffer = await generateThumbnail(videoBuffer, 5)
         console.log(`✅ Generated thumbnail (${thumbnailBuffer.length} bytes)`)
         
-        // Generate thumbnail S3 key
-        const thumbnailKey = generateThumbnailKey(s3Key)
+        // Generate thumbnail S3 key (preserve same folder structure)
         console.log(`📤 Uploading thumbnail to: ${thumbnailKey}`)
         
-        // Upload thumbnail to S3 with public-read access
+        // Upload thumbnail to S3
         const putObjectCommand = new PutObjectCommand({
           Bucket: bucket,
           Key: thumbnailKey,
@@ -249,20 +272,28 @@ exports.handler = async (event) => {
         await s3Client.send(putObjectCommand)
         console.log(`✅ Uploaded thumbnail to S3`)
         
-        // Generate thumbnail URL
+        // Generate thumbnail URL (properly encoded)
         const region = process.env.AWS_REGION || 'eu-north-1'
-        const thumbnailUrl = `https://${bucket}.s3.${region}.amazonaws.com/${thumbnailKey}`
+        // Encode each segment separately to preserve slashes
+        const encodedKey = thumbnailKey.split('/').map(segment => encodeURIComponent(segment)).join('/')
+        const thumbnailUrl = `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`
         
-        // Update database
-        const updated = await updateVideoThumbnail(video.id, thumbnailUrl)
-        if (updated) {
-          console.log(`✅ Successfully processed video ${video.id}`)
+        // Update database ONLY if video exists in database
+        if (video) {
+          const updated = await updateVideoThumbnail(video.id, thumbnailUrl)
+          if (updated) {
+            console.log(`✅ Successfully updated database for video ${video.id}`)
+          } else {
+            console.log(`⚠️  Thumbnail generated in S3 but failed to update database for video ${video.id}`)
+            console.log(`   The thumbnail will be synced later via /api/videos/sync-thumbnails-from-s3`)
+          }
         } else {
-          console.error(`❌ Failed to update database for video ${video.id}`)
+          console.log(`✅ Thumbnail generated in S3 (video not in database yet)`)
+          console.log(`   The thumbnail will be synced to Neon later via /api/videos/sync-thumbnails-from-s3`)
         }
         
       } catch (processingError) {
-        console.error(`❌ Error processing video ${video.id}:`, processingError)
+        console.error(`❌ Error processing video:`, processingError)
         // Continue with next video instead of failing completely
         continue
       }
