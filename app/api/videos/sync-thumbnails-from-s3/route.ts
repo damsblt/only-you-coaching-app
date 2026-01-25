@@ -18,28 +18,61 @@ const s3Client = hasAwsCredentials ? new S3Client({
 }) : null
 
 /**
- * Extract video S3 key from thumbnail key
- * Example: thumbnails/Video/groupes-musculaires/abdos/video-thumb.jpg
- * -> Video/groupes-musculaires/abdos/video.mp4
+ * Extract region from S3 key path
+ */
+function extractRegionFromKey(key: string): string | null {
+  const parts = key.split('/')
+  // Format: thumbnails/Video/groupes-musculaires/{region}/...
+  if (parts.length >= 4 && parts[0] === 'thumbnails' && parts[1] === 'Video' && parts[2] === 'groupes-musculaires') {
+    return parts[3] || null
+  }
+  // Format: Video/groupes-musculaires/{region}/...
+  if (parts.length >= 3 && parts[1] === 'groupes-musculaires') {
+    return parts[2] || null
+  }
+  return null
+}
+
+/**
+ * Extract video number and title from thumbnail filename
+ * Format: "10. Extension de jambes tendues-thumb.jpg" or "10.1 Extension-thumb.jpg"
+ */
+function extractNumberAndTitleFromThumbnail(filename: string): { number: number | null, title: string } {
+  // Remove -thumb.jpg suffix
+  const nameWithoutExt = filename.replace(/-thumb\.(jpg|jpeg|png)$/i, '')
+  
+  // Format 1: "10.1 Titre..." (numéro décimal)
+  let match = nameWithoutExt.match(/^(\d+\.\d+)\s+(.+)$/)
+  if (match) {
+    return {
+      number: parseFloat(match[1]),
+      title: match[2].trim()
+    }
+  }
+  
+  // Format 2: "10. Titre..." (numéro entier)
+  match = nameWithoutExt.match(/^(\d+)\.\s*(.+)$/)
+  if (match) {
+    return {
+      number: parseInt(match[1], 10),
+      title: match[2].trim()
+    }
+  }
+  
+  // Pas de numéro
+  return { number: null, title: nameWithoutExt }
+}
+
+/**
+ * Extract video S3 key from thumbnail key (for fallback matching)
  */
 function extractVideoKeyFromThumbnailKey(thumbnailKey: string): string | null {
-  // Remove thumbnails/ prefix
   if (!thumbnailKey.startsWith('thumbnails/')) {
     return null
   }
   
   const withoutPrefix = thumbnailKey.substring('thumbnails/'.length)
-  // Remove -thumb.jpg suffix and try common video extensions
-  const baseName = withoutPrefix.replace(/-thumb\.jpg$/, '')
-  
-  // Try to find matching video with common extensions
-  const extensions = ['.mp4', '.mov', '.avi', '.mkv']
-  for (const ext of extensions) {
-    const potentialVideoKey = baseName + ext
-    // We'll check if this video exists in the database
-    return potentialVideoKey
-  }
-  
+  const baseName = withoutPrefix.replace(/-thumb\.(jpg|jpeg|png)$/i, '')
   return baseName + '.mp4' // Default to .mp4
 }
 
@@ -53,11 +86,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 Scanning S3 for thumbnails...')
+    console.log('⚠️  IMPORTANT: Only processing thumbnails from thumbnails/Video/groupes-musculaires/')
+    console.log('   PROGRAMMES thumbnails will remain unchanged')
 
-    // List all thumbnails in S3
+    // List all thumbnails in S3 (only groupes-musculaires)
     const command = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
-      Prefix: 'thumbnails/Video/',
+      Prefix: 'thumbnails/Video/groupes-musculaires/',
     })
 
     const response = await s3Client.send(command)
@@ -74,11 +109,17 @@ export async function POST(request: NextRequest) {
     console.log(`📋 Found ${thumbnails.length} thumbnails in S3`)
 
     // Get all videos from database
-    const { data: videos, error: videosError } = await db
+    // ⚠️ IMPORTANT: Only sync thumbnails for MUSCLE_GROUPS videos
+    // PROGRAMMES videos remain unchanged
+    const { data: allVideos, error: videosError } = await db
       .from('videos_new')
-      .select('id, title, videoUrl, thumbnail')
+      .select('id, title, videoUrl, thumbnail, videoNumber, region')
       .eq('isPublished', true)
-      .not('videoUrl', 'is', null)
+      .eq('videoType', 'MUSCLE_GROUPS')
+      .execute()
+    
+    // Filter out videos with null videoUrl (since .not() is not available)
+    const videos = (allVideos || []).filter((v: any) => v.videoUrl !== null && v.videoUrl !== undefined && v.videoUrl !== '')
 
     if (videosError) {
       throw videosError
@@ -86,14 +127,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`📋 Found ${videos?.length || 0} videos in database`)
 
-    // Create a map of video URLs to video objects for quick lookup
-    const videoMap = new Map<string, any>()
+    // Create multiple maps for different matching strategies
+    // 1. Map by videoNumber + region (PRIORITÉ 1 - comme pour les fichiers Markdown)
+    const videoMapByNumber = new Map<string, any>()
+    // 2. Map by videoUrl (fallback)
+    const videoMapByUrl = new Map<string, any>()
+    
     videos?.forEach((video: any) => {
+      // Strategy 1: videoNumber + region
+      if (video.videoNumber !== null && video.videoNumber !== undefined && video.region) {
+        const key = `${video.videoNumber}:${video.region}`
+        videoMapByNumber.set(key, video)
+      }
+      
+      // Strategy 2: videoUrl (fallback)
       if (video.videoUrl) {
         try {
           const url = new URL(video.videoUrl)
           const s3Key = decodeURIComponent(url.pathname.substring(1))
-          videoMap.set(s3Key, video)
+          videoMapByUrl.set(s3Key, video)
         } catch {
           // Skip invalid URLs
         }
@@ -103,56 +155,68 @@ export async function POST(request: NextRequest) {
     // Match thumbnails with videos
     const results = []
     let syncedCount = 0
+    let matchedByNumber = 0
+    let matchedByUrl = 0
 
     for (const thumbnail of thumbnails) {
       const thumbnailKey = thumbnail.Key || ''
+      const filename = thumbnailKey.split('/').pop() || ''
       
-      // Extract video key from thumbnail key
-      const videoKey = extractVideoKeyFromThumbnailKey(thumbnailKey)
+      // PRIORITÉ 1 : Matching par videoNumber + region (comme pour les fichiers Markdown)
+      const region = extractRegionFromKey(thumbnailKey)
+      const { number: videoNumber, title: thumbnailTitle } = extractNumberAndTitleFromThumbnail(filename)
       
-      if (!videoKey) {
-        continue
+      let video: any = null
+      let matchMethod = ''
+      
+      if (videoNumber !== null && videoNumber !== undefined && region) {
+        const key = `${videoNumber}:${region}`
+        video = videoMapByNumber.get(key)
+        if (video) {
+          matchMethod = 'videoNumber+region'
+          matchedByNumber++
+        }
       }
-
-      // Find matching video
-      const video = videoMap.get(videoKey)
       
+      // PRIORITÉ 2 : Fallback par videoUrl (si matching par numéro échoue)
       if (!video) {
-        // Try to find by partial match (in case of encoding differences)
-        const videoKeyLower = videoKey.toLowerCase()
-        for (const [key, v] of videoMap.entries()) {
-          if (key.toLowerCase() === videoKeyLower || 
-              key.toLowerCase().includes(videoKeyLower) ||
-              videoKeyLower.includes(key.toLowerCase())) {
-            const thumbnailUrl = getPublicUrl(thumbnailKey)
-            const updateResult = await update('videos_new',
-              { thumbnail: thumbnailUrl, updatedAt: new Date().toISOString() },
-              { id: v.id }
-            )
-            
-            if (!updateResult.error) {
-              syncedCount++
-              results.push({
-                videoId: v.id,
-                title: v.title,
-                thumbnailKey,
-                videoKey: key,
-                success: true,
-                action: 'Updated database with existing thumbnail'
-              })
-            } else {
-              results.push({
-                videoId: v.id,
-                title: v.title,
-                thumbnailKey,
-                videoKey: key,
-                success: false,
-                error: updateResult.error.message || 'Update failed'
-              })
-            }
-            break
+        const videoKey = extractVideoKeyFromThumbnailKey(thumbnailKey)
+        if (videoKey) {
+          video = videoMapByUrl.get(videoKey)
+          if (video) {
+            matchMethod = 'videoUrl'
+            matchedByUrl++
           }
         }
+      }
+      
+      // PRIORITÉ 3 : Fallback par partial match (encodage différent)
+      if (!video) {
+        const videoKey = extractVideoKeyFromThumbnailKey(thumbnailKey)
+        if (videoKey) {
+          const videoKeyLower = videoKey.toLowerCase()
+          for (const [key, v] of videoMapByUrl.entries()) {
+            if (key.toLowerCase() === videoKeyLower || 
+                key.toLowerCase().includes(videoKeyLower) ||
+                videoKeyLower.includes(key.toLowerCase())) {
+              video = v
+              matchMethod = 'videoUrl-partial'
+              matchedByUrl++
+              break
+            }
+          }
+        }
+      }
+      
+      if (!video) {
+        // No match found
+        results.push({
+          thumbnailKey,
+          videoNumber,
+          region,
+          success: false,
+          error: 'No matching video found in database'
+        })
         continue
       }
 
@@ -182,8 +246,10 @@ export async function POST(request: NextRequest) {
         results.push({
           videoId: video.id,
           title: video.title,
+          videoNumber: video.videoNumber,
+          region: video.region,
           thumbnailKey,
-          videoKey,
+          matchMethod,
           success: true,
           action: video.thumbnail ? 'Updated existing thumbnail' : 'Added new thumbnail'
         })
@@ -192,7 +258,7 @@ export async function POST(request: NextRequest) {
           videoId: video.id,
           title: video.title,
           thumbnailKey,
-          videoKey,
+          matchMethod,
           success: false,
           error: updateResult.error.message || 'Update failed'
         })
@@ -205,6 +271,8 @@ export async function POST(request: NextRequest) {
         thumbnailsInS3: thumbnails.length,
         videosInDatabase: videos?.length || 0,
         synced: syncedCount,
+        matchedByNumber: matchedByNumber,
+        matchedByUrl: matchedByUrl,
         errors: results.filter(r => !r.success).length
       },
       results: results.slice(0, 50) // Limit results to first 50

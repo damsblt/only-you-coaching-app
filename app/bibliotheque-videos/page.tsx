@@ -67,12 +67,37 @@ export default function VideosPage() {
   })
 
   const muscleGroups = ["all", "Fessiers et jambes", "Dos", "Pectoraux", "Abdos", "Biceps", "Triceps", "Épaules", "Bande", "Machine", "Cardio", "Streching"]
-  const difficulties = [
-    { value: "all", label: "Tous les niveaux" },
-    { value: "BEGINNER", label: "Débutant" },
-    { value: "INTERMEDIATE", label: "Intermédiaire" },
-    { value: "ADVANCED", label: "Avancé" }
-  ]
+  const [intensities, setIntensities] = useState<Array<{ value: string; label: string }>>([
+    { value: "all", label: "Tout niveau" }
+  ])
+  
+  // Fetch unique intensity values from API
+  useEffect(() => {
+    const fetchIntensities = async () => {
+      try {
+        const response = await fetch('/api/videos/intensities')
+        if (response.ok) {
+          const data = await response.json()
+          // Filter out "all" or "Tout niveau" from API data to avoid duplicates
+          const filteredData = data.filter((intensity: string) => 
+            intensity.toLowerCase() !== "all" && 
+            intensity.toLowerCase() !== "tout niveau"
+          )
+          const intensityOptions = [
+            { value: "all", label: "Tout niveau" },
+            ...filteredData.map((intensity: string) => ({
+              value: intensity,
+              label: intensity
+            }))
+          ]
+          setIntensities(intensityOptions)
+        }
+      } catch (error) {
+        console.error('Error fetching intensities:', error)
+      }
+    }
+    fetchIntensities()
+  }, [])
 
   // Handle search button click
   const handleSearch = () => {
@@ -869,9 +894,9 @@ export default function VideosPage() {
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
-                {difficulties.map((difficulty) => (
-                  <option key={difficulty.value} value={difficulty.value}>
-                    {difficulty.label}
+                {intensities.map((intensity) => (
+                  <option key={intensity.value} value={intensity.value}>
+                    {intensity.label}
                   </option>
                 ))}
               </select>

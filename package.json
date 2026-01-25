@@ -91,6 +91,7 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-lambda": "^3.975.0",
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",

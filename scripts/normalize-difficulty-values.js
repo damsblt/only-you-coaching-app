@@ -1,7 +1,6 @@
-#!/usr/bin/env node
 /**
- * Script pour normaliser toutes les valeurs de difficulté vers les valeurs standardisées
- * (BEGINNER, INTERMEDIATE, ADVANCED)
+ * Script pour normaliser les valeurs de difficulty en minuscules
+ * Convertir BEGINNER → debutant, INTERMEDIATE → intermediaire, ADVANCED → avance
  */
 
 require('dotenv').config({ path: '.env.local' })
@@ -10,104 +9,72 @@ const { neon } = require('@neondatabase/serverless')
 const databaseUrl = process.env.DATABASE_URL
 
 if (!databaseUrl) {
-  console.error('❌ DATABASE_URL manquant dans .env.local')
+  console.error('❌ DATABASE_URL manquant')
   process.exit(1)
 }
 
 const sql = neon(databaseUrl)
 
-/**
- * Normalise les valeurs de difficulté vers les valeurs standardisées
- */
-function normalizeDifficulty(value) {
-  if (!value) return null
+async function normalizeDifficulty() {
+  console.log('\n🔄 Normalisation des valeurs de difficulty...\n')
   
-  const lower = value.toLowerCase().trim()
+  // Compter les valeurs à normaliser
+  const beforeCounts = await sql`
+    SELECT 
+      difficulty,
+      COUNT(*) as count
+    FROM videos_new
+    WHERE difficulty IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'indéfini')
+    GROUP BY difficulty
+  `
   
-  // Mapping vers les valeurs standardisées (majuscules)
-  if (lower.includes('debutant') || lower.includes('débutant') || lower.includes('beginner')) {
-    return 'BEGINNER'
-  }
-  if (lower.includes('intermediaire') || lower.includes('intermédiaire') || lower.includes('intermediate')) {
-    return 'INTERMEDIATE'
-  }
-  if (lower.includes('avance') || lower.includes('avancé') || lower.includes('advanced')) {
-    return 'ADVANCED'
+  if (beforeCounts.length === 0) {
+    console.log('✅ Aucune valeur à normaliser!\n')
+    return
   }
   
-  return null
+  console.log('📊 Valeurs à normaliser :\n')
+  beforeCounts.forEach(row => {
+    console.log(`- ${row.difficulty} : ${row.count} vidéos`)
+  })
+  console.log()
+  
+  // Normaliser
+  const result = await sql`
+    UPDATE videos_new
+    SET 
+      difficulty = CASE
+        WHEN difficulty = 'BEGINNER' THEN 'debutant'
+        WHEN difficulty = 'INTERMEDIATE' THEN 'intermediaire'
+        WHEN difficulty = 'ADVANCED' THEN 'avance'
+        WHEN difficulty = 'indéfini' THEN 'intermediaire'
+        ELSE difficulty
+      END,
+      "updatedAt" = NOW()
+    WHERE difficulty IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'indéfini')
+  `
+  
+  console.log(`✅ ${result.length || result.rowCount || 'Plusieurs'} vidéos normalisées\n`)
+  
+  // Vérifier après
+  const afterCounts = await sql`
+    SELECT 
+      difficulty,
+      COUNT(*) as count
+    FROM videos_new
+    WHERE "videoType" = 'MUSCLE_GROUPS'
+    GROUP BY difficulty
+    ORDER BY count DESC
+  `
+  
+  console.log('📊 Distribution après normalisation :\n')
+  afterCounts.forEach(row => {
+    const difficulty = row.difficulty || '(vide)'
+    console.log(`- ${difficulty.padEnd(20)} : ${row.count} vidéos`)
+  })
+  console.log()
+  
+  console.log('✅ Normalisation terminée!\n')
 }
 
-async function normalizeDifficultyValues() {
-  try {
-    console.log('🔄 Normalisation des valeurs de difficulté...\n')
-    
-    // Récupérer toutes les vidéos avec valeurs non standardisées
-    const videos = await sql`
-      SELECT 
-        id,
-        title,
-        difficulty
-      FROM videos_new
-      WHERE "isPublished" = true
-      AND difficulty IS NOT NULL
-      AND difficulty NOT IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')
-      ORDER BY difficulty, title
-    `
-    
-    console.log(`📹 ${videos.length} vidéos à normaliser\n`)
-    
-    let updatedCount = 0
-    const stats = {
-      BEGINNER: 0,
-      INTERMEDIATE: 0,
-      ADVANCED: 0
-    }
-    
-    for (const video of videos) {
-      const normalized = normalizeDifficulty(video.difficulty)
-      
-      if (!normalized) {
-        console.log(`⚠️  Impossible de normaliser: ${video.title} (${video.difficulty})`)
-        continue
-      }
-      
-      // Mettre à jour la vidéo
-      await sql`
-        UPDATE videos_new
-        SET 
-          difficulty = ${normalized},
-          "updatedAt" = NOW()
-        WHERE id = ${video.id}
-      `
-      
-      console.log(`✅ ${video.title.substring(0, 50)}... → ${normalized} (était: ${video.difficulty})`)
-      updatedCount++
-      stats[normalized]++
-    }
-    
-    console.log('\n' + '='.repeat(80))
-    console.log('📊 RÉSUMÉ')
-    console.log('='.repeat(80))
-    console.log(`   Total vidéos normalisées: ${updatedCount}`)
-    console.log('\n📈 Répartition par niveau:')
-    console.log(`   BEGINNER: ${stats.BEGINNER}`)
-    console.log(`   INTERMEDIATE: ${stats.INTERMEDIATE}`)
-    console.log(`   ADVANCED: ${stats.ADVANCED}`)
-    console.log('='.repeat(80))
-    
-  } catch (error) {
-    console.error('❌ Erreur:', error)
-    process.exit(1)
-  }
-}
-
-normalizeDifficultyValues()
-  .then(() => {
-    console.log('\n✅ Script terminé avec succès')
-    process.exit(0)
-  })
-  .catch((error) => {
-    console.error('❌ Erreur fatale:', error)
-    process.exit(1)
-  })
+normalizeDifficulty()

@@ -8,7 +8,7 @@ export const revalidate = 60
 export const dynamic = 'force-dynamic' // Override if needed
 
 // Columns needed for video display - optimize query by selecting only needed fields
-const VIDEO_COLUMNS = 'id,title,description,thumbnail,videoUrl,duration,difficulty,category,region,muscleGroups,startingPosition,movement,intensity,theme,series,constraints,targeted_muscles,exo_title,videoType,isPublished,createdAt,updatedAt'
+const VIDEO_COLUMNS = 'id,title,description,thumbnail,videoUrl,duration,difficulty,category,region,muscleGroups,startingPosition,movement,intensity,theme,series,constraints,targeted_muscles,exo_title,videoType,isPublished,createdAt,updatedAt,"videoNumber"'
 
 export async function GET(request: NextRequest) {
   // Top-level error handler to catch any unhandled errors
@@ -118,8 +118,26 @@ export async function GET(request: NextRequest) {
         query = query.eq('region', finalRegion)
       }
 
+      // ⚠️ IMPORTANT: For MUSCLE_GROUPS videos, filter by intensity instead of difficulty
+      // For PROGRAMMES videos, keep using difficulty
       if (difficulty && difficulty !== 'all') {
-        query = query.eq('difficulty', difficulty)
+        if (videoType === 'muscle-groups') {
+          // Filter by intensity for MUSCLE_GROUPS videos
+          // The difficulty param from UI contains the intensity value to filter
+          query = query.ilike('intensity', `%${difficulty}%`)
+        } else {
+          // For PROGRAMMES videos, use difficulty as before
+          const difficultyMap: { [key: string]: string } = {
+            'BEGINNER': 'debutant',
+            'INTERMEDIATE': 'intermediaire',
+            'ADVANCED': 'avance'
+          }
+          const mappedDifficulty = difficultyMap[difficulty] || difficulty.toLowerCase()
+          query = query.eq('difficulty', mappedDifficulty)
+        }
+      } else if (difficulty === 'all') {
+        // "Tous les niveaux" inclut aussi les exercices avec intensity/difficulty = NULL (tout niveau)
+        // Pas besoin de filtre supplémentaire, on prend tout
       }
 
       if (search) {
@@ -211,7 +229,29 @@ export async function GET(request: NextRequest) {
 
     // Apply custom ordering if needed (for machine program)
     let sortedData = data || []
-    if (needsCustomOrdering && region) {
+    
+    // For MUSCLE_GROUPS videos, always sort by videoNumber (ascending)
+    if (videoType === 'muscle-groups') {
+      sortedData.sort((a, b) => {
+        // Priority 1: videoNumber (ascending)
+        if (a.videoNumber !== null && a.videoNumber !== undefined && 
+            b.videoNumber !== null && b.videoNumber !== undefined) {
+          const numA = typeof a.videoNumber === 'string' ? parseFloat(a.videoNumber) : Number(a.videoNumber)
+          const numB = typeof b.videoNumber === 'string' ? parseFloat(b.videoNumber) : Number(b.videoNumber)
+          if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB
+          }
+        }
+        // If only one has videoNumber, prioritize it
+        if (a.videoNumber !== null && a.videoNumber !== undefined && 
+            (b.videoNumber === null || b.videoNumber === undefined)) return -1
+        if ((a.videoNumber === null || a.videoNumber === undefined) && 
+            b.videoNumber !== null && b.videoNumber !== undefined) return 1
+        // Fallback: sort alphabetically by title
+        return (a.title || '').localeCompare(b.title || '')
+      })
+      console.log(`📋 Sorted ${sortedData.length} MUSCLE_GROUPS videos by videoNumber`)
+    } else if (needsCustomOrdering && region) {
       sortedData = sortVideosByProgramOrder(sortedData, region)
       // Apply pagination after sorting only if limit is specified
       if (limit) {

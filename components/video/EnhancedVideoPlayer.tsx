@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { X, Heart, Plus, Share2, Volume2, VolumeX, Play, Pause, SkipBack, SkipForward, Clock, Users, Target, Zap, Tag, Info } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import { formatIntensity } from "@/utils/formatIntensity"
 
 interface EnhancedVideo {
   id: string
@@ -836,7 +837,7 @@ export default function EnhancedVideoPlayer({
                   {video.intensity && (
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-purple-500" />
-                      <span className="text-sm text-gray-600">{video.intensity}</span>
+                      <span className="text-sm text-gray-600">{formatIntensity(video.intensity)}</span>
                     </div>
                   )}
                 </div>
