@@ -18,10 +18,19 @@ export default function ConstructionLoginPage() {
     // Vérifier le domaine au chargement
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname
-      const isAllowed = hostname === ALLOWED_DOMAIN || hostname === `www.${ALLOWED_DOMAIN}`
+      // Permettre l'accès sur le domaine de production ET en développement (localhost)
+      const isAllowed = 
+        hostname === ALLOWED_DOMAIN || 
+        hostname === `www.${ALLOWED_DOMAIN}` ||
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('localhost:')
+      
+      console.log(`[Construction Login] Domaine détecté: ${hostname}, Autorisé: ${isAllowed}`)
       
       if (!isAllowed) {
         // Rediriger vers la page d'accueil si ce n'est pas le bon domaine
+        console.log(`Accès refusé: domaine ${hostname} non autorisé. Domaine requis: ${ALLOWED_DOMAIN}`)
         router.push('/')
       }
     }
