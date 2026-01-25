@@ -15,29 +15,11 @@ export default function ConstructionPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Vérifier le domaine d'abord
-    const checkDomain = () => {
-      if (typeof window === 'undefined') return false
-      
-      const hostname = window.location.hostname
-      const isAllowed = hostname === ALLOWED_DOMAIN || hostname === `www.${ALLOWED_DOMAIN}`
-      
-      setDomainCheck(isAllowed)
-      
-      if (!isAllowed) {
-        // Rediriger vers la page d'accueil si ce n'est pas le bon domaine
-        console.log(`Accès refusé: domaine ${hostname} non autorisé. Domaine requis: ${ALLOWED_DOMAIN}`)
-        router.push('/')
-        return false
-      }
-      
-      return true
-    }
-
-    if (!checkDomain()) {
-      setLoading(false)
-      return
-    }
+    // Rediriger immédiatement vers la page d'accueil
+    // La page en construction n'est plus accessible
+    router.push('/')
+    setLoading(false)
+    return
 
     // Vérifier l'authentification au chargement
     const checkAuth = () => {
