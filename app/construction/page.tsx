@@ -20,8 +20,15 @@ export default function ConstructionPage() {
       if (typeof window === 'undefined') return false
       
       const hostname = window.location.hostname
-      const isAllowed = hostname === ALLOWED_DOMAIN || hostname === `www.${ALLOWED_DOMAIN}`
+      // Permettre l'accès sur le domaine de production ET en développement (localhost)
+      const isAllowed = 
+        hostname === ALLOWED_DOMAIN || 
+        hostname === `www.${ALLOWED_DOMAIN}` ||
+        hostname === 'localhost' ||
+        hostname === '127.0.0.1' ||
+        hostname.startsWith('localhost:')
       
+      console.log(`[Construction Page] Domaine détecté: ${hostname}, Autorisé: ${isAllowed}`)
       setDomainCheck(isAllowed)
       
       if (!isAllowed) {
