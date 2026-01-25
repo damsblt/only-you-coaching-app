@@ -1,18 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Lock, Mail } from 'lucide-react'
 
 const ALLOWED_DOMAIN = 'only-you-coaching.com'
 
-export default function ConstructionLoginPage() {
+function ConstructionLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     // Vérifier le domaine au chargement
@@ -59,8 +60,9 @@ export default function ConstructionLoginPage() {
           timestamp: Date.now()
         }))
         
-        // Rediriger vers la page en construction
-        router.push('/construction')
+        // Rediriger vers la page en construction ou vers l'URL d'origine si fournie
+        const redirectTo = searchParams.get('redirect') || '/construction'
+        router.push(redirectTo)
       } else {
         setError(data.error || 'Erreur lors de la connexion')
       }
@@ -144,5 +146,17 @@ export default function ConstructionLoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ConstructionLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+      </div>
+    }>
+      <ConstructionLoginForm />
+    </Suspense>
   )
 }
