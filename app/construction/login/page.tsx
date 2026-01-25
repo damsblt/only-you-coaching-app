@@ -15,9 +15,16 @@ export default function ConstructionLoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Rediriger immédiatement vers la page d'accueil
-    // La page en construction n'est plus accessible
-    router.push('/')
+    // Vérifier le domaine au chargement
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname
+      const isAllowed = hostname === ALLOWED_DOMAIN || hostname === `www.${ALLOWED_DOMAIN}`
+      
+      if (!isAllowed) {
+        // Rediriger vers la page d'accueil si ce n'est pas le bon domaine
+        router.push('/')
+      }
+    }
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
