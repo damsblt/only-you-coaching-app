@@ -33,15 +33,15 @@ export async function GET(request: NextRequest) {
       )
     )
     
-    // Ordre spécifique pour l'affichage
+    // Ordre spécifique pour l'affichage (selon les 7 niveaux standardisés)
     const order = [
+      'Tout niveau',
       'Débutant',
       'Débutant et intermédiaire',
       'Intermédiaire',
       'Intermédiaire et avancé',
       'Avancé',
-      'Très avancé',
-      'Tout niveau'
+      'Très Avancé'
     ]
     
     // Trier selon l'ordre spécifié, puis alphabétiquement pour les autres

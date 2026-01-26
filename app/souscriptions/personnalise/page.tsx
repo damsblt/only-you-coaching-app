@@ -167,6 +167,11 @@ function PersonnaliseContent() {
                   >
                     {subscriptionLoading === plan.id ? 'Chargement...' : 'Choisir ce plan'}
                   </Button>
+                  {plan.id === 'premium' && (
+                    <p className="mt-4 text-xs text-gray-600 dark:text-gray-400 text-center leading-relaxed">
+                      Les séances à domicile sont proposées dans un périmètre d'environ 30 km autour de Saillon, avec une extension possible jusqu'à Monthey et Sierre.
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

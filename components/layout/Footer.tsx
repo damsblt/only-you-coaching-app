@@ -52,7 +52,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/meditation" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
+                <Link href="/meditation-guidee" className="text-white/90 dark:text-gray-300 hover:text-white dark:hover:text-white transition-colors text-sm flex items-center">
                   Méditations
                 </Link>
               </li>

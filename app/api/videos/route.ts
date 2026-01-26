@@ -124,7 +124,9 @@ export async function GET(request: NextRequest) {
         if (videoType === 'muscle-groups') {
           // Filter by intensity for MUSCLE_GROUPS videos
           // The difficulty param from UI contains the intensity value to filter
-          query = query.ilike('intensity', `%${difficulty}%`)
+          // Use exact match (eq) instead of partial match (ilike) to avoid matching
+          // "Débutant et intermédiaire" when filtering for "Débutant"
+          query = query.eq('intensity', difficulty)
         } else {
           // For PROGRAMMES videos, use difficulty as before
           const difficultyMap: { [key: string]: string } = {

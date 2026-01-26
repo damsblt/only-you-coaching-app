@@ -68,7 +68,7 @@ export default function VideosPage() {
 
   const muscleGroups = ["all", "Fessiers et jambes", "Dos", "Pectoraux", "Abdos", "Biceps", "Triceps", "Épaules", "Bande", "Machine", "Cardio", "Streching"]
   const [intensities, setIntensities] = useState<Array<{ value: string; label: string }>>([
-    { value: "all", label: "Tout niveau" }
+    { value: "all", label: "Toutes les vidéos" }
   ])
   
   // Fetch unique intensity values from API
@@ -78,14 +78,11 @@ export default function VideosPage() {
         const response = await fetch('/api/videos/intensities')
         if (response.ok) {
           const data = await response.json()
-          // Filter out "all" or "Tout niveau" from API data to avoid duplicates
-          const filteredData = data.filter((intensity: string) => 
-            intensity.toLowerCase() !== "all" && 
-            intensity.toLowerCase() !== "tout niveau"
-          )
+          // "Tout niveau" est une vraie valeur d'intensité dans les .md, on ne la filtre PAS
+          // On ajoute seulement l'option "all" en premier pour afficher toutes les vidéos
           const intensityOptions = [
-            { value: "all", label: "Tout niveau" },
-            ...filteredData.map((intensity: string) => ({
+            { value: "all", label: "Toutes les vidéos" },
+            ...data.map((intensity: string) => ({
               value: intensity,
               label: intensity
             }))
@@ -935,7 +932,7 @@ export default function VideosPage() {
               <p className="text-gray-500 dark:text-gray-400 text-lg">Aucune vidéo trouvée pour ces critères.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
             {filteredVideos.map((video) => (
               <EnhancedVideoCard
                 key={video.id}
