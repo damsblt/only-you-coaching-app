@@ -35,7 +35,7 @@ export const pricingPlans = {
           "Accès à la bibliothèque d'audios guidés",
           "Surveillance et conseil nutritionnel continue",
           "Suivi des progrès",
-          "1 appel de coaching par mois de 30 mn"
+          "2 appels de coaching par mois de 30 mn"
         ]
       },
       {
@@ -55,7 +55,7 @@ export const pricingPlans = {
           "Surveillance et conseil nutritionnel continue",
           "Suivi des progrès",
           "1 Visite à domicile de présentation du programme",
-          "1 appel de coaching par mois de 30 mn"
+          "2 appels de coaching par mois de 30 mn"
         ]
       }
     ]

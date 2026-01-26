@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Play, Target } from "lucide-react"
+import { Play, Target, ChevronDown, ChevronUp } from "lucide-react"
 import { getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 import { formatIntensity } from "@/utils/formatIntensity"
 
@@ -35,11 +35,41 @@ interface EnhancedVideoCardProps {
 
 export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardProps) {
   const [isHovered, setIsHovered] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Fonction pour obtenir la couleur du label d'intensité
+  const getIntensityColor = (intensity: string | undefined) => {
+    if (!intensity) return "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+    
+    const lower = intensity.toLowerCase()
+    if (lower.includes('tout niveau')) {
+      return "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+    }
+    if (lower.includes('débutant') && !lower.includes('intermédiaire')) {
+      return "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
+    }
+    if (lower.includes('débutant et intermédiaire')) {
+      return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+    }
+    if (lower === 'intermédiaire' || (lower.includes('intermédiaire') && !lower.includes('avancé') && !lower.includes('débutant'))) {
+      return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+    }
+    if (lower.includes('intermédiaire et avancé')) {
+      return "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300"
+    }
+    if (lower === 'avancé' || (lower.includes('avancé') && !lower.includes('intermédiaire') && !lower.includes('très'))) {
+      return "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300"
+    }
+    if (lower.includes('très avancé')) {
+      return "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+    }
+    return "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+  }
 
   return (
     <div
       data-video-id={video.id}
-      className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700"
+      className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col h-full"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -69,14 +99,24 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-6 flex flex-col flex-grow">
         {/* Title */}
         <h3 className="font-semibold text-accent-500 dark:text-accent-400 mb-3 line-clamp-2 group-hover:text-secondary-500 dark:group-hover:text-secondary-400 transition-colors">
           {video.title}
         </h3>
 
-        {/* Metadata Section */}
-        <div className="space-y-3 mb-4 text-sm">
+        {/* Intensity Label/Sticker */}
+        {video.intensity && (
+          <div className="mb-4">
+            <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${getIntensityColor(video.intensity)}`}>
+              {formatIntensity(video.intensity)}
+            </span>
+          </div>
+        )}
+
+        {/* Expandable Metadata Section */}
+        {isExpanded && (
+          <div className="space-y-3 mb-4 text-sm flex-grow">
           {/* Muscle cible */}
           {((video.targeted_muscles && video.targeted_muscles.length > 0) || (video.muscleGroups && video.muscleGroups.length > 0)) && (
             <div>
@@ -134,12 +174,34 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
               <span className="text-gray-600 dark:text-gray-400">Aucune</span>
             </div>
           )}
-        </div>
+          </div>
+        )}
+
+        {/* Expand/Collapse Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsExpanded(!isExpanded)
+          }}
+          className="mb-4 text-sm text-gray-600 dark:text-gray-400 hover:text-accent-500 dark:hover:text-accent-400 transition-colors flex items-center gap-1 self-start"
+        >
+          {isExpanded ? (
+            <>
+              <ChevronUp className="w-4 h-4" />
+              <span>Masquer les détails</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="w-4 h-4" />
+              <span>Voir les détails</span>
+            </>
+          )}
+        </button>
 
         {/* Action Button */}
         <button
           onClick={() => onPlay(video)}
-          className="w-full curved-button text-white font-semibold py-3 px-6 text-center block hover:shadow-floating transition-all flex items-center justify-center gap-2"
+          className="w-full curved-button text-white font-semibold py-3 px-6 text-center block hover:shadow-floating transition-all flex items-center justify-center gap-2 mt-auto"
           style={{ backgroundColor: '#39334D' }}
         >
           <Play className="w-4 h-4" />
