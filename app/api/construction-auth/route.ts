@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { SignJWT } from 'jose'
 
 // Emails autorisés pour accéder à la page en construction
 const AUTHORIZED_EMAILS = [
   'blmarieline@gmail.com',
   'damien.balet@me.com'
 ]
+
+// Secret pour signer les tokens (utilisez une variable d'environnement en production)
+const JWT_SECRET = process.env.CONSTRUCTION_JWT_SECRET || 'construction-secret-key-change-in-production'
+const COOKIE_NAME = 'construction-auth-token'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,8 +64,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Retourner les informations de l'utilisateur (sans le mot de passe)
-    return NextResponse.json({ 
+    // Créer un token JWT
+    const secret = new TextEncoder().encode(JWT_SECRET)
+    const token = await new SignJWT({
+      email: userData.email,
+      id: userData.id,
+      authorized: true
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(secret)
+
+    // Créer la réponse avec le cookie
+    const response = NextResponse.json({ 
       success: true,
       user: {
         id: userData.id,
@@ -68,6 +85,17 @@ export async function POST(req: NextRequest) {
         name: userData.name || userData.full_name
       }
     })
+
+    // Définir le cookie sécurisé
+    response.cookies.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60, // 24 heures
+      path: '/',
+    })
+
+    return response
   } catch (error: any) {
     console.error('Construction auth error:', error)
     return NextResponse.json(

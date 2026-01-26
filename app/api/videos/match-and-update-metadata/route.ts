@@ -19,9 +19,28 @@ function parseMarkdownMetadata(content: string, filename: string) {
     const line = lines[i]
     
     // Détection d'un titre d'exercice
-    let titleMatch = line.match(/^\*\*(\d+(?:\.\d+)?)\.?\s*(.+?)\*\*$/)
+    // Formats supportés :
+    // - "**7. Titre**" (avec espace après le point)
+    // - "**7.Titre**" (sans espace après le point)
+    // - "7. Titre" (sans **)
+    // - "7.Titre" (sans espace et sans **)
+    // - "9.1Titre" (décimal sans espace après le point décimal)
+    // IMPORTANT: Tester d'abord les décimaux pour éviter que "9.1" soit capturé comme "9"
+    let titleMatch = line.match(/^\*\*(\d+\.\d+)\.?\s*(.+?)\*\*$/) // Décimal avec **
     if (!titleMatch) {
-      titleMatch = line.match(/^(\d+(?:\.\d+)?)\.\s*(.+)$/)
+      titleMatch = line.match(/^(\d+\.\d+)\.\s*(.+)$/) // Décimal avec espace
+    }
+    if (!titleMatch) {
+      titleMatch = line.match(/^(\d+\.\d+)([^\d\s].+)$/) // Décimal sans espace (9.1Titre)
+    }
+    if (!titleMatch) {
+      titleMatch = line.match(/^\*\*(\d+)\.?\s*(.+?)\*\*$/) // Entier avec **
+    }
+    if (!titleMatch) {
+      titleMatch = line.match(/^(\d+)\.\s*(.+)$/) // Entier avec espace
+    }
+    if (!titleMatch) {
+      titleMatch = line.match(/^(\d+)\.([^\s\d].+)$/) // Entier sans espace (7.Titre)
     }
     
     if (titleMatch) {
@@ -317,8 +336,24 @@ export async function POST(request: NextRequest) {
     let missingMetadata: any[] = []
     
     for (const video of videos || []) {
-      const region = video.region || 'machine'
+      const videoRegion = video.region || 'machine'
       const videoNumber = video.videoNumber
+      
+      // Normaliser la région pour la correspondance (gérer les différences d'encodage)
+      // Chercher la région correspondante dans exercisesByNumber
+      let region = videoRegion
+      if (!exercisesByNumber[region]) {
+        // Essayer de trouver une correspondance (normalisation)
+        for (const [exRegion] of Object.entries(exercisesByNumber)) {
+          // Comparaison insensible à la casse et aux accents
+          const videoRegionNorm = videoRegion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          const exRegionNorm = exRegion.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          if (videoRegionNorm === exRegionNorm || videoRegionNorm.includes(exRegionNorm) || exRegionNorm.includes(videoRegionNorm)) {
+            region = exRegion
+            break
+          }
+        }
+      }
       
       let matchedExercise: any = null
       let matchMethod = ''

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { jwtVerify } from 'jose'
 
 /**
  * Middleware pour rediriger toutes les pages vers la page en construction
@@ -11,7 +12,45 @@ import type { NextRequest } from 'next/server'
  * - Définir CONSTRUCTION_MODE=false ou supprimer la variable
  */
 
-export function middleware(request: NextRequest) {
+// Emails autorisés pour accéder à la page en construction
+const AUTHORIZED_EMAILS = [
+  'blmarieline@gmail.com',
+  'damien.balet@me.com'
+]
+
+const JWT_SECRET = process.env.CONSTRUCTION_JWT_SECRET || 'construction-secret-key-change-in-production'
+const COOKIE_NAME = 'construction-auth-token'
+
+async function verifyAuth(request: NextRequest): Promise<boolean> {
+  try {
+    const token = request.cookies.get(COOKIE_NAME)?.value
+
+    if (!token) {
+      return false
+    }
+
+    // Vérifier le token
+    const secret = new TextEncoder().encode(JWT_SECRET)
+    const { payload } = await jwtVerify(token, secret)
+
+    // Vérifier que l'email est autorisé
+    const email = payload.email as string
+    if (!email || !AUTHORIZED_EMAILS.includes(email.toLowerCase())) {
+      return false
+    }
+
+    // Vérifier que le token indique l'autorisation
+    if (!payload.authorized) {
+      return false
+    }
+
+    return true
+  } catch (error) {
+    return false
+  }
+}
+
+export async function middleware(request: NextRequest) {
   // Vérifier si le mode construction est activé
   const constructionMode = process.env.CONSTRUCTION_MODE === 'true'
   
@@ -22,25 +61,33 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Routes autorisées (ne pas rediriger)
-  const allowedPaths = [
-    '/construction',           // Page de construction
-    '/construction/login',     // Page de connexion
-    '/api/construction-auth',  // API d'authentification
-    '/api',                    // Toutes les API routes
-    '/_next',                  // Assets Next.js
-    '/favicon.ico',            // Favicon
-    '/robots.txt',             // Robots.txt
-    '/sitemap.xml',            // Sitemap
+  // Routes autorisées sans authentification (ne pas rediriger)
+  const publicPaths = [
+    '/construction/login',        // Page de connexion
+    '/api/construction-auth',      // API d'authentification
+    '/api/construction-verify',    // API de vérification
+    '/api/construction-logout',    // API de déconnexion
+    '/_next',                     // Assets Next.js
+    '/favicon.ico',               // Favicon
+    '/robots.txt',                // Robots.txt
+    '/sitemap.xml',               // Sitemap
   ]
 
-  // Vérifier si la route est autorisée
-  const isAllowed = allowedPaths.some(path => 
+  // Vérifier si la route est publique
+  const isPublicPath = publicPaths.some(path => 
     pathname === path || pathname.startsWith(path + '/')
   )
 
-  // Si la route est autorisée, laisser passer
-  if (isAllowed) {
+  // Si la route est publique, laisser passer
+  if (isPublicPath) {
+    return NextResponse.next()
+  }
+
+  // Vérifier l'authentification pour toutes les autres routes
+  const isAuthenticated = await verifyAuth(request)
+
+  // Si l'utilisateur est authentifié, laisser passer
+  if (isAuthenticated) {
     return NextResponse.next()
   }
 

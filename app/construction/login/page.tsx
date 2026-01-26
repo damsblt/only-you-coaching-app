@@ -54,7 +54,8 @@ function ConstructionLoginForm() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Sauvegarder l'état d'authentification dans localStorage
+        // Le cookie est maintenant défini côté serveur, pas besoin de localStorage
+        // Mais on peut garder localStorage pour l'affichage côté client
         localStorage.setItem('construction-auth', JSON.stringify({
           user: data.user,
           timestamp: Date.now()
