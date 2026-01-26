@@ -47,24 +47,29 @@ export default function ConstructionPage() {
     }
 
     // Vérifier l'authentification au chargement
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
-        const authData = localStorage.getItem('construction-auth')
-        if (authData) {
-          const parsed = JSON.parse(authData)
-          // Vérifier que l'authentification n'est pas expirée (24 heures)
-          const isExpired = Date.now() - parsed.timestamp > 24 * 60 * 60 * 1000
-          
-          if (!isExpired) {
-            setIsAuthenticated(true)
-            setUser(parsed.user)
-          } else {
-            localStorage.removeItem('construction-auth')
-          }
+        // Vérifier côté serveur via l'API
+        const response = await fetch('/api/construction-verify')
+        const data = await response.json()
+        
+        if (data.authenticated && data.user) {
+          setIsAuthenticated(true)
+          setUser(data.user)
+          // Mettre à jour localStorage pour l'affichage
+          localStorage.setItem('construction-auth', JSON.stringify({
+            user: data.user,
+            timestamp: Date.now()
+          }))
+        } else {
+          // Si l'authentification échoue côté serveur, supprimer localStorage
+          localStorage.removeItem('construction-auth')
+          router.push('/construction/login')
         }
       } catch (error) {
         console.error('Error checking auth:', error)
         localStorage.removeItem('construction-auth')
+        router.push('/construction/login')
       } finally {
         setLoading(false)
       }
@@ -73,7 +78,17 @@ export default function ConstructionPage() {
     checkAuth()
   }, [router])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Appeler l'API de déconnexion pour supprimer le cookie
+      await fetch('/api/construction-logout', {
+        method: 'POST',
+      })
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+    
+    // Supprimer aussi localStorage
     localStorage.removeItem('construction-auth')
     router.push('/construction/login')
   }

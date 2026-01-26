@@ -13,36 +13,32 @@ interface FAQItem {
 
 const faqItems: FAQItem[] = [
   {
-    question: "Qu'est-ce que la technique proprioceptive ?",
-    answer: "La technique proprioceptive consiste à travailler les muscles profonds qui stabilisent votre corps. Cette approche améliore votre posture, prévient les blessures et développe une force fonctionnelle qui vous servira dans tous vos mouvements quotidiens."
+    question: "Quels Résultats Les Clients Ont-ils Obtenus ?",
+    answer: "Vivre un mode de vie sain est un engagement à long terme qui continuera à vous récompenser avec des résultats. Les clients ont atteint un large éventail d'objectifs de santé et de remise en forme en travaillant avec moi, notamment se sentir énergisé et moins fatigué ; se sentir plus confiant, plus à l'aise dans leurs vêtements et d'élargir leur savoir-faire en matière de santé et de remise en forme. Voici quelques résultats clients récents : \"J'apprends à ne plus me priver, à retrouver joie et plaisir dans la nourriture ainsi que dans le mouvement ! En plus d'avoir enfin réussi à changer ma morphologie en perdant ma graisse, je vais maintenant régulièrement au fitness, j'adore m'entraîner et, honnêtement, j'ai changé ma perception de ce dont je suis capable.\" \"Je me sens fort et TOUS mes maux et douleurs ont disparu. Fini les genoux et le dos endoloris. Vraiment génial. Je n'abandonnerai jamais l'entraînement en proprioception qui allie efficacité et challenge !\" \"La façon dont je ressens mon corps a considérablement changé. Je me sens plus confiant, j'ai plus d'énergie et je me sens plus fort.\""
   },
   {
-    question: "Comment se déroulent les séances personnalisées ?",
-    answer: "Chaque séance est adaptée à votre niveau, vos objectifs et vos contraintes physiques. Nous commençons par une évaluation de votre posture et de vos besoins, puis je crée un programme sur mesure qui évolue avec vos progrès."
+    question: "Quelle Methode Est Utilisée Dans Un Programme Perte De Poids ?",
+    answer: "Ma méthode repose sur une approche holistique unique qui combine plus de 30 ans d'expérience en fitness, Pilates, nutrition et bien-être. Je m'engage à travailler avec chaque personne de manière consciente et respectueuse, en me concentrant sur les muscles profonds grâce à la technique proprioceptive. Mon approche intègre trois piliers fondamentaux : le renforcement musculaire profond, l'alimentation équilibrée et le bien-être mental. Cette compréhension profonde me permet de créer des programmes véritablement personnalisés qui s'adaptent à vos besoins spécifiques. Grâce à mes 30 années de méditation du Raja Yoga et de transformation personnelle, j'aborde mon travail de manière holistique. Spécialisée dans le renforcement des chaînes musculaires profondes, je crois fermement en l'efficacité de cette méthode, soutenue par des recherches médicales qui prouvent leurs bienfaits pour le corps et l'esprit. En intégrant des exercices proprioceptifs, mes clients ont perdu en moyenne deux fois plus de poids que ceux suivant des programmes traditionnels, tout en améliorant leur force, flexibilité et équilibre. J'ai également créé des audios de coaching mental pour renforcer l'image de soi et des audios de développement personnel. L'importance d'une alimentation saine et équilibrée est également essentielle pour optimiser les résultats."
   },
   {
-    question: "Proposez-vous un accompagnement nutritionnel ?",
-    answer: "Oui, en tant que spécialiste en nutrition-sport et performance, je vous accompagne dans l'optimisation de votre alimentation pour maximiser vos résultats. L'alimentation et l'exercice physique vont de pair dans ma méthode."
+    question: "Je Suis Novice Dans Le Domaine Du Fitness, Cela Fonctionnera-t-il Pour Moi ?",
+    answer: "Oui ! J'accompagne une variété de clients, de tous âges et de tous horizons, qui ont débuté leur parcours en matière d'exercice et de nutrition. Après tout, nous avons tous été novices à un moment donné, n'est-ce pas ? Pour maximiser vos résultats, je vous recommande vivement d'opter pour un suivi à domicile. Cela vous permettra de bénéficier d'une correction précise de votre posture et de votre technique tout au long de votre programme. Ensemble, nous veillerons à ce que chaque mouvement soit juste et efficace !"
   },
   {
-    question: "Quelle est la différence avec les cours de Pilates classiques ?",
-    answer: "Ma méthode intègre non seulement le Pilates traditionnel, mais aussi la technique proprioceptive, l'accompagnement nutritionnel et une approche holistique du bien-être. C'est un accompagnement complet, pas seulement des exercices."
+    question: "A Qui Ce Coaching n'Est \"Pas\" Destiné ?",
+    answer: "Mon coaching n'est pas pour vous si : vous recherchez une solution de santé et de remise en forme rapide, ou si vous n'êtes pas prêt à faire le travail nécessaire pour atteindre vos objectifs. Beaucoup de gens veulent des résultats rapides lorsqu'il s'agit de perdre du poids, ce qui peut les amener à prendre des mesures extrêmes telles que faire des heures de cardio tous les jours ou manger très peu de calories. Ces pratiques peuvent certes entraîner une perte de poids rapide à court terme, mais le problème est qu'elles ne sont pas viables à long terme. Les études ont montré que la grande majorité des personnes qui ont recours à de telles stratégies finissent par reprendre tout le poids qu'elles ont perdu, et finissent souvent par être encore plus lourdes qu'au début. Pour perdre du poids de manière saine et durable, vous devriez viser un taux modéré de perte de poids, entre 0,5% et 1% du poids corporel total par semaine."
   },
   {
-    question: "Combien de temps faut-il pour voir des résultats ?",
-    answer: "Les premiers bénéfices se font généralement sentir dès les premières semaines : meilleure posture, plus d'énergie, meilleur sommeil. Pour des résultats durables et visibles, comptez environ 2 à 3 mois de pratique régulière."
+    question: "Est-Il Possible d'Essayer La Méthode Avant De Prendre Un Abonnement ?",
+    answer: "Oui ! Vous pouvez essayer gratuitement 1 vidéo / groupe musculaire. Retrouvez toutes les vidéos sur la page d'essaie gratuit."
   },
   {
-    question: "Puis-je commencer si je suis débutant en Pilates ?",
-    answer: "Absolument ! Ma méthode est adaptée à tous les niveaux. Je commence toujours par évaluer votre niveau et créer un programme progressif qui respecte votre corps et vos limites. Chaque exercice peut être adapté ou modifié selon vos besoins."
+    question: "Quelle Est La Prochaine Etape Pour Travailler Ensemble ?",
+    answer: "Une seule conversation pourrait-elle changer votre vie ? Découvrez-le en prenant rendez-vous avec moi pour une consultation gratuite. Je vous aiderai à vous décider sur le choix de votre programme. Vous pouvez également remplir mon formulaire et je vous contacterai sous peu et cela sans aucune obligation d'engagement."
   },
   {
-    question: "Comment la méditation s'intègre-t-elle dans votre méthode ?",
-    answer: "La méditation fait partie intégrante de ma méthode car elle renforce la connexion corps-esprit. Avec plus de 30 ans de pratique du Raja Yoga, je vous guide vers une meilleure conscience de votre corps et de vos sensations pendant l'exercice."
-  },
-  {
-    question: "Les séances se déroulent-elles en présentiel ou en ligne ?",
-    answer: "Je propose les deux formats : séances en présentiel à domicile ou dans mes locaux à Conthey, Sion ou Martigny, ainsi que des programmes en ligne avec vidéos et suivi personnalisé. Vous choisissez le format qui vous convient le mieux."
+    question: "Quels Sont Les Bénéfices D'un Coaching En Ligne ?",
+    answer: "Vous obtiendrez un programme d'entraînement personnalisé créé spécifiquement pour vous et vos objectifs. Je travaillerai avec les ressources dont vous disposez déjà (matériel), y compris votre propre maison, votre salle de sport. Vous bénéficierez également d'un suivi nutritionnel où vous apporterez des petits changements - mais puissants - au fil des semaines. Ajoutez à cela vous aurez la possibilité de visionner vos exercices grâce à une bibliothèque mise à disposition sous forme de vidéo. Vous bénéficierez également des avantages suivants : votre propre entraîneur personnel, un soutien individuel continu, un plan d'entraînement et nutritionnel personnalisé à suivre, une assistance SMS et mail illimitée pour répondre à vos questions, appel vidéo sur WhatsApp, Telegram ou Zoom avec votre coach pour une résolution plus approfondie des problèmes ou de la définition d'objectifs."
   }
 ]
 
