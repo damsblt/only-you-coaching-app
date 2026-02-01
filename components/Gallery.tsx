@@ -10,6 +10,7 @@ interface GalleryProps {
 export default function Gallery({ localImages = [] }: GalleryProps) {
   const [s3Images, setS3Images] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // Carousel mode for About page - moved before early return
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
@@ -35,12 +36,29 @@ export default function Gallery({ localImages = [] }: GalleryProps) {
         
         if (response.ok) {
           const data = await response.json()
-          setS3Images(data.photos || [])
+          const photos = data.photos || []
+          setS3Images(photos)
+          
+          if (photos.length === 0) {
+            // Check if there's an error message
+            if (data.error) {
+              setError(`Aucune photo trouvée: ${data.error}`)
+            } else {
+              setError('Aucune photo trouvée dans la galerie. Vérifiez que le dossier Photos/Training/gallery/ existe dans S3.')
+            }
+          } else {
+            setError(null)
+          }
         } else {
-          console.error('Failed to fetch S3 images:', response.status)
+          const errorData = await response.json().catch(() => ({}))
+          const errorMessage = errorData.error || errorData.message || `Erreur HTTP ${response.status}`
+          console.error('Failed to fetch S3 images:', response.status, errorMessage)
+          setError(`Impossible de charger les photos: ${errorMessage}`)
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
         console.error('Error fetching S3 images:', error)
+        setError(`Erreur de connexion: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
@@ -128,6 +146,41 @@ export default function Gallery({ localImages = [] }: GalleryProps) {
             className="relative w-full h-48 rounded-2xl overflow-hidden shadow-lg bg-gray-200 dark:bg-gray-700 animate-pulse"
           />
         ))}
+      </div>
+    )
+  }
+
+  // Show error message if no images and error occurred
+  if (imagesToShow.length === 0 && error) {
+    return (
+      <div className="text-center py-12 px-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 max-w-2xl mx-auto">
+          <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+            Photos non disponibles
+          </h3>
+          <p className="text-yellow-700 dark:text-yellow-300 mb-4">
+            {error}
+          </p>
+          <p className="text-sm text-yellow-600 dark:text-yellow-400">
+            Pour diagnostiquer le problème, visitez: <a href="/api/gallery/debug" target="_blank" rel="noopener noreferrer" className="underline">/api/gallery/debug</a>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show empty state if no images but no error
+  if (imagesToShow.length === 0) {
+    return (
+      <div className="text-center py-12 px-4">
+        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 max-w-2xl mx-auto">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
+            Aucune photo disponible
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            La galerie est vide pour le moment.
+          </p>
+        </div>
       </div>
     )
   }

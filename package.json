@@ -46,7 +46,8 @@
     "vercel:open-storage": "open https://vercel.com/dashboard/storage || xdg-open https://vercel.com/dashboard/storage || start https://vercel.com/dashboard/storage",
     "vercel:env:pull": "vercel env pull .env.local --token=\"e668zJ4jw4iqJXXY8RD5fWtF\"",
     "sync-recipes": "node scripts/sync-recipes-from-s3.js",
-    "list-recipes-s3": "node scripts/list-s3-recettes.js"
+    "list-recipes-s3": "node scripts/list-s3-recettes.js",
+    "check-s3-gallery": "node scripts/check-s3-gallery-access.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",

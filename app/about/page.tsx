@@ -3,13 +3,12 @@ import Link from 'next/link'
 import { MapPin, ArrowRight, Sparkles, Heart, Target, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/ui/Section'
-import Gallery from '@/components/Gallery'
 import S3Image from '@/components/S3Image'
 import PageHeader from '@/components/layout/PageHeader'
 
 export const metadata: Metadata = {
   title: 'À propos - Marie-Line Pilates',
-  description: 'Découvrez Marie-Line Bouley, votre coach sportif avec plus de 30 ans d\'expérience en fitness, Pilates, nutrition et bien-être holistique',
+  description: 'Découvrez Marie-Line Bouley qui depuis plus de 30 ans, accompagne des femmes et des hommes avec une conviction profonde : chaque personne est unique et mérite une approche sur-mesure.',
 }
 
 export default function AboutPage() {
@@ -18,7 +17,7 @@ export default function AboutPage() {
       <PageHeader
         imageS3Key="Photos/Training/ok (8).JPG"
         title="À propos"
-        subtitle="Découvrez Marie-Line Bouley, votre coach sportif avec plus de 30 ans d'expérience en fitness, Pilates, nutrition et bien-être holistique"
+        subtitle="Découvrez Marie-Line Bouley qui depuis plus de 30 ans, accompagne des femmes et des hommes avec une conviction profonde : chaque personne est unique et mérite une approche sur-mesure."
         height="fullScreen"
       />
       <Section 
@@ -238,24 +237,6 @@ export default function AboutPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Gallery Section */}
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 md:p-10 mb-12 border border-gray-100 dark:border-gray-700">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-100 rounded-full mb-4">
-              <Sparkles className="w-4 h-4 text-accent-600" />
-              <span className="text-sm font-semibold text-accent-600 uppercase tracking-wide">Galerie</span>
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              En Action
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Quelques moments capturés lors de mes séances de coaching personnalisées
-            </p>
-          </div>
-          
-          <Gallery />
         </div>
 
         {/* Where to Find Me Section */}
