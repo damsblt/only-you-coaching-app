@@ -27,7 +27,11 @@ export async function GET(request: NextRequest) {
     if (!hasAwsCredentials) {
       console.warn('⚠️ AWS credentials not configured. Cannot list S3 objects. Returning empty array.')
       // Return empty array if we can't list objects, but don't fail completely
-      return NextResponse.json({ photos: [] })
+      return NextResponse.json({ 
+        photos: [],
+        error: 'AWS credentials not configured',
+        message: 'Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in Vercel environment variables'
+      })
     }
 
     // List all objects in Photos/Training/gallery/ folder with pagination
@@ -65,7 +69,11 @@ export async function GET(request: NextRequest) {
     
     if (imageFiles.length === 0) {
       console.log('No photos found in Photos/Training/gallery/ folder')
-      return NextResponse.json({ photos: [] })
+      return NextResponse.json({ 
+        photos: [],
+        error: 'No photos found',
+        message: 'No images found in Photos/Training/gallery/ folder. Check if the folder exists in S3 bucket.'
+      })
     }
 
     // Remove duplicates by S3 key (case-insensitive comparison)

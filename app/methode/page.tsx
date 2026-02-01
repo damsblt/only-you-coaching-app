@@ -5,6 +5,7 @@ import { ArrowRight, Heart, Sparkles, Target, BookOpen, HelpCircle, ChevronDown 
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/ui/Section'
 import PageHeader from '@/components/layout/PageHeader'
+import Gallery from '@/components/Gallery'
 
 interface FAQItem {
   question: string
@@ -23,6 +24,10 @@ const faqItems: FAQItem[] = [
   {
     question: "Je Suis Novice Dans Le Domaine Du Fitness, Cela Fonctionnera-t-il Pour Moi ?",
     answer: "Oui ! J'accompagne une variété de clients, de tous âges et de tous horizons, qui ont débuté leur parcours en matière d'exercice et de nutrition. Après tout, nous avons tous été novices à un moment donné, n'est-ce pas ? Pour maximiser vos résultats, je vous recommande vivement d'opter pour un suivi à domicile. Cela vous permettra de bénéficier d'une correction précise de votre posture et de votre technique tout au long de votre programme. Ensemble, nous veillerons à ce que chaque mouvement soit juste et efficace !"
+  },
+  {
+    question: "Dois-je acheter du matériel ?",
+    answer: "Si vous allez vous entraîner principalement à la maison, vous devrez peut-être acheter quelques équipements (je vous aiderais à choisir). Un ensemble de bandes de résistance à 10 CHF, un ballon et quelques haltères, seront un excellent point de départ. Si vous vous entraînez dans une salle de fitness ou un centre de sport, vous n'aurez pas besoin d'équipement supplémentaire."
   },
   {
     question: "A Qui Ce Coaching n'Est \"Pas\" Destiné ?",
@@ -193,6 +198,24 @@ export default function MethodePage() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Gallery Section */}
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-8 md:p-10 mb-12 border border-gray-100 dark:border-gray-700">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-accent-100 rounded-full mb-4">
+              <Sparkles className="w-4 h-4 text-accent-600" />
+              <span className="text-sm font-semibold text-accent-600 uppercase tracking-wide">Galerie</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              En Action
+            </h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Quelques moments capturés lors de mes séances de coaching personnalisées
+            </p>
+          </div>
+          
+          <Gallery />
         </div>
 
         {/* FAQ Section */}
