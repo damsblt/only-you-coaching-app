@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button"
 import { Audio } from "@/types"
 import ProtectedContent from "@/components/ProtectedContent"
 import PageHeader from "@/components/layout/PageHeader"
+import { sortCoachingMentalAudios } from "@/lib/coaching-mental-orders"
 
 export default function CoachingMentalPage() {
   const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null)
@@ -52,10 +53,15 @@ export default function CoachingMentalPage() {
           new Map(allAudios.map((audio: Audio) => [audio.id, audio])).values()
         )
         
-        // Map thumbnail S3 keys to audios by index
-        const audiosWithThumbnails = uniqueAudios.map((audio: Audio, index: number) => ({
+        // Apply custom ordering for coaching mental audios
+        const sortedAudios = sortCoachingMentalAudios(uniqueAudios)
+        
+        // Map thumbnail S3 keys to audios by order (not by index)
+        // The API should already have the thumbnails set, but we ensure they match the order
+        const audiosWithThumbnails = sortedAudios.map((audio: Audio, index: number) => ({
           ...audio,
-          thumbnail: imageKeys[index] || audio.thumbnail
+          // Use thumbnail from database if available, otherwise use image from S3 by index
+          thumbnail: audio.thumbnail || imageKeys[index] || ''
         }))
         
         setAudios(audiosWithThumbnails)
@@ -105,7 +111,7 @@ export default function CoachingMentalPage() {
         </div>
 
         {/* Audio Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {audios.map((audio) => (
             <AudioCard
               key={audio.id}

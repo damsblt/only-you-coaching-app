@@ -159,7 +159,6 @@ export default function AboutPage() {
                   alt="Marie-Line en action de coaching"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  fallbackSrc="/about/coaching-1.jpg"
                 />
               </div>
             </div>

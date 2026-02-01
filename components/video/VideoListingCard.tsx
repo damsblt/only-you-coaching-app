@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Play, Clock, Star, Info } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import VideoThumbnail from "./VideoThumbnail"
 
 interface Video {
   id: string
@@ -104,14 +105,12 @@ export default function VideoListingCard({
     >
       {/* Thumbnail */}
       <div className="relative w-full h-full">
-        <img
-          src={video.thumbnail || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"}
+        <VideoThumbnail
+          src={video.thumbnail}
           alt={video.title}
+          fill
           className={getThumbnailClasses()}
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.src = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"
-          }}
+          sizes={variant === 'list' ? '128px' : '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
         />
         
         {/* Play Overlay */}

@@ -9,7 +9,7 @@ export default function TestVideoPage() {
   const testVideo = {
     id: 'test-video',
     title: 'Test Video',
-    videoUrl: '/test-video.mp4',
+    videoUrl: '', // Video file removed - use S3 video instead
     thumbnail: '/logo.png',
     duration: 0,
     difficulty: 'BEGINNER' as const,

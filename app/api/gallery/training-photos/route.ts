@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { getSignedVideoUrl, getPublicUrl } from '@/lib/s3'
+import { cleanEnvVar } from '@/lib/env-utils'
 
-const awsRegion = process.env.AWS_REGION || 'eu-north-1'
-const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID
-const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
+const awsRegion = cleanEnvVar(process.env.AWS_REGION) || 'eu-north-1'
+const awsAccessKeyId = cleanEnvVar(process.env.AWS_ACCESS_KEY_ID)
+const awsSecretAccessKey = cleanEnvVar(process.env.AWS_SECRET_ACCESS_KEY)
+const BUCKET_NAME = cleanEnvVar(process.env.AWS_S3_BUCKET_NAME) || 'only-you-coaching'
 
 const s3Client = new S3Client({
   region: awsRegion,

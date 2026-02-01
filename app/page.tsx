@@ -23,26 +23,27 @@ import VideoPreviewButton from "../components/VideoPreviewButton"
 import { Button } from "@/components/ui/Button"
 import Testimonials from "@/components/Testimonials"
 import PartnersCarousel from "@/components/PartnersCarousel"
+import HeroVideo from "@/components/HeroVideo"
 
 // Vidéo sélectionnée pour la page d'accueil (depuis S3 AWS)
 const featuredVideo = {
-  id: "27367524-7afb-450b-ac77-06c7ce1eca27",
-  title: "1 fente avant fente arrière poids du corps",
-  description: "Exercice de fente au poids du corps pour renforcer les jambes et les fessiers",
-  thumbnail: "https://only-you-coaching.s3.eu-north-1.amazonaws.com/thumbnails/1-fente-avant-fente-arrière-poids-du-corps-thumb.jpg",
-  videoUrl: "https://only-you-coaching.s3.eu-north-1.amazonaws.com/Video/groupes-musculaires/fessiers-jambes/1-fente-avant-fente-arrière-poids-du-corps-mp4",
+  id: "video-presentation",
+  title: "Vidéo de présentation",
+  description: "Vidéo de présentation Only You Coaching",
+  thumbnail: "https://only-you-coaching.s3.eu-north-1.amazonaws.com/thumbnail%20video%20presentation.png",
+  videoUrl: "https://only-you-coaching.s3.eu-north-1.amazonaws.com/video-presentation.mp4",
   duration: 120,
-  difficulty: "INTERMEDIATE",
-  category: "Fessiers et jambes",
-  region: "fessiers-jambes",
-  muscleGroups: ["Fessiers", "Quadriceps", "Ischio-jambiers"],
-  startingPosition: "Debout, pieds écartés largeur des épaules",
-  movement: "Effectuer une fente avant puis une fente arrière en alternant les jambes",
-  intensity: "Intermédiaire",
-  theme: "Fente",
-  series: "3x12 répétitions par jambe",
+  difficulty: "BEGINNER",
+  category: "Présentation",
+  region: "presentation",
+  muscleGroups: [],
+  startingPosition: "",
+  movement: "",
+  intensity: "Débutant",
+  theme: "Présentation",
+  series: "",
   constraints: "Aucune",
-  tags: ["fente", "poids du corps", "jambes", "fessiers"],
+  tags: ["présentation", "coaching"],
   isPublished: true
 }
 
@@ -94,37 +95,11 @@ export default function Home() {
 
             <div className="relative">
               {/* Circular video preview container */}
-              <div className="relative w-full aspect-square max-w-md mx-auto">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-secondary-200 to-accent-200 shadow-organic"></div>
-                <div className="relative w-full h-full rounded-full overflow-hidden border-8 border-white/50 shadow-floating">
-                  <div className="absolute inset-0 bg-gradient-to-br from-secondary-100 to-accent-100">
-                    <div className="w-full h-full rounded-full overflow-hidden">
-                      {/* Vidéo statique sans lecteur - extrait à 30 secondes */}
-                      <video
-                        src={`${featuredVideo.videoUrl}#t=30`}
-                        poster={featuredVideo.thumbnail}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="w-full h-full object-cover rounded-full"
-                        preload="metadata"
-                        style={{ 
-                          objectPosition: 'center',
-                          filter: 'brightness(1.1) contrast(1.05)'
-                        }}
-                      >
-                        Votre navigateur ne supporte pas la lecture vidéo.
-                      </video>
-                      
-                      {/* Overlay avec bouton play pour ouvrir le lecteur complet */}
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
-                        <VideoPreviewButton videoId={featuredVideo.id} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <HeroVideo 
+                videoS3Key="video-presentation.mp4"
+                videoId={featuredVideo.id}
+                thumbnail={featuredVideo.thumbnail}
+              />
             </div>
           </div>
         </div>

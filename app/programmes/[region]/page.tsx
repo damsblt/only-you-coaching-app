@@ -1017,11 +1017,35 @@ export default function RegionPage() {
                       
                       {/* Lock overlay for locked videos */}
                       {!isAccessible && (
-                        <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center z-10 cursor-not-allowed">
-                          <div className="text-center text-white p-4">
-                            <Lock className="w-12 h-12 mx-auto mb-2" />
-                            <p className="text-sm font-medium">Vidéo verrouillée</p>
-                            <p className="text-xs mt-1 opacity-90">Complétez les vidéos précédentes</p>
+                        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/70 to-black/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10 cursor-not-allowed">
+                          <div className="text-center text-white p-6 max-w-xs">
+                            {/* Lock icon with animated background circle */}
+                            <div className="relative mb-4">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="w-20 h-20 bg-white/20 rounded-full animate-pulse"></div>
+                              </div>
+                              <div className="relative">
+                                <Lock className="w-16 h-16 mx-auto drop-shadow-lg" strokeWidth={2.5} />
+                              </div>
+                            </div>
+                            
+                            {/* Main message */}
+                            <p className="text-lg font-bold mb-2 drop-shadow-md">Vidéo verrouillée</p>
+                            
+                            {/* Instruction message */}
+                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-3 border border-white/20">
+                              <p className="text-sm leading-relaxed">
+                                <span className="font-semibold">Complétez les vidéos précédentes</span>
+                                <br />
+                                <span className="text-xs opacity-90 mt-1 block">pour débloquer cette vidéo</span>
+                              </p>
+                            </div>
+                            
+                            {/* Visual indicator arrow */}
+                            <div className="mt-4 flex items-center justify-center gap-2 text-xs opacity-75">
+                              <ArrowUpLeft className="w-4 h-4" />
+                              <span>Commencez par la première vidéo</span>
+                            </div>
                           </div>
                         </div>
                       )}
