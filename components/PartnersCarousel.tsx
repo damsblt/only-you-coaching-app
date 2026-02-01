@@ -1,38 +1,43 @@
 "use client"
 
-import Image from "next/image"
+import S3Image from "./S3Image"
 
 interface Partner {
   name: string
-  logo: string
+  s3Key: string
   alt: string
 }
 
 const partners: Partner[] = [
   {
     name: "IFAS ERPS",
-    logo: "/partners/logo_ifas_ereps1-1.jpg",
+    s3Key: "Photos/logos partenaires/logo_ifas_ereps1-1.jpg",
     alt: "Logo IFAS ERPS"
   },
   {
     name: "Soulgames",
-    logo: "/partners/logo-soulgames-2025-bleu-complet.svg",
+    s3Key: "Photos/logos partenaires/logo-soulgames-2025-bleu-complet.svg",
     alt: "Logo Soulgames"
   },
   {
     name: "LogoFC",
-    logo: "/partners/LogoFC_Official_transparent.png",
+    s3Key: "Photos/logos partenaires/LogoFC_Official_transparent.png",
     alt: "Logo FC Official"
   },
   {
     name: "TATWA",
-    logo: "/partners/TATWA.png",
+    s3Key: "Photos/logos partenaires/TATWA.png",
     alt: "Logo TATWA"
   },
   {
     name: "Harmonis",
-    logo: "/partners/Harmonis.jpeg",
+    s3Key: "Photos/logos partenaires/Harmonis.jpeg",
     alt: "Logo Harmonis"
+  },
+  {
+    name: "Nusand",
+    s3Key: "Photos/logos partenaires/nusand.jpg",
+    alt: "Logo Nusand"
   }
 ]
 
@@ -67,13 +72,14 @@ export default function PartnersCarousel() {
                 style={{ width: "150px", height: "90px" }}
               >
                 <div className="relative w-full h-full flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-70 hover:opacity-100">
-                  <Image
-                    src={partner.logo}
+                  <S3Image
+                    s3Key={partner.s3Key}
                     alt={partner.alt}
                     width={150}
                     height={90}
                     className="object-contain max-w-full max-h-full w-auto h-auto"
-                    unoptimized={partner.logo.endsWith('.svg')}
+                    priority={index < 3}
+                    fallbackSrc="/partners/logo.png"
                   />
                 </div>
               </div>

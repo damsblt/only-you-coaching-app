@@ -558,25 +558,43 @@ export async function insert(table: string, data: Record<string, any>): Promise<
       }
     }
     
+    // Known JSONB fields that need explicit casting
+    const jsonbFields = new Set(['images', 'tags', 'ingredients', 'nutrition_info'])
+    
     const keys = Object.keys(data)
-    const values = Object.values(data).map(val => {
+    const values: any[] = []
+    const placeholders: string[] = []
+    
+    keys.forEach((key, index) => {
+      const val = data[key]
+      
       if (val === null || val === undefined) {
-        return null
+        values.push(null)
+        placeholders.push(`$${index + 1}`)
+      } else if (jsonbFields.has(key) && typeof val === 'string') {
+        // If it's a JSONB field and already a string (JSON stringified), cast it
+        values.push(val)
+        placeholders.push(`$${index + 1}::jsonb`)
+      } else if (jsonbFields.has(key) && (Array.isArray(val) || typeof val === 'object')) {
+        // If it's a JSONB field and an array/object, stringify and cast
+        values.push(JSON.stringify(val))
+        placeholders.push(`$${index + 1}::jsonb`)
+      } else if (Array.isArray(val)) {
+        // For non-JSONB arrays, pass as-is (PostgreSQL array type)
+        values.push(val)
+        placeholders.push(`$${index + 1}`)
+      } else if (typeof val === 'object' && val.constructor === Object) {
+        // Stringify plain objects
+        values.push(JSON.stringify(val))
+        placeholders.push(`$${index + 1}`)
+      } else {
+        values.push(val)
+        placeholders.push(`$${index + 1}`)
       }
-      // Don't stringify arrays - PostgreSQL handles them natively
-      if (Array.isArray(val)) {
-        return val
-      }
-      // Only stringify objects (not arrays)
-      if (typeof val === 'object' && val.constructor === Object) {
-        return JSON.stringify(val)
-      }
-      return val
     })
     
     const columns = keys.map(k => `"${k}"`).join(', ')
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ')
-    const queryStr = `INSERT INTO "${table}" (${columns}) VALUES (${placeholders}) RETURNING *`
+    const queryStr = `INSERT INTO "${table}" (${columns}) VALUES (${placeholders.join(', ')}) RETURNING *`
 
     const result = await executeQuery(queryStr, values)
     const rows = Array.isArray(result) ? result : []
@@ -605,10 +623,43 @@ export async function update(
       }
     }
     
-    const setClause = Object.keys(data).map((key, i) => `"${key}" = $${i + 1}`).join(', ')
-    const whereClause = Object.keys(where).map((key, i) => `"${key}" = $${Object.keys(data).length + i + 1}`).join(' AND ')
-    const values = [...Object.values(data), ...Object.values(where)]
-    const queryStr = `UPDATE "${table}" SET ${setClause} WHERE ${whereClause} RETURNING *`
+    // Known JSONB fields that need explicit casting
+    const jsonbFields = new Set(['images', 'tags', 'ingredients', 'nutrition_info'])
+    
+    const setValues: any[] = []
+    const setParts: string[] = []
+    
+    Object.keys(data).forEach((key, index) => {
+      const val = data[key]
+      
+      if (val === null || val === undefined) {
+        setValues.push(null)
+        setParts.push(`"${key}" = $${index + 1}`)
+      } else if (jsonbFields.has(key) && typeof val === 'string') {
+        // If it's a JSONB field and already a string (JSON stringified), cast it
+        setValues.push(val)
+        setParts.push(`"${key}" = $${index + 1}::jsonb`)
+      } else if (jsonbFields.has(key) && (Array.isArray(val) || typeof val === 'object')) {
+        // If it's a JSONB field and an array/object, stringify and cast
+        setValues.push(JSON.stringify(val))
+        setParts.push(`"${key}" = $${index + 1}::jsonb`)
+      } else if (Array.isArray(val)) {
+        // For non-JSONB arrays, pass as-is
+        setValues.push(val)
+        setParts.push(`"${key}" = $${index + 1}`)
+      } else if (typeof val === 'object' && val.constructor === Object) {
+        // Stringify plain objects
+        setValues.push(JSON.stringify(val))
+        setParts.push(`"${key}" = $${index + 1}`)
+      } else {
+        setValues.push(val)
+        setParts.push(`"${key}" = $${index + 1}`)
+      }
+    })
+    
+    const whereClause = Object.keys(where).map((key, i) => `"${key}" = $${setValues.length + i + 1}`).join(' AND ')
+    const values = [...setValues, ...Object.values(where)]
+    const queryStr = `UPDATE "${table}" SET ${setParts.join(', ')} WHERE ${whereClause} RETURNING *`
     
     console.log('🔍 Update query:', queryStr.substring(0, 200), 'with values:', values.length)
 

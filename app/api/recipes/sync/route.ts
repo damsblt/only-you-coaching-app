@@ -114,6 +114,13 @@ export async function POST(request: NextRequest) {
           continue
         }
 
+        // Helper function to extract numeric value from filename for proper sorting
+        const extractNumber = (key: string): number => {
+          const filename = key.split('/').pop() || ''
+          const match = filename.match(/^(\d+)/)
+          return match ? parseInt(match[1], 10) : Infinity
+        }
+
         // Filter for image files (PNG, JPG, JPEG) and PDFs
         const imageFiles = folderResponse.Contents
           .map(obj => obj.Key)
@@ -122,7 +129,16 @@ export async function POST(request: NextRequest) {
             const ext = key.split('.').pop()?.toLowerCase()
             return ['png', 'jpg', 'jpeg', 'webp'].includes(ext || '')
           })
-          .sort()
+          .sort((a, b) => {
+            const numA = extractNumber(a)
+            const numB = extractNumber(b)
+            // If both have numbers, sort numerically
+            if (numA !== Infinity && numB !== Infinity) {
+              return numA - numB
+            }
+            // Otherwise, fallback to lexicographic sort
+            return a.localeCompare(b)
+          })
 
         const pdfFiles = folderResponse.Contents
           .map(obj => obj.Key)
@@ -172,11 +188,12 @@ export async function POST(request: NextRequest) {
         
         if (existingRecipe) {
           // Update existing recipe with new images
+          // Stringify JSONB fields for PostgreSQL
           const { data: updatedRecipe, error: updateError } = await update(
             'recipes',
             {
               image: mainImage,
-              images: imageUrls,
+              images: JSON.stringify(imageUrls), // JSONB field needs to be stringified
               pdf_url: pdfUrl,
               updated_at: now,
             },
@@ -193,20 +210,21 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Create new recipe - published by default
+          // Stringify JSONB fields for PostgreSQL
           const { data: newRecipe, error: insertError } = await insert('recipes', {
             title,
             slug,
             description,
             image: mainImage,
-            images: imageUrls,
+            images: JSON.stringify(imageUrls), // JSONB field needs to be stringified
             pdf_url: pdfUrl,
             category,
             prep_time: 30, // Default
             servings: 4, // Default
             is_vegetarian: category === 'vegetarian',
             difficulty: 'medium', // Default
-            tags: [category, 'recettes'],
-            ingredients: [],
+            tags: JSON.stringify([category, 'recettes']), // JSONB field needs to be stringified
+            ingredients: JSON.stringify([]), // JSONB field needs to be stringified
             instructions: '',
             is_premium: false,
             is_published: true, // Published by default

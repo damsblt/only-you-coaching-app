@@ -292,8 +292,8 @@ export async function GET(request: NextRequest) {
         batch.map(async (video) => {
           let processedVideo = { ...video }
 
-          // Process thumbnail URL - generate signed URLs for S3 thumbnails
-          // This ensures thumbnails work in both localhost and production
+          // Process thumbnail URL - use public URLs directly (thumbnails are public in S3)
+          // This is much faster than generating signed URLs
           if (video.thumbnail) {
             try {
               const thumbnailUrl = new URL(video.thumbnail)
@@ -309,16 +309,15 @@ export async function GET(request: NextRequest) {
                   s3Key = thumbnailUrl.pathname.substring(1)
                 }
                 
-                // Generate signed URL for thumbnails (valid for 24 hours)
+                // For thumbnails, use public URL directly (no signed URL needed - they're public)
+                // This is much faster and reduces server load
                 if (s3Key.startsWith('thumbnails/')) {
-                  const signedUrlResult = await getSignedVideoUrl(s3Key, 86400)
-                  if (signedUrlResult.success) {
-                    const cleanUrl = signedUrlResult.url.trim().replace(/\n/g, '').replace(/\r/g, '')
-                    processedVideo.thumbnail = cleanUrl
-                  } else {
-                    console.warn('Failed to generate signed URL for thumbnail:', video.id, s3Key, signedUrlResult.error)
-                    // Keep original URL as fallback
-                  }
+                  // Keep the public URL as-is (thumbnails are public in S3 bucket policy)
+                  // The frontend component will handle any URL normalization if needed
+                  processedVideo.thumbnail = video.thumbnail
+                } else {
+                  // For non-thumbnail S3 URLs, keep as-is
+                  processedVideo.thumbnail = video.thumbnail
                 }
               }
               // For non-S3 URLs (like Neon Storage), keep as-is

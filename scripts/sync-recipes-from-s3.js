@@ -229,6 +229,13 @@ async function getFilesInFolder(folderName) {
       return { images: [], pdfs: [] };
     }
 
+    // Helper function to extract numeric value from filename for proper sorting
+    const extractNumber = (key) => {
+      const filename = key.split('/').pop() || '';
+      const match = filename.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : Infinity;
+    };
+
     const imageFiles = response.Contents
       .map(obj => obj.Key)
       .filter(key => {
@@ -236,7 +243,16 @@ async function getFilesInFolder(folderName) {
         const ext = key.split('.').pop()?.toLowerCase();
         return ['png', 'jpg', 'jpeg', 'webp'].includes(ext || '');
       })
-      .sort();
+      .sort((a, b) => {
+        const numA = extractNumber(a);
+        const numB = extractNumber(b);
+        // If both have numbers, sort numerically
+        if (numA !== Infinity && numB !== Infinity) {
+          return numA - numB;
+        }
+        // Otherwise, fallback to lexicographic sort
+        return a.localeCompare(b);
+      });
 
     const pdfFiles = response.Contents
       .map(obj => obj.Key)

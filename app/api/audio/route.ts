@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hasAccess } from '@/lib/access-control'
 import { getSignedAudioUrl } from '@/lib/s3'
+import { sortCoachingMentalAudios } from '@/lib/coaching-mental-orders'
 
 // Force dynamic rendering since we use searchParams
 export const dynamic = 'force-dynamic'
@@ -11,7 +12,7 @@ export const revalidate = 60
 
 // Columns needed for audio display - optimize query by selecting only needed fields
 // Note: PostgreSQL column names with camelCase need to be quoted
-const AUDIO_COLUMNS = 'id,title,description,category,"audioUrl",s3key,thumbnail,duration,"isPublished","createdAt","updatedAt"'
+const AUDIO_COLUMNS = 'id,title,description,category,"audioUrl",s3key,thumbnail,duration,"isPublished","orderIndex","createdAt","updatedAt"'
 
 export async function GET(request: NextRequest) {
   try {
@@ -134,8 +135,14 @@ export async function GET(request: NextRequest) {
       audiosWithSignedUrls.push(...processedBatch)
     }
 
+    // Apply custom ordering for Coaching Mental category
+    let sortedAudios = audiosWithSignedUrls
+    if (category && (category === 'Coaching Mental' || category === 'Coaching mental' || category === 'coaching_mental')) {
+      sortedAudios = sortCoachingMentalAudios(audiosWithSignedUrls)
+    }
+
     // Add cache headers for better performance
-    return NextResponse.json(audiosWithSignedUrls, {
+    return NextResponse.json(sortedAudios, {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
         'CDN-Cache-Control': 'public, s-maxage=60',

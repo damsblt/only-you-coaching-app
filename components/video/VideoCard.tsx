@@ -3,6 +3,7 @@
 import { Play, Heart, Plus } from "lucide-react"
 import { Video } from "@/types"
 import { getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import VideoThumbnail from "./VideoThumbnail"
 
 interface VideoCardProps {
   video: Video
@@ -16,11 +17,13 @@ export function VideoCard({ video, onClick }: VideoCardProps) {
       onClick={onClick}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video bg-neutral-200 overflow-hidden leading-none text-[0]">
-        <img
-          src={video.thumbnail || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"}
+      <div className="relative aspect-video bg-neutral-200 overflow-hidden leading-none">
+        <VideoThumbnail
+          src={video.thumbnail}
           alt={video.title}
-          className="block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         
         {/* Play Button Overlay */}

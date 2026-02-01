@@ -28,6 +28,26 @@
       "Principal": "*",
       "Action": "s3:GetObject",
       "Resource": "arn:aws:s3:::only-you-coaching/recettes/*"
+    },
+    {
+      "Sid": "PublicReadRootVideos",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "arn:aws:s3:::only-you-coaching/video-presentation.mp4",
+        "arn:aws:s3:::only-you-coaching/*.mp4"
+      ]
+    },
+    {
+      "Sid": "PublicReadRootImages",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "arn:aws:s3:::only-you-coaching/thumbnail video presentation.png",
+        "arn:aws:s3:::only-you-coaching/*.png"
+      ]
     }
   ]
 }
