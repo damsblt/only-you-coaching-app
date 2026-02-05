@@ -25,10 +25,10 @@ const sql = neon(DATABASE_URL)
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || 'only-you-coaching'
 const S3_FOLDER = 'Photos/Illustration/coaching mental/'
 
-// Ordre d'affichage spécifié par l'utilisateur
+// Ordre d'affichage spécifié par l'utilisateur (basé sur Neon)
 const COACHING_MENTAL_ORDER = [
-  'L\'importance de se fixer des objectifs',
   'Travailler son auto-discipline',
+  'L\'importance de se fixer des objectifs',
   'L\'importance de la pensée positive',
   'L\'importance de l\'instant présent'
 ]

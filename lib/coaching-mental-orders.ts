@@ -10,8 +10,8 @@
  * Mapping: orderIndex -> titre de l'audio
  */
 export const COACHING_MENTAL_ORDER: Record<number, string> = {
-  1: 'L\'importance de se fixer des objectifs',
-  2: 'Travailler son auto-discipline',
+  1: 'Travailler son auto-discipline',
+  2: 'L\'importance de se fixer des objectifs',
   3: 'L\'importance de la pensée positive',
   4: 'L\'importance de l\'instant présent',
 }
