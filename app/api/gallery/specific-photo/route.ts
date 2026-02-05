@@ -16,8 +16,8 @@ export async function GET(request: NextRequest) {
 
     // Use public URLs directly for production (signed URLs require proper IAM permissions)
     // The bucket policy allows public read access for Photos/*, Video/*, and thumbnails/*
-    const encodedKey = s3Key.split('/').map(segment => encodeURIComponent(segment)).join('/')
-    const publicUrl = getPublicUrl(encodedKey)
+    // Note: Don't encode here - getPublicUrl handles encoding properly
+    const publicUrl = getPublicUrl(s3Key)
     return NextResponse.json(
       { url: publicUrl },
       {
