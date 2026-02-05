@@ -85,6 +85,43 @@ function findMatchingAudio(audios, targetTitle) {
   return null
 }
 
+/**
+ * Trouve l'image S3 correspondant à un titre d'audio
+ */
+function findMatchingImage(imageFiles, audioTitle) {
+  const normalizedAudioTitle = normalizeTitle(audioTitle)
+  
+  // Essai 1: Correspondance exacte du nom de fichier (sans extension et dossier)
+  let match = imageFiles.find(imagePath => {
+    const filename = imagePath.split('/').pop().replace(/\.[^.]+$/, '') // Enlève l'extension
+    return normalizeTitle(filename) === normalizedAudioTitle
+  })
+  if (match) return match
+  
+  // Essai 2: Le nom de fichier contient les mots-clés du titre
+  const audioWords = normalizedAudioTitle.split(' ').filter(w => w.length > 2)
+  match = imageFiles.find(imagePath => {
+    const filename = imagePath.split('/').pop().replace(/\.[^.]+$/, '')
+    const normalizedFilename = normalizeTitle(filename)
+    return audioWords.every(word => normalizedFilename.includes(word))
+  })
+  if (match) return match
+  
+  // Essai 3: Correspondance partielle avec mots-clés importants
+  const keyWords = ['objectif', 'discipline', 'positiv', 'instant', 'present', 'pensee']
+  match = imageFiles.find(imagePath => {
+    const filename = imagePath.split('/').pop().replace(/\.[^.]+$/, '')
+    const normalizedFilename = normalizeTitle(filename)
+    // Cherche les mots-clés communs
+    return keyWords.some(keyword => 
+      normalizedFilename.includes(keyword) && normalizedAudioTitle.includes(keyword)
+    )
+  })
+  if (match) return match
+  
+  return null
+}
+
 async function syncThumbnails() {
   try {
     console.log('🔄 Début de la synchronisation des images de couverture...\n')
@@ -153,14 +190,14 @@ async function syncThumbnails() {
         continue
       }
       
-      // Trouver l'image correspondante (par index dans l'ordre)
-      const imageIndex = orderIndex
-      if (imageIndex >= imageFiles.length) {
-        console.log(`⚠️  Pas assez d'images pour l'audio: "${audio.title}"`)
+      // Trouver l'image correspondante par nom de fichier (pas par index!)
+      const imageKey = findMatchingImage(imageFiles, audio.title)
+      if (!imageKey) {
+        console.log(`⚠️  Image non trouvée pour l'audio: "${audio.title}"`)
         continue
       }
       
-      const imageKey = imageFiles[imageIndex]
+      const imageIndex = imageFiles.indexOf(imageKey)
       usedImageIndices.add(imageIndex)
       
       // Vérifier si une mise à jour est nécessaire
