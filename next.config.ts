@@ -32,7 +32,21 @@ const nextConfig: NextConfig = {
         hostname: '*.amazonaws.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
     ],
+  },
+  // Rewrites pour permettre l'accès via /admin/* (contourne le middleware)
+  async rewrites() {
+    return [
+      {
+        source: '/admin/:path*',
+        destination: '/:path*',
+      },
+    ]
   },
 };
 
