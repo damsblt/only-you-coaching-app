@@ -509,9 +509,24 @@ export default function PromoCodesAdminPage() {
 
                 {/* Eligible Plans */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Plans Éligibles
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Plans Éligibles
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected = availablePlans.every(plan => formData.eligiblePlans.includes(plan))
+                        setFormData({
+                          ...formData,
+                          eligiblePlans: allSelected ? [] : [...availablePlans],
+                        })
+                      }}
+                      className="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
+                    >
+                      {availablePlans.every(plan => formData.eligiblePlans.includes(plan)) ? 'Tout désélectionner' : 'Tout sélectionner'}
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {availablePlans.map((plan) => (
                       <label key={plan} className="flex items-center space-x-2 cursor-pointer">

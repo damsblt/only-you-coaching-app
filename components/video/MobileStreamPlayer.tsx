@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { X, Play, Pause, Volume2, VolumeX, ChevronLeft, ChevronRight } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
+import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
 
 interface Video {
   id: string
@@ -31,6 +32,7 @@ interface MobileStreamPlayerProps {
   onClose?: () => void
   onNext?: () => void
   onPrevious?: () => void
+  onVideoCompleted?: () => void
   currentIndex?: number
   totalVideos?: number
   className?: string
@@ -43,6 +45,7 @@ export default function MobileStreamPlayer({
   onClose,
   onNext,
   onPrevious,
+  onVideoCompleted,
   currentIndex = 0,
   totalVideos = 1,
   className = "", 
@@ -60,6 +63,9 @@ export default function MobileStreamPlayer({
   const [showControls, setShowControls] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  const lastSaveTimeRef = useRef<number>(0)
+  const hasMarkedCompletedRef = useRef<boolean>(false)
+  const { user } = useSimpleAuth()
   
   // State for landscape orientation hint
   const [showRotateHint, setShowRotateHint] = useState(false)
@@ -159,6 +165,48 @@ export default function MobileStreamPlayer({
     }
   }, [isPlaying, isPortrait])
 
+  // Function to save progress
+  const saveProgress = async (progressSeconds: number, completed: boolean): Promise<void> => {
+    if (!user || !video.id) {
+      console.log('⚠️ [MobileStreamPlayer] Cannot save progress: missing user or video.id', { hasUser: !!user, hasVideoId: !!video.id })
+      return Promise.resolve()
+    }
+    
+    const now = Date.now()
+    if (!completed && now - lastSaveTimeRef.current < 5000) {
+      return Promise.resolve()
+    }
+    lastSaveTimeRef.current = now
+    
+    console.log('💾 [MobileStreamPlayer] Saving progress:', { videoId: video.id, userId: user.id, completed, progressSeconds })
+    
+    try {
+      const response = await fetch(`/api/videos/${video.id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, completed, progressSeconds })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ [MobileStreamPlayer] Error saving progress:', errorData)
+        return Promise.resolve()
+      }
+      
+      const data = await response.json()
+      console.log('✅ [MobileStreamPlayer] Progress saved:', data)
+      return Promise.resolve()
+    } catch (error) {
+      console.error('❌ [MobileStreamPlayer] Error saving progress (network):', error)
+      return Promise.resolve()
+    }
+  }
+
+  // Reset completion flag when video changes
+  useEffect(() => {
+    hasMarkedCompletedRef.current = false
+  }, [video.id])
+
   // Video event handlers
   useEffect(() => {
     const videoElement = videoRef.current
@@ -179,6 +227,25 @@ export default function MobileStreamPlayer({
 
     const handleTimeUpdate = () => {
       setCurrentTime(videoElement.currentTime)
+      
+      // Save progress logic
+      if (videoElement.duration > 0) {
+        const progressSeconds = Math.floor(videoElement.currentTime)
+        
+        // Mark as completed if watched at least 1 second
+        if (progressSeconds >= 1 && !hasMarkedCompletedRef.current) {
+          console.log(`📊 [MobileStreamPlayer] Video watched ${progressSeconds}s - marking as completed`)
+          hasMarkedCompletedRef.current = true
+          saveProgress(videoElement.duration, true).then(() => {
+            console.log('✅ [MobileStreamPlayer] Video marked as completed, calling onVideoCompleted')
+            if (onVideoCompleted) {
+              onVideoCompleted()
+            }
+          })
+        } else if (progressSeconds > 0 && progressSeconds % 5 === 0 && !hasMarkedCompletedRef.current) {
+          saveProgress(progressSeconds, false)
+        }
+      }
     }
 
     const handleEnded = () => {

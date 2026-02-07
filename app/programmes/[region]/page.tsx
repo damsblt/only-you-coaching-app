@@ -722,6 +722,22 @@ export default function RegionPage() {
             onClose={handleCloseFeed}
             onNext={currentVideoIndex < filteredVideos.length - 1 ? goToNext : undefined}
             onPrevious={currentVideoIndex > 0 ? goToPrevious : undefined}
+            onVideoCompleted={async () => {
+              // Refresh progress immediately when a video is completed
+              if (user && regionName) {
+                try {
+                  const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`)
+                  if (response.ok) {
+                    const data = await response.json()
+                    setVideoProgress(data.progress || {})
+                    setCompletedVideos(data.completedVideos || [])
+                    setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
+                  }
+                } catch (err) {
+                  console.error('Error refreshing progress after completion:', err)
+                }
+              }
+            }}
             currentIndex={currentVideoIndex}
             totalVideos={filteredVideos.length}
             autoPlay={true}
@@ -742,6 +758,22 @@ export default function RegionPage() {
             onClose={handleCloseFeed}
             onNext={currentVideoIndex < filteredVideos.length - 1 ? goToNext : undefined}
             onPrevious={currentVideoIndex > 0 ? goToPrevious : undefined}
+            onVideoCompleted={async () => {
+              // Refresh progress immediately when a video is completed
+              if (user && regionName) {
+                try {
+                  const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`)
+                  if (response.ok) {
+                    const data = await response.json()
+                    setVideoProgress(data.progress || {})
+                    setCompletedVideos(data.completedVideos || [])
+                    setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
+                  }
+                } catch (err) {
+                  console.error('Error refreshing progress after completion:', err)
+                }
+              }
+            }}
             currentIndex={currentVideoIndex}
             totalVideos={filteredVideos.length}
             autoPlay={true}

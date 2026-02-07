@@ -150,7 +150,7 @@ module.exports = {
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'curved-gradient': 'linear-gradient(135deg, #F5E6E0 0%, #C8A0A0 50%, #A65959 100%)',
         'organic-gradient': 'linear-gradient(45deg, #F5E6E0 0%, #C8A0A0 25%, #D4888C 50%, #F5E6E0 75%, #C8A0A0 100%)',
-        'soft-gradient': 'linear-gradient(135deg, #F5E6E0 0%, #EDD4D7 50%, #C8A0A0 100%)',
+        'soft-gradient': 'linear-gradient(180deg, #F5E6E0 0%, #EDD4D7 50%, #C8A0A0 100%)',
         'warm-gradient': 'linear-gradient(45deg, #F5E6E0 0%, #D4888C 100%)',
         'elegant-gradient': 'linear-gradient(135deg, #A65959 0%, #C8A0A0 50%, #F5E6E0 100%)',
         'hero-gradient': 'linear-gradient(135deg, #F5E6E0 0%, #EDD4D7 100%)',
