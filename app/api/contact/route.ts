@@ -3,11 +3,16 @@ import { Resend } from 'resend'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
+// Email destinataire pour les notifications
+const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'info@only-you-coaching.com'
+// Email expéditeur — utiliser le domaine vérifié dans Resend si disponible
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Only You Coaching <onboarding@resend.dev>'
+
 export async function POST(request: NextRequest) {
   try {
     // Vérifier que Resend est configuré
     if (!resend || !process.env.RESEND_API_KEY) {
-      console.error('RESEND_API_KEY n\'est pas configurée')
+      console.error('❌ RESEND_API_KEY n\'est pas configurée dans les variables d\'environnement')
       return NextResponse.json(
         { error: 'Service d\'email non configuré. Veuillez contacter l\'administrateur.' },
         { status: 500 }
@@ -25,10 +30,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Envoyer l'email à info@only-you-coaching.com
+    console.log(`📧 Envoi email de contact: from=${FROM_EMAIL}, to=${ADMIN_EMAIL}, replyTo=${email}`)
+
+    // Envoyer l'email à l'admin
     const { data, error } = await resend.emails.send({
-      from: 'Only You Coaching <onboarding@resend.dev>', // Utilisez votre domaine vérifié si disponible
-      to: 'info@only-you-coaching.com',
+      from: FROM_EMAIL,
+      to: ADMIN_EMAIL,
       replyTo: email,
       subject: `[Formulaire de contact] ${subject}`,
       html: `
@@ -73,22 +80,27 @@ Vous pouvez répondre directement à cet email pour contacter ${name}.
     })
 
     if (error) {
-      console.error('Erreur Resend:', error)
+      console.error('❌ Erreur Resend:', JSON.stringify(error, null, 2))
+      console.error('❌ Détails — from:', FROM_EMAIL, '| to:', ADMIN_EMAIL, '| statusCode:', (error as any).statusCode)
       return NextResponse.json(
-        { error: 'Erreur lors de l\'envoi de l\'email' },
+        { 
+          error: 'Erreur lors de l\'envoi de l\'email. Veuillez réessayer ou nous contacter directement.',
+          details: process.env.NODE_ENV === 'development' ? error : undefined
+        },
         { status: 500 }
       )
     }
 
+    console.log(`📧 ✅ Email de contact envoyé avec succès: ${data?.id}`)
     return NextResponse.json({ 
       success: true,
       message: 'Email envoyé avec succès',
       id: data?.id 
     })
   } catch (error: any) {
-    console.error('Erreur dans /api/contact:', error)
+    console.error('❌ Exception dans /api/contact:', error?.message || error)
     return NextResponse.json(
-      { error: error.message || 'Erreur lors de l\'envoi du message' },
+      { error: 'Une erreur inattendue est survenue. Veuillez réessayer ou nous contacter directement.' },
       { status: 500 }
     )
   }
