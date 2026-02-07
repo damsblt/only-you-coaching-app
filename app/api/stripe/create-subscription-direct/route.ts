@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     }
 
     const stripe = getStripe()
-    const { planId, userId, paymentMethodId, promoCode } = await req.json()
+    const { planId, userId, paymentMethodId, promoCode, promoDetails } = await req.json()
     
     if (!userId || !paymentMethodId) {
       return NextResponse.json({ error: 'User ID and Payment Method ID required' }, { status: 400 })
@@ -190,8 +190,35 @@ export async function POST(req: NextRequest) {
 
     // Appliquer le code promo si fourni
     if (promoCode) {
+      // Un coupon Stripe existe déjà, l'utiliser directement
       subscriptionData.coupon = promoCode
       subscriptionData.metadata.promo_code = promoCode
+    } else if (promoDetails && promoDetails.code && promoDetails.discountAmount > 0) {
+      // Pas de coupon Stripe existant, en créer un à la volée
+      try {
+        const couponId = `PROMO_${promoDetails.code}_${Date.now()}`
+        const originalAmount = plan.amount // montant en centimes du plan
+        const discountAmount = promoDetails.discountAmount // en centimes
+        
+        // Calculer le pourcentage de réduction
+        const percentOff = Math.round((discountAmount / originalAmount) * 100)
+        
+        const coupon = await stripe.coupons.create({
+          id: couponId,
+          percent_off: percentOff > 0 ? percentOff : undefined,
+          amount_off: percentOff <= 0 ? discountAmount : undefined,
+          currency: percentOff <= 0 ? 'chf' : undefined,
+          duration: 'forever', // Applique la réduction sur toute la durée de l'abonnement
+          name: `Promo ${promoDetails.code}`,
+        })
+        
+        subscriptionData.coupon = coupon.id
+        subscriptionData.metadata.promo_code = promoDetails.code
+        console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (${percentOff}% off)`)
+      } catch (couponError: any) {
+        console.error('❌ Erreur création coupon Stripe à la volée:', couponError)
+        // Ne pas bloquer le paiement, mais logger l'erreur
+      }
     }
 
     // Pour plans à durée fixe, programmer l'annulation automatique à la fin de l'engagement
