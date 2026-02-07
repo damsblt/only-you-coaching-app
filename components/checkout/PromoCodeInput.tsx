@@ -11,6 +11,8 @@ interface PromoCodeInputProps {
   onPromoApplied: (discount: {
     promoCodeId: string
     code: string
+    discountType: string
+    discountValue: number
     discountAmount: number
     finalAmount: number
     stripeCouponId: string | null
@@ -72,6 +74,8 @@ export default function PromoCodeInput({
         onPromoApplied({
           promoCodeId: data.promoCode.id,
           code: data.promoCode.code,
+          discountType: data.promoCode.discountType,
+          discountValue: data.promoCode.discountValue,
           discountAmount: data.discount.amount,
           finalAmount: data.discount.finalAmount,
           stripeCouponId: data.promoCode.stripeCouponId,

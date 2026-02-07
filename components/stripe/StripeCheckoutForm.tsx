@@ -16,8 +16,10 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY 
 
 interface PromoDetails {
   code: string
-  discountAmount: number
-  finalAmount: number
+  discountType: string   // 'percentage' | 'fixed_amount'
+  discountValue: number  // Valeur brute (ex: 20 pour 20%, ou 1000 pour 10 CHF en centimes)
+  discountAmount: number // Montant de la réduction en centimes
+  finalAmount: number    // Montant final en centimes
 }
 
 interface StripeCheckoutFormProps {

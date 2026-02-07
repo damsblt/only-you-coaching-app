@@ -20,6 +20,8 @@ function CheckoutContent() {
   const [appliedPromo, setAppliedPromo] = useState<{
     promoCodeId: string
     code: string
+    discountType: string
+    discountValue: number
     discountAmount: number
     finalAmount: number
     stripeCouponId: string | null
@@ -89,6 +91,8 @@ function CheckoutContent() {
   const handlePromoApplied = (discount: {
     promoCodeId: string
     code: string
+    discountType: string
+    discountValue: number
     discountAmount: number
     finalAmount: number
     stripeCouponId: string | null
@@ -262,6 +266,8 @@ function CheckoutContent() {
               promoCode={appliedPromo?.stripeCouponId || null}
               promoDetails={appliedPromo ? {
                 code: appliedPromo.code,
+                discountType: appliedPromo.discountType,
+                discountValue: appliedPromo.discountValue,
                 discountAmount: appliedPromo.discountAmount,
                 finalAmount: appliedPromo.finalAmount,
               } : null}
