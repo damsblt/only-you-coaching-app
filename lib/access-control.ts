@@ -267,12 +267,34 @@ function getPlanIdFromSubscription(subscription: any): string {
   // Extract plan ID from Stripe price ID
   const priceId = subscription.stripePriceId.toLowerCase()
   
-  // Mapping spécifique pour les price IDs connus
-  if (priceId === 'price_1sftnzrnelgarkti51jscso') {
-    return 'essentiel' // Plan 69 CHF
+  // Mapping direct des Price IDs connus → planId (TOUS en lowercase car priceId est lowercased)
+  const PRICE_ID_MAP: Record<string, string> = {
+    // Nouveau compte acct_1Sy9bDK6CCSakHFa — LIVE
+    'price_1syavuk6ccsakhfapsbeq5t7': 'essentiel',
+    'price_1syavvk6ccsakhfaiprtwkha': 'avance',
+    'price_1syavwk6ccsakhfarpcxujff': 'premium',
+    'price_1syavxk6ccsakhfa615xiygo': 'starter',
+    'price_1syavyk6ccsakhfamik5srcb': 'pro',
+    'price_1syavzk6ccsakhfaleajwfsz': 'expert',
+    // Nouveau compte acct_1Sy9bDK6CCSakHFa — TEST
+    'price_1syapfk6ccsakhfahtneiwid': 'essentiel',
+    'price_1syapgk6ccsakhfae0ovoyj1': 'avance',
+    'price_1syapik6ccsakhfawxcjb89n': 'premium',
+    'price_1syapvk6ccsakhfasj7ridbe': 'starter',
+    'price_1syapxk6ccsakhfa1qzozyim': 'pro',
+    'price_1syapyk6ccsakhfaje5cluyo': 'expert',
+    // Ancien compte acct_1S9oMQRnELGaRIkT (rétrocompatibilité)
+    'price_1sftnzrnelgarikti51jscso': 'essentiel',
+    'price_1sftnhrnelgariktkbuugkiy': 'avance',
+    'price_1sftnrrnelgarikta4qzrecl': 'premium',
+    'price_1snc3trnelgariktoumvumpn': 'starter',
+    'price_1snc3wrnelgarikt5zjubsor': 'pro',
+    'price_1snc3zrnelgariktyvg8yx3b': 'expert',
   }
+
+  if (PRICE_ID_MAP[priceId]) return PRICE_ID_MAP[priceId]
   
-  // Check if price ID contains plan identifiers
+  // Fallback : chercher dans le nom du price ID
   if (priceId.includes('essentiel')) return 'essentiel'
   if (priceId.includes('avance')) return 'avance'
   if (priceId.includes('premium')) return 'premium'
@@ -280,20 +302,11 @@ function getPlanIdFromSubscription(subscription: any): string {
   if (priceId.includes('pro')) return 'pro'
   if (priceId.includes('expert')) return 'expert'
   
-  // Additional mapping for common Stripe price ID patterns
-  // These are common patterns you might see in Stripe
-  if (priceId.includes('price_')) {
-    // Try to extract plan from the price ID structure
-    // This is a fallback for when price IDs don't contain plan names
-    console.warn(`Price ID ${priceId} doesn't contain plan identifier, defaulting to essentiel`)
-  }
-  
-  // If no match found, default to essentiel (plan 69 CHF) but log the issue
   console.warn(`Could not determine plan from subscription data:`, {
     planId: subscription.planId,
     stripePriceId: subscription.stripePriceId
   })
-  return 'essentiel' // Par défaut pour le plan 69 CHF
+  return 'essentiel'
 }
 
 // Get all users with their subscription status

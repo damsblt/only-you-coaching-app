@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Play, Target, ChevronDown, ChevronUp } from "lucide-react"
+import { Play, Target, ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react"
 import { getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 import { formatIntensity } from "@/utils/formatIntensity"
 
@@ -31,9 +31,22 @@ interface EnhancedVideo {
 interface EnhancedVideoCardProps {
   video: EnhancedVideo
   onPlay: (video: EnhancedVideo) => void
+  /** Optional exercise number (1-based) to display as a label */
+  exerciseNumber?: number
+  /** Whether this video has been completed */
+  isCompleted?: boolean
 }
 
-export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardProps) {
+/**
+ * Returns the French ordinal label for an exercise number.
+ * e.g. 1 -> "1er exercice", 2 -> "2e exercice", etc.
+ */
+function getExerciseLabel(num: number): string {
+  if (num === 1) return "1er exercice"
+  return `${num}e exercice`
+}
+
+export default function EnhancedVideoCard({ video, onPlay, exerciseNumber, isCompleted }: EnhancedVideoCardProps) {
   const [isHovered, setIsHovered] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
 
@@ -67,36 +80,46 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
   }
 
   return (
-    <div
-      data-video-id={video.id}
-      className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col h-full"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Thumbnail with Play Button */}
-      <div className="relative aspect-video bg-neutral-200 dark:bg-gray-700 overflow-hidden leading-none text-[0]">
-        <img
-          src={video.thumbnail || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"}
-          alt={video.title}
-          className="block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement
-            target.src = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"
-          }}
-        />
-        <div className="absolute inset-0 bg-accent-500/0 group-hover:bg-accent-500/20 transition-all duration-300 flex items-center justify-center">
-          <button onClick={() => onPlay(video)} className="w-14 h-14 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-floating">
-            <Play className="w-6 h-6 text-secondary-500 ml-1" />
-          </button>
-        </div>
-        
-        {/* Duration Badge removed per request */}
+    <div className="relative">
+      <div
+        data-video-id={video.id}
+        className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700 flex flex-col h-full"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {/* Exercise Number Label */}
+        {exerciseNumber !== undefined && (
+          <div className="px-4 py-2.5 bg-gradient-to-r from-accent-500 to-secondary-500 text-white">
+            <span className="text-sm font-bold tracking-wide uppercase">
+              {getExerciseLabel(exerciseNumber)}
+            </span>
+          </div>
+        )}
 
-        {/* Difficulty Badge */}
-        <div className={`absolute top-3 left-3 px-3 py-1.5 curved-button text-xs font-medium bg-white/90 backdrop-blur-sm ${getDifficultyColor(video.difficulty)}`}>
-          {getDifficultyLabel(video.difficulty)}
+        {/* Thumbnail with Play Button */}
+        <div className="relative aspect-video bg-neutral-200 dark:bg-gray-700 overflow-hidden leading-none text-[0]">
+          <img
+            src={video.thumbnail || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"}
+            alt={video.title}
+            className="block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement
+              target.src = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"
+            }}
+          />
+          <div className="absolute inset-0 bg-accent-500/0 group-hover:bg-accent-500/20 transition-all duration-300 flex items-center justify-center">
+            <button onClick={() => onPlay(video)} className="w-14 h-14 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-floating">
+              <Play className="w-6 h-6 text-secondary-500 ml-1" />
+            </button>
+          </div>
+          
+          {/* Duration Badge removed per request */}
+
+          {/* Difficulty Badge */}
+          <div className={`absolute top-3 left-3 px-3 py-1.5 curved-button text-xs font-medium bg-white/90 backdrop-blur-sm ${getDifficultyColor(video.difficulty)}`}>
+            {getDifficultyLabel(video.difficulty)}
+          </div>
         </div>
-      </div>
 
       {/* Content */}
       <div className="p-6 flex flex-col flex-grow">
@@ -208,6 +231,14 @@ export default function EnhancedVideoCard({ video, onPlay }: EnhancedVideoCardPr
           Regarder
         </button>
       </div>
+      </div>
+
+      {/* Completed badge */}
+      {isCompleted && (
+        <div className="absolute top-4 right-4 z-10 bg-green-500 text-white rounded-full p-2 shadow-lg" style={exerciseNumber !== undefined ? { top: '3.25rem' } : undefined}>
+          <CheckCircle2 className="w-5 h-5" />
+        </div>
+      )}
     </div>
   )
 }

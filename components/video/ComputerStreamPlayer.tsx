@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Settings, ChevronUp, ChevronDown } from "lucide-react"
+import { X, Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, Maximize2, Minimize2, Settings, ChevronUp, ChevronDown } from "lucide-react"
 import { formatDuration, getDifficultyColor, getDifficultyLabel } from "@/lib/utils"
 
 interface Video {
@@ -107,6 +107,47 @@ export default function ComputerStreamPlayer({
       window.removeEventListener('orientationchange', checkMobile)
     }
   }, [])
+
+  // Listen for fullscreen changes (including iOS native video fullscreen exit)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      setIsFullscreen(isCurrentlyFullscreen)
+    }
+
+    // iOS native video fullscreen events
+    const videoEl = videoRef.current
+    const handleiOSFullscreenChange = () => {
+      const presenting = (videoEl as any)?.webkitDisplayingFullscreen
+      setIsFullscreen(!!presenting)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange)
+
+    if (videoEl) {
+      videoEl.addEventListener('webkitbeginfullscreen', () => setIsFullscreen(true))
+      videoEl.addEventListener('webkitendfullscreen', () => setIsFullscreen(false))
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+      if (videoEl) {
+        videoEl.removeEventListener('webkitbeginfullscreen', () => setIsFullscreen(true))
+        videoEl.removeEventListener('webkitendfullscreen', () => setIsFullscreen(false))
+      }
+    }
+  }, [videoRef.current])
 
   // Load video source when component mounts
   useEffect(() => {
@@ -305,27 +346,60 @@ export default function ComputerStreamPlayer({
     setPlaybackRate(rate)
   }
 
+  // Detect iOS for native video fullscreen
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+
   const toggleFullscreen = async () => {
     if (isMobile) {
-      // On mobile, handle fullscreen with orientation lock
-      if (!document.fullscreenElement) {
+      // === iOS: Use native video fullscreen (the ONLY way to truly hide browser UI on iOS) ===
+      if (isIOS && videoRef.current) {
+        const videoEl = videoRef.current as any
+        if (videoEl.webkitEnterFullscreen) {
+          try {
+            await videoEl.webkitEnterFullscreen()
+            setIsFullscreen(true)
+          } catch (err) {
+            console.log('iOS webkitEnterFullscreen failed:', err)
+            // Fallback: try webkitRequestFullscreen on the video element itself
+            try {
+              if (videoEl.webkitRequestFullscreen) {
+                await videoEl.webkitRequestFullscreen()
+                setIsFullscreen(true)
+              }
+            } catch (err2) {
+              console.log('iOS webkitRequestFullscreen fallback failed:', err2)
+            }
+          }
+          return
+        }
+      }
+
+      // === Android & other mobile: Use Fullscreen API with navigationUI: 'hide' ===
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+
+      if (!isCurrentlyFullscreen) {
         try {
-          // Step 1: Force orientation to landscape FIRST (before fullscreen)
+          // Try orientation lock first
           if (screen.orientation && screen.orientation.lock) {
             try {
               await screen.orientation.lock('landscape')
-              // Wait a bit for orientation to change
-              await new Promise(resolve => setTimeout(resolve, 300))
+              await new Promise(resolve => setTimeout(resolve, 200))
             } catch (err) {
               console.log('Screen orientation lock failed:', err)
             }
           }
-          
-          // Step 2: Enter fullscreen to hide browser UI
-          const elementToFullscreen = containerRef.current || videoRef.current
+
+          // Use the video element for fullscreen on mobile (better browser chrome hiding)
+          const elementToFullscreen = videoRef.current || containerRef.current
           if (elementToFullscreen) {
+            // navigationUI: 'hide' tells the browser to hide its navigation UI
             if (elementToFullscreen.requestFullscreen) {
-              await elementToFullscreen.requestFullscreen()
+              await elementToFullscreen.requestFullscreen({ navigationUI: 'hide' } as any)
             } else if ((elementToFullscreen as any).webkitRequestFullscreen) {
               await (elementToFullscreen as any).webkitRequestFullscreen()
             } else if ((elementToFullscreen as any).mozRequestFullScreen) {
@@ -334,31 +408,7 @@ export default function ComputerStreamPlayer({
               await (elementToFullscreen as any).msRequestFullscreen()
             }
           }
-          
-          // Step 3: Force hide browser UI with multiple techniques
-          // Scroll to top to trigger UI hide
-          window.scrollTo(0, 0)
-          
-          // Force viewport to use full screen
-          const viewport = document.querySelector('meta[name="viewport"]')
-          if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
-          }
-          
-          // Additional technique: force body to full height
-          document.body.style.height = '100vh'
-          document.body.style.height = '100dvh'
-          document.documentElement.style.height = '100vh'
-          document.documentElement.style.height = '100dvh'
-          document.body.style.overflow = 'hidden'
-          document.documentElement.style.overflow = 'hidden'
-          
-          // Try to hide address bar by scrolling after a delay
-          setTimeout(() => {
-            window.scrollTo(0, 1)
-            setTimeout(() => window.scrollTo(0, 0), 100)
-          }, 500)
-          
+
           setIsFullscreen(true)
         } catch (err) {
           console.log('Mobile fullscreen failed:', err)
@@ -375,13 +425,7 @@ export default function ComputerStreamPlayer({
           } else if ((document as any).msExitFullscreen) {
             await (document as any).msExitFullscreen()
           }
-          
-          // Restore body styles
-          document.body.style.height = ''
-          document.documentElement.style.height = ''
-          document.body.style.overflow = ''
-          document.documentElement.style.overflow = ''
-          
+
           // Unlock orientation
           if (screen.orientation && screen.orientation.unlock) {
             try {
@@ -390,14 +434,14 @@ export default function ComputerStreamPlayer({
               console.log('Screen orientation unlock failed:', err)
             }
           }
-          
+
           setIsFullscreen(false)
         } catch (err) {
           console.log('Exit fullscreen failed:', err)
         }
       }
     } else {
-      // Desktop fullscreen behavior
+      // === Desktop fullscreen behavior ===
       if (!document.fullscreenElement) {
         try {
           if (containerRef.current?.requestFullscreen) {
@@ -753,8 +797,9 @@ export default function ComputerStreamPlayer({
                 <button
                   onClick={toggleFullscreen}
                   className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+                  title={isFullscreen ? "Quitter le plein écran" : "Plein écran"}
                 >
-                  <Maximize2 className="w-5 h-5" />
+                  {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
                 </button>
               </div>
             </div>

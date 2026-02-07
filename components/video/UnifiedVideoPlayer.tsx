@@ -215,40 +215,63 @@ export default function UnifiedVideoPlayer({
   useEffect(() => {
     if (!isMobile || variant !== 'modal') return
 
-    const handleOrientationChange = async () => {
-      // Detect landscape orientation
-      const isLandscape = window.matchMedia('(orientation: landscape)').matches
-      
-      if (isLandscape && containerRef.current) {
-        try {
-          // Try to enter fullscreen
-          if (containerRef.current.requestFullscreen) {
-            await containerRef.current.requestFullscreen()
-          } else if ((containerRef.current as any).webkitRequestFullscreen) {
-            await (containerRef.current as any).webkitRequestFullscreen()
-          } else if ((containerRef.current as any).mozRequestFullScreen) {
-            await (containerRef.current as any).mozRequestFullScreen()
-          } else if ((containerRef.current as any).msRequestFullscreen) {
-            await (containerRef.current as any).msRequestFullscreen()
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
+    const enterMobileFullscreen = async () => {
+      // iOS: Use native video fullscreen (the only way to truly hide browser UI on iOS)
+      if (isIOS && playerRef.current) {
+        const videoEl = playerRef.current as any
+        if (videoEl.webkitEnterFullscreen) {
+          try {
+            await videoEl.webkitEnterFullscreen()
+            setIsFullscreen(true)
+            return
+          } catch (err) {
+            console.log('iOS webkitEnterFullscreen failed:', err)
           }
-          
-          // Also lock screen orientation if possible
-          if (screen.orientation && screen.orientation.lock) {
-            try {
-              await screen.orientation.lock('landscape')
-            } catch (err) {
-              console.log('Screen orientation lock not supported:', err)
-            }
+        }
+      }
+
+      // Android & other mobile: Use Fullscreen API with navigationUI: 'hide'
+      const elementToFullscreen = playerRef.current || containerRef.current
+      if (elementToFullscreen && !document.fullscreenElement) {
+        try {
+          if (elementToFullscreen.requestFullscreen) {
+            await elementToFullscreen.requestFullscreen({ navigationUI: 'hide' } as any)
+          } else if ((elementToFullscreen as any).webkitRequestFullscreen) {
+            await (elementToFullscreen as any).webkitRequestFullscreen()
+          } else if ((elementToFullscreen as any).mozRequestFullScreen) {
+            await (elementToFullscreen as any).mozRequestFullScreen()
+          } else if ((elementToFullscreen as any).msRequestFullscreen) {
+            await (elementToFullscreen as any).msRequestFullscreen()
           }
         } catch (err) {
           console.log('Fullscreen request failed:', err)
         }
       }
+
+      // Also lock screen orientation if possible
+      if (screen.orientation && screen.orientation.lock) {
+        try {
+          await screen.orientation.lock('landscape')
+        } catch (err) {
+          console.log('Screen orientation lock not supported:', err)
+        }
+      }
+    }
+
+    const handleOrientationChange = async () => {
+      // Detect landscape orientation
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches
+      if (isLandscape) {
+        await enterMobileFullscreen()
+      }
     }
 
     // Listen for orientation changes
     window.addEventListener('orientationchange', handleOrientationChange)
-    window.matchMedia('(orientation: landscape)').addEventListener('change', handleOrientationChange)
+    const mediaQuery = window.matchMedia('(orientation: landscape)')
+    mediaQuery.addEventListener('change', handleOrientationChange)
     
     // Check initial orientation
     handleOrientationChange()
@@ -269,13 +292,24 @@ export default function UnifiedVideoPlayer({
     document.addEventListener('mozfullscreenchange', handleFullscreenChange)
     document.addEventListener('MSFullscreenChange', handleFullscreenChange)
 
+    // iOS native video fullscreen events
+    const videoEl = playerRef.current
+    if (videoEl) {
+      videoEl.addEventListener('webkitbeginfullscreen', () => setIsFullscreen(true))
+      videoEl.addEventListener('webkitendfullscreen', () => setIsFullscreen(false))
+    }
+
     return () => {
       window.removeEventListener('orientationchange', handleOrientationChange)
-      window.matchMedia('(orientation: landscape)').removeEventListener('change', handleOrientationChange)
+      mediaQuery.removeEventListener('change', handleOrientationChange)
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
+      if (videoEl) {
+        videoEl.removeEventListener('webkitbeginfullscreen', () => setIsFullscreen(true))
+        videoEl.removeEventListener('webkitendfullscreen', () => setIsFullscreen(false))
+      }
     }
   }, [isMobile, variant])
 

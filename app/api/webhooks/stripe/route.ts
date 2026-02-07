@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
-
-
-
+import {
+  sendAdminNewSubscriberEmail,
+  sendAdminPaymentReceivedEmail,
+  sendAdminPaymentFailedEmail,
+  sendAdminSubscriptionCanceledEmail,
+  sendClientSubscriptionConfirmationEmail,
+} from '@/lib/emails'
 
 // Use service role key for admin operations
 
-
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
+// Initialise stripe au niveau du module pour le réutiliser
+let stripe: Stripe
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -18,7 +24,7 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event
 
   try {
-    const stripe = getStripe()
+    stripe = getStripe()
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err: any) {
     console.error(`⚠️ Webhook signature verification failed.`, err.message)
@@ -97,6 +103,7 @@ export async function POST(req: NextRequest) {
         // Déterminer le planId depuis les métadonnées ou le priceId
         const planIdFromMetadata = session.metadata?.planId || subscription.metadata?.planId
         const priceId = subscription.items.data[0]?.price?.id
+        const planId = planIdFromMetadata || getPlanIdFromPriceId(priceId || '')
         
         // Créer l'enregistrement d'abonnement dans notre base de données
         const { error: createError } = await db
@@ -108,7 +115,7 @@ export async function POST(req: NextRequest) {
             stripePriceId: priceId || '',
             status: 'active',
             plan: getPlanFromMetadata(planIdFromMetadata),
-            planId: planIdFromMetadata || getPlanIdFromPriceId(priceId || ''),
+            planId: planId,
             stripeCurrentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString(),
             commitmentEndDate: commitmentEndDate?.toISOString() || null,
             willCancelAfterCommitment: cancelAtTimestamp ? true : false,
@@ -120,6 +127,43 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(`✅ Subscription created for user ${userId}`)
+
+        // ====================================================================
+        // 📧 ENVOI DES EMAILS — Nouveau adhérent
+        // ====================================================================
+        const subscriptionStartDate = new Date((subscription as any).current_period_start * 1000)
+        const subscriptionEndDate = commitmentEndDate || new Date((subscription as any).current_period_end * 1000)
+        const nextPaymentDate = new Date((subscription as any).current_period_end * 1000)
+        const amountPaid = session.amount_total || (subscription.items.data[0]?.price?.unit_amount || 0)
+        const currency = session.currency || 'chf'
+
+        // Email 1: Notification admin
+        await sendAdminNewSubscriberEmail({
+          customerEmail: customer.email || '',
+          customerName: customer.name || '',
+          planId: planId,
+          amountPaid: amountPaid,
+          currency: currency,
+          subscriptionId: subscription.id,
+          startDate: subscriptionStartDate,
+          endDate: subscriptionEndDate,
+          renewalDate: commitmentEndDate,
+        })
+
+        // Email 2: Confirmation client
+        await sendClientSubscriptionConfirmationEmail({
+          customerEmail: customer.email || '',
+          customerName: customer.name || '',
+          planId: planId,
+          amountPaid: amountPaid,
+          currency: currency,
+          startDate: subscriptionStartDate,
+          endDate: subscriptionEndDate,
+          renewalDate: commitmentEndDate,
+          nextPaymentDate: nextPaymentDate,
+          willAutoRenew: cancelAtTimestamp ? true : false,
+        })
+
         break
       }
 
@@ -157,9 +201,7 @@ export async function POST(req: NextRequest) {
             }
           } else {
             // Engagement terminé - si l'abonnement est toujours actif, il sera annulé automatiquement par Stripe
-            // Le statut sera mis à jour lors du webhook customer.subscription.deleted
             if (subscription.status === 'active' && subscription.cancel_at) {
-              // L'abonnement devrait être annulé bientôt
               status = 'active'
             }
           }
@@ -197,6 +239,66 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(`✅ Subscription canceled: ${subscription.id}`)
+
+        // ====================================================================
+        // 📧 EMAIL — Notification admin résiliation
+        // ====================================================================
+        try {
+          const customer = await stripe.customers.retrieve(subscription.customer as string) as Stripe.Customer
+          const planId = subscription.metadata?.planId || getPlanIdFromPriceId(subscription.items.data[0]?.price?.id || '')
+          
+          await sendAdminSubscriptionCanceledEmail({
+            customerEmail: customer.email || '',
+            customerName: customer.name || '',
+            planId: planId,
+            subscriptionId: subscription.id,
+            cancelDate: new Date(),
+          })
+        } catch (emailError) {
+          console.error('📧 Error sending cancellation email:', emailError)
+        }
+
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice
+        
+        // Ignorer la première facture (déjà gérée par checkout.session.completed)
+        if (invoice.billing_reason === 'subscription_create') {
+          console.log(`ℹ️ Skipping initial invoice email (handled by checkout.session.completed)`)
+          break
+        }
+
+        // ====================================================================
+        // 📧 EMAIL — Paiement récurrent réussi (notification admin)
+        // ====================================================================
+        try {
+          const customer = await stripe.customers.retrieve(invoice.customer as string) as Stripe.Customer
+          const invoiceSubscription = (invoice as any).subscription
+          const subscriptionId = typeof invoiceSubscription === 'string' ? invoiceSubscription : invoiceSubscription?.id
+          let planId = ''
+
+          if (subscriptionId) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            planId = sub.metadata?.planId || getPlanIdFromPriceId(sub.items.data[0]?.price?.id || '')
+          }
+
+          await sendAdminPaymentReceivedEmail({
+            customerEmail: customer.email || '',
+            customerName: customer.name || '',
+            planId: planId,
+            amountPaid: invoice.amount_paid || 0,
+            currency: invoice.currency || 'chf',
+            invoiceUrl: invoice.hosted_invoice_url || null,
+            periodStart: new Date((invoice.period_start || 0) * 1000),
+            periodEnd: new Date((invoice.period_end || 0) * 1000),
+          })
+        } catch (emailError) {
+          console.error('📧 Error sending payment received email:', emailError)
+        }
+
+        console.log(`✅ Invoice paid: ${invoice.id}`)
         break
       }
 
@@ -210,6 +312,23 @@ export async function POST(req: NextRequest) {
 
         if (error) {
           console.error('Error updating subscription status:', error)
+        }
+
+        // ====================================================================
+        // 📧 EMAIL — Échec de paiement (notification admin)
+        // ====================================================================
+        try {
+          const customer = await stripe.customers.retrieve(invoice.customer as string) as Stripe.Customer
+
+          await sendAdminPaymentFailedEmail({
+            customerEmail: customer.email || '',
+            customerName: customer.name || '',
+            amountDue: invoice.amount_due || 0,
+            currency: invoice.currency || 'chf',
+            invoiceUrl: invoice.hosted_invoice_url || null,
+          })
+        } catch (emailError) {
+          console.error('📧 Error sending payment failed email:', emailError)
         }
 
         console.log(`⚠️ Payment failed for customer: ${invoice.customer}`)
@@ -242,14 +361,38 @@ function getPlanFromMetadata(planId: string | undefined): 'MONTHLY' | 'YEARLY' |
 }
 
 function getPlanIdFromPriceId(priceId: string): string {
-  const priceIdLower = priceId.toLowerCase()
-  
-  // Mapping spécifique pour les price IDs connus
-  if (priceIdLower === 'price_1sftnzrnelgarkti51jscso') {
-    return 'essentiel' // Plan 69 CHF
+  // Mapping direct des Price IDs → planId
+  const PRICE_ID_MAP: Record<string, string> = {
+    // Nouveau compte acct_1Sy9bDK6CCSakHFa — LIVE
+    'price_1SyAVUK6CCSakHFaPSBeq5T7': 'essentiel',
+    'price_1SyAVVK6CCSakHFaiPrTWkhA': 'avance',
+    'price_1SyAVWK6CCSakHFarpCXujFF': 'premium',
+    'price_1SyAVXK6CCSakHFa615XIYgo': 'starter',
+    'price_1SyAVYK6CCSakHFaMiK5Srcb': 'pro',
+    'price_1SyAVZK6CCSakHFaleAJWFsz': 'expert',
+    // Nouveau compte acct_1Sy9bDK6CCSakHFa — TEST
+    'price_1SyAPFK6CCSakHFaHtnEiwid': 'essentiel',
+    'price_1SyAPGK6CCSakHFae0ovoYJ1': 'avance',
+    'price_1SyAPIK6CCSakHFaWXcjB89n': 'premium',
+    'price_1SyAPVK6CCSakHFasJ7rIdbE': 'starter',
+    'price_1SyAPXK6CCSakHFa1QzoZYIM': 'pro',
+    'price_1SyAPYK6CCSakHFaJE5clUyo': 'expert',
+    // Ancien compte acct_1S9oMQRnELGaRIkT (rétrocompatibilité)
+    'price_1SFtNZRnELGaRIkTI51JSCso': 'essentiel',
+    'price_1SFtNhRnELGaRIkTKBuUGkiY': 'avance',
+    'price_1SFtNrRnELGaRIkTA4QzRecL': 'premium',
+    'price_1SNC3tRnELGaRIkTOumvumpn': 'starter',
+    'price_1SNC3wRnELGaRIkT5ZJUbSOR': 'pro',
+    'price_1SNC3zRnELGaRIkTYvg8yx3B': 'expert',
   }
-  
-  // Check if price ID contains plan identifiers
+
+  // 1. Lookup direct par Price ID
+  if (PRICE_ID_MAP[priceId]) {
+    return PRICE_ID_MAP[priceId]
+  }
+
+  // 2. Fallback : chercher dans le nom du price ID
+  const priceIdLower = priceId.toLowerCase()
   if (priceIdLower.includes('essentiel')) return 'essentiel'
   if (priceIdLower.includes('avance')) return 'avance'
   if (priceIdLower.includes('premium')) return 'premium'
@@ -258,5 +401,6 @@ function getPlanIdFromPriceId(priceId: string): string {
   if (priceIdLower.includes('expert')) return 'expert'
   
   // Default to starter
+  console.warn(`⚠️ Unknown priceId: ${priceId}, defaulting to starter`)
   return 'starter'
 }

@@ -22,7 +22,7 @@ export default function ConstructionLayout({
 }>) {
   return (
     <html lang="fr" className={inter.variable} suppressHydrationWarning>
-      <body className="min-h-screen bg-gray-900 transition-colors">
+      <body className="min-h-screen bg-white transition-colors">
         <ErrorBoundary>
           <Providers>
             {/* Pas de Header ni Footer pour les pages de construction */}
