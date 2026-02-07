@@ -260,6 +260,11 @@ function CheckoutContent() {
               planFeatures={selectedPlan.features}
               userId={user.id}
               promoCode={appliedPromo?.stripeCouponId || null}
+              promoDetails={appliedPromo ? {
+                code: appliedPromo.code,
+                discountAmount: appliedPromo.discountAmount,
+                finalAmount: appliedPromo.finalAmount,
+              } : null}
               onSuccess={handlePaymentSuccess}
               onError={handlePaymentError}
             />

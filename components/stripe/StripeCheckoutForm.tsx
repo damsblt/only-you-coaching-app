@@ -14,6 +14,12 @@ import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder')
 
+interface PromoDetails {
+  code: string
+  discountAmount: number
+  finalAmount: number
+}
+
 interface StripeCheckoutFormProps {
   planId: string
   planName: string
@@ -23,6 +29,7 @@ interface StripeCheckoutFormProps {
   planFeatures: string[]
   userId: string
   promoCode?: string | null
+  promoDetails?: PromoDetails | null
   onSuccess: (subscriptionId: string) => void
   onError: (error: string) => void
 }
@@ -36,6 +43,7 @@ interface PaymentFormProps {
   planFeatures: string[]
   userId: string
   promoCode?: string | null
+  promoDetails?: PromoDetails | null
   onSuccess: (subscriptionId: string) => void
   onError: (error: string) => void
 }
@@ -49,6 +57,7 @@ function PaymentForm({
   planFeatures,
   userId,
   promoCode,
+  promoDetails,
   onSuccess,
   onError
 }: PaymentFormProps) {
@@ -119,7 +128,8 @@ function PaymentForm({
           planId, 
           userId, 
           paymentMethodId,
-          promoCode: promoCode || null
+          promoCode: promoCode || null,
+          promoDetails: promoDetails || null,
         }),
       })
 
@@ -223,6 +233,7 @@ export default function StripeCheckoutForm({
   planFeatures,
   userId,
   promoCode,
+  promoDetails,
   onSuccess,
   onError
 }: StripeCheckoutFormProps) {
@@ -254,6 +265,7 @@ export default function StripeCheckoutForm({
         planFeatures={planFeatures}
         userId={userId}
         promoCode={promoCode}
+        promoDetails={promoDetails}
         onSuccess={onSuccess}
         onError={onError}
       />

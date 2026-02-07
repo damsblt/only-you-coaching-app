@@ -17,8 +17,6 @@ const nextConfig: NextConfig = {
     // Tailles d'appareils pour le responsive
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // Qualités d'image disponibles (requis pour Next.js 16)
-    qualities: [75, 85, 100],
     // Cache long pour les images optimisées
     minimumCacheTTL: 31536000, // 1 an
     remotePatterns: [

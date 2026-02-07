@@ -23,64 +23,25 @@ const heightClasses = {
   fullScreen: 'h-screen'
 }
 
-// Cache global pour les URLs vidéo S3 (valide 1 heure)
-// Utiliser le cache global partagé avec le préchargeur
-declare global {
-  var s3VideoCache: Map<string, { url: string; timestamp: number }> | undefined
-}
+// Configuration S3
+const S3_BUCKET = 'only-you-coaching'
+const S3_REGION = 'eu-north-1'
 
-// Initialiser le cache global s'il n'existe pas
-if (typeof window !== 'undefined' && !globalThis.s3VideoCache) {
-  globalThis.s3VideoCache = new Map()
-}
-
-const s3VideoCache = typeof window !== 'undefined' && globalThis.s3VideoCache 
-  ? globalThis.s3VideoCache 
-  : new Map<string, { url: string; timestamp: number }>()
-
-const VIDEO_CACHE_DURATION = 60 * 60 * 1000 // 1 heure
-
-async function fetchS3VideoUrl(videoS3Key: string): Promise<string | null> {
-  // Utiliser le cache global partagé
-  const cache = typeof window !== 'undefined' && globalThis.s3VideoCache 
-    ? globalThis.s3VideoCache 
-    : s3VideoCache
-  
-  // Vérifier le cache
-  const cached = cache.get(videoS3Key)
-  if (cached && Date.now() - cached.timestamp < VIDEO_CACHE_DURATION) {
-    return cached.url
-  }
-
-  try {
-    const baseUrl = typeof window !== 'undefined' 
-      ? (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin)
-      : (process.env.NEXT_PUBLIC_SITE_URL || '')
-    
-    const apiUrl = `${baseUrl}/api/videos/s3-video?key=${encodeURIComponent(videoS3Key)}`
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // Utiliser le cache HTTP pour accélérer
-      cache: 'default' // Utilise le cache du navigateur
-    })
-    
-    if (response.ok) {
-      const data = await response.json()
-      if (data.url) {
-        // Mettre en cache global
-        cache.set(videoS3Key, { url: data.url, timestamp: Date.now() })
-        return data.url
-      }
+/**
+ * Génère directement l'URL publique S3 côté client
+ * Évite un aller-retour API inutile puisque les URLs sont publiques
+ */
+function getDirectS3Url(s3Key: string): string {
+  const segments = s3Key.split('/')
+  const encodedSegments = segments.map(segment => {
+    try {
+      const decoded = decodeURIComponent(segment)
+      return encodeURIComponent(decoded)
+    } catch {
+      return encodeURIComponent(segment)
     }
-    return null
-  } catch (error) {
-    console.error('Error fetching video URL:', error)
-    return null
-  }
+  })
+  return `https://${S3_BUCKET}.s3.${S3_REGION}.amazonaws.com/${encodedSegments.join('/')}`
 }
 
 export default function PageHeader({ 
@@ -93,8 +54,9 @@ export default function PageHeader({
   imagePosition,
   imageScale = 1
 }: PageHeaderProps) {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
-  const [videoLoading, setVideoLoading] = useState(true)
+  // Générer l'URL vidéo directement (pas besoin d'API pour les URLs publiques)
+  const videoUrl = videoS3Key ? getDirectS3Url(videoS3Key) : null
+  const [videoError, setVideoError] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
 
@@ -111,45 +73,6 @@ export default function PageHeader({
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // Fetch video URL if videoS3Key is provided
-  useEffect(() => {
-    if (videoS3Key) {
-      let cancelled = false
-
-      const loadVideo = async () => {
-        // Utiliser le cache global partagé
-        const cache = typeof window !== 'undefined' && globalThis.s3VideoCache 
-          ? globalThis.s3VideoCache 
-          : s3VideoCache
-        
-        // Vérifier le cache immédiatement
-        const cached = cache.get(videoS3Key)
-        if (cached && Date.now() - cached.timestamp < VIDEO_CACHE_DURATION) {
-          if (!cancelled) {
-            setVideoUrl(cached.url)
-            setVideoLoading(false)
-            return
-          }
-        }
-
-        // Sinon, fetch avec cache HTTP
-        const url = await fetchS3VideoUrl(videoS3Key)
-        if (!cancelled) {
-          setVideoUrl(url)
-          setVideoLoading(false)
-        }
-      }
-
-      loadVideo()
-
-      return () => {
-        cancelled = true
-      }
-    } else {
-      setVideoLoading(false)
-    }
-  }, [videoS3Key])
-
   return (
     <div className={`relative w-full ${className}`}>
       {/* Header area with clipped background */}
@@ -161,7 +84,7 @@ export default function PageHeader({
             inset: imageScale !== 1 ? `${-((1 - imageScale) * 50)}%` : '0'
           }}
         >
-          {videoS3Key && videoUrl ? (
+          {videoS3Key && videoUrl && !videoError ? (
             <video
               src={videoUrl}
               autoPlay
@@ -174,12 +97,10 @@ export default function PageHeader({
                 objectPosition: imagePosition || (isMobile ? '35% center' : 'center')
               }}
               onError={(e) => {
-                console.error('Video error:', e)
-                setVideoUrl(null)
+                console.error('Video load error for key:', videoS3Key, e)
+                setVideoError(true)
               }}
             />
-          ) : videoS3Key && videoLoading ? (
-            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
           ) : imageS3Key ? (
             <S3Image
               s3Key={imageS3Key}
