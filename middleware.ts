@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { jwtVerify } from 'jose'
 
 /**
  * Middleware pour rediriger toutes les pages vers la page en construction
@@ -10,95 +9,66 @@ import { jwtVerify } from 'jose'
  * 
  * Pour désactiver (mise en ligne) :
  * - Définir CONSTRUCTION_MODE=false ou supprimer la variable
+ * 
+ * Les routes /admin/* permettent de contourner le middleware pour le développeur
  */
-
-// Emails autorisés pour accéder à la page en construction
-const AUTHORIZED_EMAILS = [
-  'blmarieline@gmail.com',
-  'damien.balet@me.com'
-]
-
-const JWT_SECRET = process.env.CONSTRUCTION_JWT_SECRET || 'construction-secret-key-change-in-production'
-const COOKIE_NAME = 'construction-auth-token'
-
-async function verifyAuth(request: NextRequest): Promise<boolean> {
-  try {
-    const token = request.cookies.get(COOKIE_NAME)?.value
-
-    if (!token) {
-      return false
-    }
-
-    // Vérifier le token
-    const secret = new TextEncoder().encode(JWT_SECRET)
-    const { payload } = await jwtVerify(token, secret)
-
-    // Vérifier que l'email est autorisé
-    const email = payload.email as string
-    if (!email || !AUTHORIZED_EMAILS.includes(email.toLowerCase())) {
-      return false
-    }
-
-    // Vérifier que le token indique l'autorisation
-    if (!payload.authorized) {
-      return false
-    }
-
-    return true
-  } catch (error) {
-    return false
-  }
-}
 
 export async function middleware(request: NextRequest) {
   // Vérifier si le mode construction est activé
-  const constructionMode = process.env.CONSTRUCTION_MODE === 'true'
+  const constructionModeEnv = process.env.CONSTRUCTION_MODE
+  // Vérifier de manière plus robuste (gère "true", "True", "TRUE", etc.)
+  const constructionMode = String(constructionModeEnv || '').toLowerCase().trim() === 'true'
   
   // Si le mode construction n'est pas activé, laisser passer toutes les requêtes
   if (!constructionMode) {
     return NextResponse.next()
   }
 
+  // Domaines pour lesquels le mode construction s'applique
+  const constructionDomains = [
+    'only-you-coaching.com',
+    'www.only-you-coaching.com',
+  ]
+
+  // Récupérer le hostname de la requête
+  const hostname = request.headers.get('host') || ''
+  const domain = hostname.split(':')[0] // Enlever le port si présent
+
+  // Si le domaine n'est pas dans la liste des domaines de construction, laisser passer
+  if (!constructionDomains.includes(domain)) {
+    return NextResponse.next()
+  }
+
   const { pathname } = request.nextUrl
 
-  // Routes autorisées sans authentification (ne pas rediriger)
-  const publicPaths = [
-    '/construction/login',        // Page de connexion
-    '/api/construction-auth',      // API d'authentification
-    '/api/construction-verify',    // API de vérification
-    '/api/construction-logout',    // API de déconnexion
+  // Routes autorisées (ne pas rediriger vers /construction)
+  const allowedPaths = [
+    '/construction',              // Page de construction elle-même
+    '/admin',                     // Route admin (contourne le middleware)
     '/_next',                     // Assets Next.js
     '/favicon.ico',               // Favicon
     '/robots.txt',                // Robots.txt
     '/sitemap.xml',               // Sitemap
   ]
 
-  // Vérifier si la route est publique
-  const isPublicPath = publicPaths.some(path => 
+  // Vérifier si la route commence par /admin (contourne le middleware)
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.next()
+  }
+
+  // Vérifier si la route est autorisée
+  const isAllowed = allowedPaths.some(path => 
     pathname === path || pathname.startsWith(path + '/')
   )
 
-  // Si la route est publique, laisser passer
-  if (isPublicPath) {
+  // Si la route est autorisée, laisser passer
+  if (isAllowed) {
     return NextResponse.next()
   }
 
-  // Vérifier l'authentification pour toutes les autres routes
-  const isAuthenticated = await verifyAuth(request)
-
-  // Si l'utilisateur est authentifié, laisser passer
-  if (isAuthenticated) {
-    return NextResponse.next()
-  }
-
-  // Rediriger vers la page de connexion pour toutes les autres routes
+  // Rediriger vers la page de construction pour toutes les autres routes
   const url = request.nextUrl.clone()
-  url.pathname = '/construction/login'
-  
-  // Ajouter l'URL d'origine comme paramètre pour rediriger après connexion
-  if (pathname !== '/') {
-    url.searchParams.set('redirect', pathname)
-  }
+  url.pathname = '/construction'
 
   return NextResponse.redirect(url)
 }
@@ -108,7 +78,6 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)

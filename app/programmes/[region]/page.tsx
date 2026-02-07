@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, use } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight, ArrowUpLeft, Filter, Lock, CheckCircle2 } from "lucide-react"
-import SimpleVideoPlayer from "@/components/video/SimpleVideoPlayer"
 import ComputerStreamPlayer from "@/components/video/ComputerStreamPlayer"
 import MobileStreamPlayer from "@/components/video/MobileStreamPlayer"
+import EnhancedVideoCard from "@/components/video/EnhancedVideoCard"
 import { Section } from "@/components/ui/Section"
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
@@ -50,7 +50,6 @@ export default function RegionPage() {
   // But we need to ensure we're not accessing it in a way that triggers warnings
   const regionName = (routeParams?.region || '') as string
   
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'feed' | 'mobile'>('grid')
@@ -72,6 +71,7 @@ export default function RegionPage() {
   const [completedVideos, setCompletedVideos] = useState<string[]>([])
   const [nextAvailableVideoIndex, setNextAvailableVideoIndex] = useState(0)
   const [expandedMetadata, setExpandedMetadata] = useState<Record<string, boolean>>({})
+  const [shouldScrollToVideo, setShouldScrollToVideo] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   
   // Use the auth context instead of direct auth calls
@@ -491,54 +491,38 @@ export default function RegionPage() {
     }
   }
 
+  // Handle video play from grid - opens in feed view (like bibliotheque-videos)
   const handleVideoClick = (videoId: string) => {
-    const video = videos.find(v => v.id === videoId)
-    if (!video) return
-
-    // Check if video is accessible
     const videoIndex = filteredVideos.findIndex(v => v.id === videoId)
-    if (videoIndex === -1 || !isVideoAccessible(videoIndex)) {
-      // Show message that video is locked
-      alert(`Cette vidéo est verrouillée. Veuillez compléter les vidéos précédentes pour y accéder.`)
-      return
+    if (videoIndex !== -1) {
+      setCurrentVideoIndex(videoIndex)
+      setViewMode('feed')
+    } else {
+      console.warn('Video not found in filtered list, opening feed anyway')
+      setViewMode('feed')
     }
-
-    setLoadingVideoId(videoId)
-    setSelectedVideo(video)
-    setPlayingVideoId(videoId)
   }
 
-  const handleClosePlayer = async () => {
-    console.log('🚪 Closing video player')
-    setSelectedVideo(null)
-    setPlayingVideoId(null)
-    setLoadingVideoId(null)
+  // Handle closing feed view - return to grid, scroll to current video, and refresh progress
+  const handleCloseFeed = () => {
+    setViewMode('grid')
+    setShouldScrollToVideo(true)
     
-    // Refresh progress when player closes (in case video was completed)
+    // Refresh progress when feed closes (async, fire and forget)
     if (user && regionName) {
-      try {
-        // Wait a bit to ensure any pending saves are completed
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          console.log('✅ Progress refreshed after closing player:', JSON.stringify({
-            completedCount: data.completedCount,
-            nextAvailableIndex: data.nextAvailableVideoIndex,
-            progress: data.progress,
-            completedVideos: data.completedVideos,
-            progressKeys: Object.keys(data.progress || {}),
-            firstVideoId: filteredVideos[0]?.id,
-            progressForFirstVideo: data.progress?.[filteredVideos[0]?.id]
-          }, null, 2))
-          setVideoProgress(data.progress || {})
-          setCompletedVideos(data.completedVideos || [])
-          setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
+      setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`)
+          if (response.ok) {
+            const data = await response.json()
+            setVideoProgress(data.progress || {})
+            setCompletedVideos(data.completedVideos || [])
+            setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
+          }
+        } catch (err) {
+          console.error('Error refreshing progress:', err)
         }
-      } catch (err) {
-        console.error('Error refreshing progress:', err)
-      }
+      }, 500)
     }
   }
 
@@ -650,6 +634,60 @@ export default function RegionPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [currentVideoIndex, filteredVideos.length, viewMode])
 
+  // Scroll to video when returning from feed view
+  useEffect(() => {
+    if (shouldScrollToVideo && viewMode === 'grid' && filteredVideos.length > 0) {
+      const currentVideo = filteredVideos[currentVideoIndex]
+      if (!currentVideo) {
+        setShouldScrollToVideo(false)
+        return
+      }
+
+      const scrollToVideo = () => {
+        const videoCard = document.querySelector(`[data-video-id="${currentVideo.id}"]`) as HTMLElement
+        if (videoCard) {
+          const rect = videoCard.getBoundingClientRect()
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+          const targetPosition = rect.top + scrollTop - (window.innerHeight / 2) + (rect.height / 2)
+          window.scrollTo(0, targetPosition)
+
+          videoCard.style.transition = 'all 0.5s ease-in-out'
+          videoCard.style.boxShadow = '0 0 0 4px rgba(168, 85, 247, 0.5)'
+          setTimeout(() => {
+            videoCard.style.boxShadow = ''
+            setTimeout(() => {
+              videoCard.style.transition = ''
+            }, 500)
+          }, 2000)
+
+          setShouldScrollToVideo(false)
+          return true
+        }
+        return false
+      }
+
+      const tryScroll = () => {
+        if (scrollToVideo()) return
+        setTimeout(() => {
+          if (!scrollToVideo()) {
+            setTimeout(() => {
+              scrollToVideo()
+              setShouldScrollToVideo(false)
+            }, 150)
+          }
+        }, 200)
+      }
+
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            tryScroll()
+          })
+        })
+      }, 150)
+    }
+  }, [shouldScrollToVideo, viewMode, currentVideoIndex, filteredVideos])
+
   // Hide global header/footer while in feed view
   useEffect(() => {
     if (viewMode === 'feed') {
@@ -681,7 +719,7 @@ export default function RegionPage() {
         <div className="h-screen w-screen bg-black relative overflow-hidden">
           <MobileStreamPlayer
             video={filteredVideos[currentVideoIndex]}
-            onClose={() => setViewMode('grid')}
+            onClose={handleCloseFeed}
             onNext={currentVideoIndex < filteredVideos.length - 1 ? goToNext : undefined}
             onPrevious={currentVideoIndex > 0 ? goToPrevious : undefined}
             currentIndex={currentVideoIndex}
@@ -701,7 +739,7 @@ export default function RegionPage() {
         <div className="h-screen w-screen bg-black relative overflow-hidden hide-app-chrome" style={{ position: 'fixed', top: 0, left: 0 }}>
           <ComputerStreamPlayer
             video={filteredVideos[currentVideoIndex]}
-            onClose={() => setViewMode('grid')}
+            onClose={handleCloseFeed}
             onNext={currentVideoIndex < filteredVideos.length - 1 ? goToNext : undefined}
             onPrevious={currentVideoIndex > 0 ? goToPrevious : undefined}
             currentIndex={currentVideoIndex}
@@ -711,86 +749,6 @@ export default function RegionPage() {
           />
         </div>
       </ProtectedContent>
-    )
-  }
-
-  if (selectedVideo) {
-    console.log('🎬 Opening video player for:', {
-      videoId: selectedVideo.id,
-      title: selectedVideo.title,
-      userId: user?.id
-    })
-    return (
-        <SimpleVideoPlayer
-          video={selectedVideo}
-          onClose={handleClosePlayer}
-          onVideoCompleted={async () => {
-            // Refresh progress when video is completed
-            console.log('🔄 Refreshing progress after video completion for video:', selectedVideo.id)
-            if (user && regionName) {
-              try {
-                // Wait a bit longer in production to ensure the database has been updated
-                // Use a longer delay and retry mechanism for production
-                const maxRetries = 3
-                let retryCount = 0
-                let success = false
-                
-                while (retryCount < maxRetries && !success) {
-                  // Wait progressively longer: 500ms, 1000ms, 1500ms
-                  await new Promise(resolve => setTimeout(resolve, 500 + (retryCount * 500)))
-                  
-                  console.log(`🔄 Attempting to refresh progress (attempt ${retryCount + 1}/${maxRetries})...`)
-                  
-                  const response = await fetch(`/api/programmes/${regionName}/progress?userId=${user.id}`, {
-                    cache: 'no-store', // Ensure we don't get cached data
-                    headers: {
-                      'Cache-Control': 'no-cache'
-                    }
-                  })
-                  
-                  if (response.ok) {
-                    const data = await response.json()
-                    const isVideoCompleted = data.completedVideos?.includes(selectedVideo.id) || data.progress?.[selectedVideo.id]?.completed
-                    
-                    console.log('✅ Progress refreshed after completion:', JSON.stringify({
-                      completedCount: data.completedCount,
-                      nextAvailableIndex: data.nextAvailableVideoIndex,
-                      progress: data.progress,
-                      completedVideos: data.completedVideos,
-                      videoId: selectedVideo.id,
-                      isVideoCompleted,
-                      progressForThisVideo: data.progress?.[selectedVideo.id],
-                      attempt: retryCount + 1
-                    }, null, 2))
-                    
-                    // Only update state if video is actually marked as completed
-                    if (isVideoCompleted) {
-                      setVideoProgress(data.progress || {})
-                      setCompletedVideos(data.completedVideos || [])
-                      setNextAvailableVideoIndex(data.nextAvailableVideoIndex || 0)
-                      success = true
-                      console.log('✅ State updated successfully with completed video')
-                    } else {
-                      console.warn(`⚠️ Video not yet marked as completed in database (attempt ${retryCount + 1}), retrying...`)
-                      retryCount++
-                    }
-                  } else {
-                    console.error(`❌ Failed to refresh progress (attempt ${retryCount + 1}):`, response.status, response.statusText)
-                    retryCount++
-                  }
-                }
-                
-                if (!success) {
-                  console.error('❌ Failed to refresh progress after all retries')
-                }
-              } catch (err) {
-                console.error('❌ Error refreshing progress:', err)
-              }
-            } else {
-              console.warn('⚠️ Cannot refresh progress: missing user or regionName', { hasUser: !!user, hasRegion: !!regionName })
-            }
-          }}
-        />
     )
   }
 
@@ -893,169 +851,18 @@ export default function RegionPage() {
                 <p className="text-gray-500">Essayez de modifier vos filtres de recherche</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch">
                 {filteredVideos.map((video, index) => {
-                  const isAccessible = isVideoAccessible(index)
-                  const isCompleted = isVideoCompleted(video.id)
+                  const completed = isVideoCompleted(video.id)
                   
                   return (
-                    <div key={video.id} className="relative">
-                      <div
-                        className="curved-card bg-white dark:bg-gray-800 shadow-organic hover:shadow-floating transition-all cursor-pointer group overflow-hidden border border-gray-100 dark:border-gray-700"
-                      >
-                        {/* Thumbnail with Play Button */}
-                        <div className="relative aspect-video bg-neutral-200 dark:bg-gray-700 overflow-hidden leading-none text-[0]">
-                          <img
-                            src={video.thumbnail || "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"}
-                            alt={video.title}
-                            className="block w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement
-                              target.src = "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop"
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-accent-500/0 group-hover:bg-accent-500/20 transition-all duration-300 flex items-center justify-center">
-                            <button 
-                              onClick={() => handleVideoClick(video.id)} 
-                              className="w-14 h-14 bg-white/95 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-floating"
-                            >
-                              <Play className="w-6 h-6 text-secondary-500 ml-1" />
-                            </button>
-                          </div>
-                          
-                          {/* Difficulty Badge */}
-                          <div className={`absolute top-3 left-3 px-3 py-1.5 curved-button text-xs font-medium bg-white/90 backdrop-blur-sm ${
-                            video.difficulty === 'debutant' ? 'text-green-700' :
-                            video.difficulty === 'intermediaire' ? 'text-yellow-700' :
-                            'text-red-700'
-                          }`}>
-                            {video.difficulty === 'debutant' ? 'Débutant' :
-                             video.difficulty === 'intermediaire' ? 'Intermédiaire' :
-                             'Avancé'}
-                          </div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-6">
-                          {/* Title */}
-                          <h3 className="font-semibold text-accent-500 dark:text-accent-400 mb-3 line-clamp-2 group-hover:text-secondary-500 dark:group-hover:text-secondary-400 transition-colors">
-                            {video.title}
-                          </h3>
-
-                          {/* Metadata Section */}
-                          <div className="space-y-3 mb-4 text-sm">
-                            {/* Muscle cible */}
-                            {((video.targeted_muscles && video.targeted_muscles.length > 0) || (video.muscleGroups && video.muscleGroups.length > 0)) && (
-                              <div>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Muscle cible: </span>
-                                <span className="text-gray-600 dark:text-gray-400">
-                                  {video.targeted_muscles && video.targeted_muscles.length > 0
-                                    ? (Array.isArray(video.targeted_muscles) ? video.targeted_muscles.join(', ') : video.targeted_muscles)
-                                    : (Array.isArray(video.muscleGroups) ? video.muscleGroups.join(', ') : video.muscleGroups)}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Position départ */}
-                            {video.startingPosition && (
-                              <div>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Position départ: </span>
-                                <span className="text-gray-600 dark:text-gray-400">{video.startingPosition}</span>
-                              </div>
-                            )}
-
-                            {/* Mouvement */}
-                            {video.movement && (
-                              <div>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Mouvement: </span>
-                                <span className="text-gray-600 dark:text-gray-400">{video.movement}</span>
-                              </div>
-                            )}
-
-                            {/* Intensité et Série */}
-                            <div className="flex flex-wrap gap-4">
-                              {video.intensity && (
-                                <div>
-                                  <span className="font-semibold text-gray-700 dark:text-gray-300">Intensité: </span>
-                                  <span className="text-gray-600 dark:text-gray-400">{formatIntensity(video.intensity)}</span>
-                                </div>
-                              )}
-                              {video.series && (
-                                <div>
-                                  <span className="font-semibold text-gray-700 dark:text-gray-300">Série: </span>
-                                  <span className="text-gray-600 dark:text-gray-400">{video.series}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Contre-indication */}
-                            {video.constraints && video.constraints !== "Aucune" && (
-                              <div>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Contre-indication: </span>
-                                <span className="text-gray-600 dark:text-gray-400">{video.constraints}</span>
-                              </div>
-                            )}
-                            {(!video.constraints || video.constraints === "Aucune") && (
-                              <div>
-                                <span className="font-semibold text-gray-700 dark:text-gray-300">Contre-indication: </span>
-                                <span className="text-gray-600 dark:text-gray-400">Aucune</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action Button */}
-                          <button
-                            onClick={() => handleVideoClick(video.id)}
-                            className="w-full curved-button text-white font-semibold py-3 px-6 text-center block hover:shadow-floating transition-all flex items-center justify-center gap-2"
-                            style={{ backgroundColor: '#39334D' }}
-                          >
-                            <Play className="w-4 h-4" />
-                            Regarder
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Lock overlay for locked videos */}
-                      {!isAccessible && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/70 to-black/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10 cursor-not-allowed">
-                          <div className="text-center text-white p-6 max-w-xs">
-                            {/* Lock icon with animated background circle */}
-                            <div className="relative mb-4">
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-20 h-20 bg-white/20 rounded-full animate-pulse"></div>
-                              </div>
-                              <div className="relative">
-                                <Lock className="w-16 h-16 mx-auto drop-shadow-lg" strokeWidth={2.5} />
-                              </div>
-                            </div>
-                            
-                            {/* Main message */}
-                            <p className="text-lg font-bold mb-2 drop-shadow-md">Vidéo verrouillée</p>
-                            
-                            {/* Instruction message */}
-                            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 mt-3 border border-white/20">
-                              <p className="text-sm leading-relaxed">
-                                <span className="font-semibold">Complétez les vidéos précédentes</span>
-                                <br />
-                                <span className="text-xs opacity-90 mt-1 block">pour débloquer cette vidéo</span>
-                              </p>
-                            </div>
-                            
-                            {/* Visual indicator arrow */}
-                            <div className="mt-4 flex items-center justify-center gap-2 text-xs opacity-75">
-                              <ArrowUpLeft className="w-4 h-4" />
-                              <span>Commencez par la première vidéo</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/* Completed badge */}
-                      {isCompleted && isAccessible && (
-                        <div className="absolute top-4 right-4 z-10 bg-green-500 text-white rounded-full p-2 shadow-lg">
-                          <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                      )}
-                    </div>
+                    <EnhancedVideoCard
+                      key={video.id}
+                      video={video}
+                      onPlay={() => handleVideoClick(video.id)}
+                      exerciseNumber={index + 1}
+                      isCompleted={completed}
+                    />
                   )
                 })}
               </div>

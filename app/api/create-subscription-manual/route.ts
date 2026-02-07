@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       status: 'active',
       plan: 'MONTHLY',
-      stripePriceId: 'price_1SFtNZRnELGaRIkTI51JSCso',
-      stripeSubscriptionId: 'sub_1SLqLERnELGaRIkT04qParSX',
+      stripePriceId: 'price_1SyAPFK6CCSakHFaHtnEiwid',
+      stripeSubscriptionId: 'sub_manual_placeholder',
       stripeCurrentPeriodEnd: new Date('2025-11-24T19:08:00.000Z').toISOString()
     })
 

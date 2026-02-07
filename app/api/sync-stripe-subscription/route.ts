@@ -64,24 +64,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No price ID found in subscription' }, { status: 400 })
     }
 
-    // Déterminer le plan ID à partir du price ID
-    // Pour l'instant, on va déterminer le plan basé sur le prix
-    // Le price_id "price_1SFtNZRnELGaRIkTI51JSCso" correspond probablement au plan Essentiel (69 CHF)
-    let planId = 'essentiel' // Par défaut pour le plan 69 CHF
+    // Déterminer le plan ID à partir du price ID ou des métadonnées
+    const PRICE_ID_MAP: Record<string, string> = {
+      // Nouveau compte acct_1Sy9bDK6CCSakHFa — LIVE
+      'price_1SyAVUK6CCSakHFaPSBeq5T7': 'essentiel',
+      'price_1SyAVVK6CCSakHFaiPrTWkhA': 'avance',
+      'price_1SyAVWK6CCSakHFarpCXujFF': 'premium',
+      'price_1SyAVXK6CCSakHFa615XIYgo': 'starter',
+      'price_1SyAVYK6CCSakHFaMiK5Srcb': 'pro',
+      'price_1SyAVZK6CCSakHFaleAJWFsz': 'expert',
+      // Nouveau compte acct_1Sy9bDK6CCSakHFa — TEST
+      'price_1SyAPFK6CCSakHFaHtnEiwid': 'essentiel',
+      'price_1SyAPGK6CCSakHFae0ovoYJ1': 'avance',
+      'price_1SyAPIK6CCSakHFaWXcjB89n': 'premium',
+      'price_1SyAPVK6CCSakHFasJ7rIdbE': 'starter',
+      'price_1SyAPXK6CCSakHFa1QzoZYIM': 'pro',
+      'price_1SyAPYK6CCSakHFaJE5clUyo': 'expert',
+      // Ancien compte acct_1S9oMQRnELGaRIkT (rétrocompatibilité)
+      'price_1SFtNZRnELGaRIkTI51JSCso': 'essentiel',
+      'price_1SFtNhRnELGaRIkTKBuUGkiY': 'avance',
+      'price_1SFtNrRnELGaRIkTA4QzRecL': 'premium',
+      'price_1SNC3tRnELGaRIkTOumvumpn': 'starter',
+      'price_1SNC3wRnELGaRIkT5ZJUbSOR': 'pro',
+      'price_1SNC3zRnELGaRIkTYvg8yx3B': 'expert',
+    }
+
+    let planId = PRICE_ID_MAP[priceId] || 'essentiel'
     
-    // Logique de mapping basée sur le price ID
-    if (priceId.includes('essentiel') || priceId === 'price_1SFtNZRnELGaRIkTI51JSCso') {
-      planId = 'essentiel'
-    } else if (priceId.includes('avance')) {
-      planId = 'avance'
-    } else if (priceId.includes('premium')) {
-      planId = 'premium'
-    } else if (priceId.includes('starter')) {
-      planId = 'starter'
-    } else if (priceId.includes('pro')) {
-      planId = 'pro'
-    } else if (priceId.includes('expert')) {
-      planId = 'expert'
+    // Fallback : chercher dans le nom du price ID
+    if (!PRICE_ID_MAP[priceId]) {
+      if (priceId.includes('essentiel')) planId = 'essentiel'
+      else if (priceId.includes('avance')) planId = 'avance'
+      else if (priceId.includes('premium')) planId = 'premium'
+      else if (priceId.includes('starter')) planId = 'starter'
+      else if (priceId.includes('pro')) planId = 'pro'
+      else if (priceId.includes('expert')) planId = 'expert'
     }
 
     // Vérifier si l'abonnement existe déjà

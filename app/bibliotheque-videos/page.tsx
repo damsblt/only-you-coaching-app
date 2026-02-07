@@ -173,17 +173,33 @@ export default function VideosPage() {
   useEffect(() => {
     if (viewMode !== 'feed') return
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
     const handleOrientationChange = async () => {
       // Detect landscape orientation on mobile
       const isLandscape = window.matchMedia('(orientation: landscape)').matches
       const isMobileDevice = window.innerWidth <= 1024
       
-      if (isLandscape && isMobileDevice && containerRef.current) {
-        try {
-          // Try to enter fullscreen
-          if (!document.fullscreenElement) {
+      if (isLandscape && isMobileDevice) {
+        // iOS: Use native video fullscreen (the only way to truly hide browser UI)
+        if (isIOS) {
+          const currentVideoEl = containerRef.current?.querySelector('video') as any
+          if (currentVideoEl?.webkitEnterFullscreen) {
+            try {
+              await currentVideoEl.webkitEnterFullscreen()
+              setIsFullscreen(true)
+              return
+            } catch (err) {
+              console.log('iOS webkitEnterFullscreen failed:', err)
+            }
+          }
+        }
+
+        // Android & other mobile: Use Fullscreen API with navigationUI: 'hide'
+        if (!document.fullscreenElement && containerRef.current) {
+          try {
             if (containerRef.current.requestFullscreen) {
-              await containerRef.current.requestFullscreen()
+              await containerRef.current.requestFullscreen({ navigationUI: 'hide' } as any)
             } else if ((containerRef.current as any).webkitRequestFullscreen) {
               await (containerRef.current as any).webkitRequestFullscreen()
             } else if ((containerRef.current as any).mozRequestFullScreen) {
@@ -191,18 +207,18 @@ export default function VideosPage() {
             } else if ((containerRef.current as any).msRequestFullscreen) {
               await (containerRef.current as any).msRequestFullscreen()
             }
+          } catch (err) {
+            console.log('Fullscreen request failed:', err)
           }
-          
-          // Lock screen orientation if possible
-          if (screen.orientation && screen.orientation.lock) {
-            try {
-              await screen.orientation.lock('landscape')
-            } catch (err) {
-              console.log('Screen orientation lock not supported')
-            }
+        }
+        
+        // Lock screen orientation if possible
+        if (screen.orientation && screen.orientation.lock) {
+          try {
+            await screen.orientation.lock('landscape')
+          } catch (err) {
+            console.log('Screen orientation lock not supported')
           }
-        } catch (err) {
-          console.log('Fullscreen request failed:', err)
         }
       }
     }

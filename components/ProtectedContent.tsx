@@ -61,13 +61,14 @@ export default function ProtectedContent({
           return
         }
 
-        // Check if user has active subscription
-        if (!data.hasAccess || !data.subscriptions || data.subscriptions.length === 0) {
+        // Check if user has access (from subscription OR from users.planid)
+        if (!data.hasAccess) {
           setHasAccessToFeature(false)
           return
         }
 
-        // Check specific feature access
+        // If hasAccess is true, check specific feature access
+        // Note: hasAccess can be true even if subscriptions.length === 0 (when using users.planid)
         let hasFeatureAccess = false
         
         switch (feature) {
@@ -88,8 +89,8 @@ export default function ProtectedContent({
             hasFeatureAccess = data.features?.predefinedPrograms === true
             break
           default:
-            // For unknown features, check if user has any active subscription
-            hasFeatureAccess = data.hasAccess && data.subscriptions.length > 0
+            // For unknown features, check if user has access (from subscription or planid)
+            hasFeatureAccess = data.hasAccess === true
         }
 
         setHasAccessToFeature(hasFeatureAccess)
