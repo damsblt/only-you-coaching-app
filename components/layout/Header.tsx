@@ -247,7 +247,7 @@ export function Header() {
                   </span>
                   {user.role === 'ADMIN' && (
                     <Button
-                      href="/admin/users"
+                      href="/admin"
                       variant="primary"
                       size="sm"
                       className="text-xs"
@@ -380,7 +380,7 @@ export function Header() {
                       </div>
                       {user.role === 'ADMIN' && (
                         <Button
-                          href="/admin/users"
+                          href="/admin"
                           variant="primary"
                           size="sm"
                           fullWidth

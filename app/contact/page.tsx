@@ -13,7 +13,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors">
       <PageHeader
         title="Contactez-nous"
-        height="small"
+        height="medium"
       />
       <Section 
         gradient="soft"
