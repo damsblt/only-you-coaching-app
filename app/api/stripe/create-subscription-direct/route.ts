@@ -197,27 +197,34 @@ export async function POST(req: NextRequest) {
       // Pas de coupon Stripe existant, en créer un à la volée
       try {
         const couponId = `PROMO_${promoDetails.code}_${Date.now()}`
-        const originalAmount = plan.amount // montant en centimes du plan
-        const discountAmount = promoDetails.discountAmount // en centimes
         
-        // Calculer le pourcentage de réduction
-        const percentOff = Math.round((discountAmount / originalAmount) * 100)
-        
-        const coupon = await stripe.coupons.create({
+        const couponData: any = {
           id: couponId,
-          percent_off: percentOff > 0 ? percentOff : undefined,
-          amount_off: percentOff <= 0 ? discountAmount : undefined,
-          currency: percentOff <= 0 ? 'chf' : undefined,
           duration: 'forever', // Applique la réduction sur toute la durée de l'abonnement
           name: `Promo ${promoDetails.code}`,
-        })
+        }
+
+        if (promoDetails.discountType === 'percentage') {
+          // Réduction en pourcentage : utiliser la valeur exacte du pourcentage
+          couponData.percent_off = promoDetails.discountValue
+        } else {
+          // Réduction en montant fixe : utiliser amount_off en centimes
+          couponData.amount_off = promoDetails.discountAmount
+          couponData.currency = 'chf'
+        }
+        
+        const coupon = await stripe.coupons.create(couponData)
         
         subscriptionData.coupon = coupon.id
         subscriptionData.metadata.promo_code = promoDetails.code
-        console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (${percentOff}% off)`)
+        console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (type: ${promoDetails.discountType}, value: ${promoDetails.discountValue})`)
       } catch (couponError: any) {
         console.error('❌ Erreur création coupon Stripe à la volée:', couponError)
-        // Ne pas bloquer le paiement, mais logger l'erreur
+        // BLOQUER le paiement : l'utilisateur voit un prix réduit, on ne doit pas le débiter au plein tarif
+        return NextResponse.json(
+          { error: 'Impossible d\'appliquer le code promo. Veuillez réessayer ou retirer le code promo.' },
+          { status: 500 }
+        )
       }
     }
 
