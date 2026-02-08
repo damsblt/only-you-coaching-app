@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { getSiteUrl } from '@/lib/get-site-url'
 
 // ============================================================================
 // Configuration
@@ -7,8 +8,8 @@ import { Resend } from 'resend'
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'info@only-you-coaching.com'
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Only You Coaching <onboarding@resend.dev>' // Remplacer par noreply@only-you-coaching.com si domaine vérifié dans Resend
-const SITE_URL = 'https://only-you-coaching.com'
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Only You Coaching <noreply@mail.only-you-coaching.com>'
+const SITE_URL = getSiteUrl()
 
 // ============================================================================
 // Plan Configuration

@@ -188,10 +188,10 @@ export async function POST(req: NextRequest) {
       },
     }
 
-    // Appliquer le code promo si fourni
+    // Appliquer le code promo si fourni (Stripe API v2023+ utilise `discounts` au lieu de `coupon`)
     if (promoCode) {
       // Un coupon Stripe existe déjà, l'utiliser directement
-      subscriptionData.coupon = promoCode
+      subscriptionData.discounts = [{ coupon: promoCode }]
       subscriptionData.metadata.promo_code = promoCode
     } else if (promoDetails && promoDetails.code && promoDetails.discountAmount > 0) {
       // Pas de coupon Stripe existant, en créer un à la volée
@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
         
         const coupon = await stripe.coupons.create(couponData)
         
-        subscriptionData.coupon = coupon.id
+        subscriptionData.discounts = [{ coupon: coupon.id }]
         subscriptionData.metadata.promo_code = promoDetails.code
         console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (type: ${promoDetails.discountType}, value: ${promoDetails.discountValue})`)
       } catch (couponError: any) {

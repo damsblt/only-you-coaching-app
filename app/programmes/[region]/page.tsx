@@ -1,12 +1,21 @@
 "use client"
 
 import { useState, useEffect, useRef, use } from "react"
+import dynamic from "next/dynamic"
 import { useParams, useRouter } from "next/navigation"
 import { Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight, ArrowUpLeft, Filter, Lock, CheckCircle2 } from "lucide-react"
-import ComputerStreamPlayer from "@/components/video/ComputerStreamPlayer"
-import MobileStreamPlayer from "@/components/video/MobileStreamPlayer"
 import EnhancedVideoCard from "@/components/video/EnhancedVideoCard"
 import { Section } from "@/components/ui/Section"
+
+// Dynamic imports pour les lecteurs vidéo
+const ComputerStreamPlayer = dynamic(() => import("@/components/video/ComputerStreamPlayer"), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-900 rounded-lg animate-pulse" />,
+})
+const MobileStreamPlayer = dynamic(() => import("@/components/video/MobileStreamPlayer"), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-900 rounded-lg animate-pulse" />,
+})
 import ProtectedContent from "@/components/ProtectedContent"
 import { useSimpleAuth } from "@/components/providers/SimpleAuthProvider"
 import { formatIntensity } from "@/utils/formatIntensity"

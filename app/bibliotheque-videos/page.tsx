@@ -1,11 +1,20 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import dynamic from "next/dynamic"
 import { Search, Filter, Play, Clock, Star, Grid, List, ArrowLeft, ArrowRight } from "lucide-react"
 import EnhancedVideoCard from "@/components/video/EnhancedVideoCard"
-import ComputerStreamPlayer from "@/components/video/ComputerStreamPlayer"
-import MobileStreamPlayer from "@/components/video/MobileStreamPlayer"
 import { Section } from "@/components/ui/Section"
+
+// Dynamic imports pour les lecteurs vidéo (lourds, nécessitent le navigateur)
+const ComputerStreamPlayer = dynamic(() => import("@/components/video/ComputerStreamPlayer"), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-900 rounded-lg animate-pulse" />,
+})
+const MobileStreamPlayer = dynamic(() => import("@/components/video/MobileStreamPlayer"), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-900 rounded-lg animate-pulse" />,
+})
 import { Button } from "@/components/ui/Button"
 import { useVideos } from "@/hooks/useVideos"
 import { getVideoPositioning, getResponsiveVideoStyles, VideoPositioning } from '@/lib/video-positioning'

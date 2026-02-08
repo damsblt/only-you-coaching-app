@@ -1,13 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { ArrowRight } from 'lucide-react'
 import { Recipe } from '@/types/cms'
 import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
 import ProtectedContent from '@/components/ProtectedContent'
 import RecipeCard from '@/components/recipe/RecipeCard'
-import RecipeBookletViewer from '@/components/recipe/RecipeBookletViewer'
 import { Section } from '@/components/ui/Section'
+
+// Dynamic import pour le viewer PDF (lourd)
+const RecipeBookletViewer = dynamic(() => import('@/components/recipe/RecipeBookletViewer'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />,
+})
 import { Button } from '@/components/ui/Button'
 import PageHeader from '@/components/layout/PageHeader'
 

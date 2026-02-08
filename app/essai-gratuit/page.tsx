@@ -1,14 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { Heart, ArrowRight } from 'lucide-react'
 import EnhancedVideoCard from '@/components/video/EnhancedVideoCard'
-import SimpleVideoPlayer from '@/components/video/SimpleVideoPlayer'
 import { AudioCard } from '@/components/audio/AudioCard'
-import { AudioPlayer } from '@/components/audio/AudioPlayer'
 import RecipeCard from '@/components/recipe/RecipeCard'
-import RecipeBookletViewer from '@/components/recipe/RecipeBookletViewer'
 import { Section } from '@/components/ui/Section'
+
+// Dynamic imports pour composants lourds
+const SimpleVideoPlayer = dynamic(() => import('@/components/video/SimpleVideoPlayer'), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-gray-900 rounded-lg animate-pulse" />,
+})
+const AudioPlayer = dynamic(() => import('@/components/audio/AudioPlayer').then(mod => ({ default: mod.AudioPlayer })), {
+  ssr: false,
+  loading: () => <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />,
+})
+const RecipeBookletViewer = dynamic(() => import('@/components/recipe/RecipeBookletViewer'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />,
+})
 import { Button } from '@/components/ui/Button'
 import { Audio, Recipe } from '@/types/cms'
 

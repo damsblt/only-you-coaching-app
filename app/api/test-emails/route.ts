@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (type === 'admin' || type === 'all') {
       await sendAdminNewSubscriberEmail({
         customerEmail: testEmail,
-        customerName: 'Marie Dupont (TEST)',
+        customerName: 'Marie-Line Dupont (TEST)',
         planId: 'essentiel',
         amountPaid: 6900,
         currency: 'chf',
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     if (type === 'client' || type === 'all') {
       await sendClientSubscriptionConfirmationEmail({
         customerEmail: testEmail,
-        customerName: 'Marie Dupont (TEST)',
+        customerName: 'Marie-Line Dupont (TEST)',
         planId: 'essentiel',
         amountPaid: 6900,
         currency: 'chf',

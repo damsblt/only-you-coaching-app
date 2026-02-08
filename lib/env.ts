@@ -1,6 +1,11 @@
 /**
  * Environment validation and configuration
  * Ensures all required environment variables are present
+ * 
+ * Environment detection:
+ * - VERCEL_ENV = 'production' → Production (only-you-coaching.com)
+ * - VERCEL_ENV = 'preview' → Preview/Test (pilates-coaching-app.vercel.app)
+ * - NODE_ENV = 'development' → Local development (localhost)
  */
 
 interface EnvironmentConfig {
@@ -20,13 +25,25 @@ interface EnvironmentConfig {
   // Environment
   isDevelopment: boolean
   isProduction: boolean
+  isPreview: boolean
   isServer: boolean
+  
+  // Vercel environment ('production' | 'preview' | 'development')
+  vercelEnv: 'production' | 'preview' | 'development'
 }
 
 function validateEnvironment(): EnvironmentConfig {
   const isDevelopment = process.env.NODE_ENV === 'development'
-  const isProduction = process.env.NODE_ENV === 'production'
   const isServer = typeof window === 'undefined'
+  
+  // Vercel provides VERCEL_ENV: 'production', 'preview', or 'development'
+  const vercelEnv = (process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_VERCEL_ENV || 
+    (isDevelopment ? 'development' : 'production')) as 'production' | 'preview' | 'development'
+  
+  // isProduction = true ONLY for the production domain (only-you-coaching.com)
+  const isProduction = vercelEnv === 'production'
+  // isPreview = true for preview deployments (pilates-coaching-app.vercel.app)
+  const isPreview = vercelEnv === 'preview'
 
   // Required environment variables
   const requiredVars = {
@@ -73,7 +90,9 @@ function validateEnvironment(): EnvironmentConfig {
     // Environment
     isDevelopment,
     isProduction,
+    isPreview,
     isServer,
+    vercelEnv,
   }
 }
 
@@ -94,5 +113,7 @@ if (env.isServer) {
   console.log('🔧 Environment Status:')
   console.log(`   Database (Neon): ${isDatabaseConfigured() ? '✅' : '❌'}`)
   console.log(`   S3: ${isS3Configured() ? '✅' : '❌'}`)
-  console.log(`   Environment: ${env.isDevelopment ? 'Development' : 'Production'}`)
+  console.log(`   Environment: ${env.vercelEnv} (NODE_ENV: ${process.env.NODE_ENV})`)
+  console.log(`   Stripe mode: ${process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_') ? '🧪 TEST' : '💳 LIVE'}`)
+  console.log(`   Site URL: ${process.env.NEXT_PUBLIC_SITE_URL || '(not set)'}`)
 }

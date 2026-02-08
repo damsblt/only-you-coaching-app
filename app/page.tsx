@@ -1,4 +1,5 @@
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { 
   Play, 
   Users, 
@@ -19,11 +20,18 @@ import {
   Trophy,
   Circle
 } from "lucide-react"
-import VideoPreviewButton from "../components/VideoPreviewButton"
 import { Button } from "@/components/ui/Button"
-import Testimonials from "@/components/Testimonials"
-import PartnersCarousel from "@/components/PartnersCarousel"
-import HeroVideo from "@/components/HeroVideo"
+
+// Dynamic imports pour réduire le bundle initial
+const HeroVideo = dynamic(() => import("@/components/HeroVideo"), {
+  loading: () => <div className="w-full aspect-square max-w-lg mx-auto rounded-full bg-gray-100 animate-pulse" />,
+})
+const Testimonials = dynamic(() => import("@/components/Testimonials"), {
+  loading: () => <div className="py-20 bg-gray-50 animate-pulse" />,
+})
+const PartnersCarousel = dynamic(() => import("@/components/PartnersCarousel"), {
+  loading: () => <div className="py-12 animate-pulse" />,
+})
 
 // Vidéo sélectionnée pour la page d'accueil (depuis S3 AWS)
 const featuredVideo = {

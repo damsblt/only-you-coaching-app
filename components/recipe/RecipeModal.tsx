@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { Recipe } from '@/types/cms'
 import { Button } from '@/components/ui/Button'
-import RecipeBookletViewer from './RecipeBookletViewer'
+
+// Dynamic import pour le viewer PDF (lourd)
+const RecipeBookletViewer = dynamic(() => import('./RecipeBookletViewer'), {
+  ssr: false,
+  loading: () => <div className="h-64 bg-gray-100 rounded-lg animate-pulse" />,
+})
 import { 
   X, 
   Clock, 

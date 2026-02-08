@@ -31,7 +31,7 @@ export default function Gallery({ localImages = [] }: GalleryProps) {
           headers: {
             'Content-Type': 'application/json',
           },
-          cache: 'no-store',
+          cache: 'default',
         })
         
         if (response.ok) {
