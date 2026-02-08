@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import S3Image from '@/components/S3Image'
 
 interface PageHeaderProps {
@@ -76,7 +76,7 @@ export default function PageHeader({
   return (
     <div className={`relative w-full ${className}`}>
       {/* Header area with clipped background */}
-      <div className={`relative ${heightClasses[height]} overflow-hidden`}>
+      <div className={`relative ${heightClasses[height]} overflow-hidden bg-gray-800`}>
         {/* Background - Video or Image (inset negative for dezoom effect) */}
         <div 
           className="absolute"

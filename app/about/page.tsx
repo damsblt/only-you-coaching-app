@@ -19,7 +19,7 @@ export default function AboutPage() {
         title="À propos"
         subtitle="Découvrez Marie-Line Bouley qui depuis plus de 30 ans, accompagne des femmes et des hommes avec une conviction profonde : chaque personne est unique et mérite une approche sur-mesure."
         height="fullScreen"
-        imagePosition="center 25%"
+        imagePosition="center 100%"
         imageScale={0.9}
       />
       <Section 

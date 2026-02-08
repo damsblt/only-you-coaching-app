@@ -11,7 +11,8 @@ import { getStripe } from '@/lib/stripe'
 
 export async function POST(request: NextRequest) {
   try {
-    const stripe = getStripe()
+    const hostname = request.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const { email } = await request.json()
     
     if (!email) {

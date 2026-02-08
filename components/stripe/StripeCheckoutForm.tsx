@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
+import type { Stripe as StripeJS } from '@stripe/stripe-js'
 import {
   Elements,
   CardElement,
@@ -10,9 +11,15 @@ import {
 } from '@stripe/react-stripe-js'
 import { Button } from '@/components/ui/Button'
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { getStripePublishableKey } from '@/lib/get-site-url'
 
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder')
+// Initialize Stripe with hostname-based key detection
+function getStripePromise(): Promise<StripeJS | null> {
+  const key = getStripePublishableKey()
+  return loadStripe(key || 'pk_test_placeholder')
+}
+
+const stripePromise = getStripePromise()
 
 interface PromoDetails {
   code: string
@@ -240,7 +247,8 @@ export default function StripeCheckoutForm({
   onError
 }: StripeCheckoutFormProps) {
   // Check if Stripe is properly configured
-  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+  const stripeKey = getStripePublishableKey()
+  if (!stripeKey) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
         <div className="flex items-center">

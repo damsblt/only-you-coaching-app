@@ -86,7 +86,8 @@ export async function POST(request: NextRequest) {
     let stripeCouponId = null
     if (createStripeCoupon) {
       try {
-        const stripe = getStripe()
+        const hostname = request.headers.get('host') || ''
+        const stripe = getStripe(hostname)
         const couponData: any = {
           id: code.toUpperCase(),
           name: description || code,
@@ -172,7 +173,8 @@ export async function DELETE(request: NextRequest) {
     // Supprimer le coupon Stripe si présent
     if (promoCode?.stripe_coupon_id) {
       try {
-        const stripe = getStripe()
+        const hostname = request.headers.get('host') || ''
+        const stripe = getStripe(hostname)
         await stripe.coupons.del(promoCode.stripe_coupon_id)
       } catch (stripeError) {
         console.error('Error deleting Stripe coupon:', stripeError)

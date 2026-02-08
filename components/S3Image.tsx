@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import Image from 'next/image'
 
 interface S3ImageProps {
@@ -52,13 +52,13 @@ export default function S3Image({
   // Générer l'URL directement — pas besoin d'appel API pour une URL publique
   const imageUrl = getDirectS3Url(s3Key)
   const [error, setError] = useState(false)
-  const [imgKey, setImgKey] = useState(0) // Pour forcer un retry
 
-  // Reset error quand la clé S3 change
-  useEffect(() => {
+  // Reset error quand la clé S3 change (sans useEffect pour éviter un remontage)
+  const prevS3KeyRef = useRef(s3Key)
+  if (prevS3KeyRef.current !== s3Key) {
     setError(false)
-    setImgKey(prev => prev + 1)
-  }, [s3Key])
+    prevS3KeyRef.current = s3Key
+  }
 
   if (error) {
     if (fallbackSrc) {
@@ -87,7 +87,7 @@ export default function S3Image({
 
   return (
     <Image
-      key={imgKey}
+      key={s3Key}
       src={imageUrl}
       alt={alt}
       fill={fill}

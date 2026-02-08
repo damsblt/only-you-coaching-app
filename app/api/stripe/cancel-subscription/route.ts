@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Récupérer l'abonnement depuis Stripe
-    const stripe = getStripe()
+    const hostname = req.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const subscription = await stripe.subscriptions.retrieve(subscriptionId)
     
     // Vérifier si c'est un engagement

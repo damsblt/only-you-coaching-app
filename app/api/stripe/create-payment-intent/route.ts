@@ -44,7 +44,8 @@ const PLANS_CONFIG = {
 
 export async function POST(req: NextRequest) {
   try {
-    const stripe = getStripe()
+    const hostname = req.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const { planId, userId } = await req.json()
     
     if (!userId) {

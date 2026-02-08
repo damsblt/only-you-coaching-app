@@ -45,16 +45,8 @@ const PLANS_CONFIG = {
 
 export async function POST(req: NextRequest) {
   try {
-    // Verify Stripe configuration
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('❌ STRIPE_SECRET_KEY is not configured')
-      return NextResponse.json(
-        { error: 'Configuration Stripe manquante. Veuillez contacter le support.' },
-        { status: 500 }
-      )
-    }
-
-    const stripe = getStripe()
+    const hostname = req.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const { planId, userId, paymentMethodId, promoCode, promoDetails } = await req.json()
     
     if (!userId || !paymentMethodId) {

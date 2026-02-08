@@ -3,7 +3,8 @@ import { getStripe } from '@/lib/stripe'
 
 export async function GET(req: NextRequest) {
   try {
-    const stripe = getStripe()
+    const hostname = req.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     // Get all active products
     const products = await stripe.products.list({ active: true })
     
