@@ -1,43 +1,53 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { getStripeSecretKey, getStripePublishableKey, isProductionDomain } from '@/lib/get-site-url'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const hostname = req.headers.get('host') || ''
+  const isProd = isProductionDomain(hostname)
+  
   const diagnostics: any = {
     timestamp: new Date().toISOString(),
+    hostname: hostname,
+    domainMode: isProd ? 'PRODUCTION (LIVE)' : 'TEST',
     environment: process.env.NODE_ENV,
+    vercelEnv: process.env.VERCEL_ENV || 'not set',
     checks: {}
   }
+
+  const secretKey = getStripeSecretKey(hostname)
+  const publishableKey = getStripePublishableKey(hostname)
 
   // Check 1: Environment variables
   diagnostics.checks.envVars = {
     STRIPE_SECRET_KEY: {
-      exists: !!process.env.STRIPE_SECRET_KEY,
-      length: process.env.STRIPE_SECRET_KEY?.length || 0,
-      startsWithSk: process.env.STRIPE_SECRET_KEY?.startsWith('sk_') || false,
-      isTestKey: process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_') || false,
-      isLiveKey: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || false,
-      preview: process.env.STRIPE_SECRET_KEY ? 
-        `${process.env.STRIPE_SECRET_KEY.substring(0, 12)}...${process.env.STRIPE_SECRET_KEY.substring(process.env.STRIPE_SECRET_KEY.length - 4)}` 
+      exists: !!secretKey,
+      length: secretKey?.length || 0,
+      startsWithSk: secretKey?.startsWith('sk_') || false,
+      isTestKey: secretKey?.startsWith('sk_test_') || false,
+      isLiveKey: secretKey?.startsWith('sk_live_') || false,
+      preview: secretKey ? 
+        `${secretKey.substring(0, 12)}...${secretKey.substring(secretKey.length - 4)}` 
         : 'NOT_SET'
     },
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: {
-      exists: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-      length: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.length || 0,
-      startsWithPk: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_') || false,
-      preview: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'NOT_SET'
+      exists: !!publishableKey,
+      length: publishableKey?.length || 0,
+      startsWithPk: publishableKey?.startsWith('pk_') || false,
+      preview: publishableKey || 'NOT_SET'
     }
   }
 
   // Check 2: Try to initialize Stripe
-  if (process.env.STRIPE_SECRET_KEY) {
+  if (secretKey) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: '2024-12-18.acacia',
+      const stripe = new Stripe(secretKey, {
+        apiVersion: '2025-08-27.basil',
       })
       
       diagnostics.checks.stripeInit = {
         success: true,
-        apiVersion: '2024-12-18.acacia'
+        apiVersion: '2025-08-27.basil'
       }
 
       // Check 3: Try to list products (lightweight test)
@@ -121,7 +131,7 @@ export async function GET() {
   } else {
     diagnostics.checks.stripeInit = {
       success: false,
-      error: 'STRIPE_SECRET_KEY not set'
+      error: 'STRIPE_SECRET_KEY not set for this domain'
     }
   }
 

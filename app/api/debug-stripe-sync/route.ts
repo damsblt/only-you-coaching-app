@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Rechercher les abonnements dans Stripe
-    const stripe = getStripe()
+    const hostname = request.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const customers = await stripe.customers.list({
       email: email,
       limit: 10

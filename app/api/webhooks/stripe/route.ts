@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
+import { getStripeWebhookSecret } from '@/lib/get-site-url'
 import {
   sendAdminNewSubscriberEmail,
   sendAdminPaymentReceivedEmail,
@@ -10,21 +11,19 @@ import {
   sendClientSubscriptionConfirmationEmail,
 } from '@/lib/emails'
 
-// Use service role key for admin operations
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
-
 // Initialise stripe au niveau du module pour le réutiliser
 let stripe: Stripe
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('stripe-signature')!
+  const hostname = req.headers.get('host') || ''
 
   let event: Stripe.Event
 
   try {
-    stripe = getStripe()
+    stripe = getStripe(hostname)
+    const webhookSecret = getStripeWebhookSecret(hostname)
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
   } catch (err: any) {
     console.error(`⚠️ Webhook signature verification failed.`, err.message)

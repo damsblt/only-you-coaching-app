@@ -45,7 +45,8 @@ const PLANS_CONFIG = {
 
 export async function POST(req: NextRequest) {
   try {
-    const stripe = getStripe()
+    const hostname = req.headers.get('host') || ''
+    const stripe = getStripe(hostname)
     const { planId, userId } = await req.json()
     
     if (!userId) {
@@ -82,8 +83,8 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${getSiteUrl()}/souscriptions/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${getSiteUrl()}/souscriptions/personnalise`,
+      success_url: `${getSiteUrl(hostname)}/souscriptions/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getSiteUrl(hostname)}/souscriptions/personnalise`,
       metadata: {
         userId: userId,
         planId: planId,
