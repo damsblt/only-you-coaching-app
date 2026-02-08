@@ -79,8 +79,6 @@ export default function Testimonials() {
         // entre différents déploiements (preview vs production)
         const apiUrl = `/api/testimonials/photos?names=${encodeURIComponent(names)}`
         
-        console.log('📸 Fetching testimonial photos from:', apiUrl)
-        
         const response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
@@ -91,36 +89,17 @@ export default function Testimonials() {
         })
         
         if (!response.ok) {
-          const errorText = await response.text()
-          console.error('❌ Failed to fetch photo URLs:', response.status, errorText)
-          // Don't throw - gracefully handle the error by showing fallback avatars
+          // Gracefully handle the error by showing fallback avatars
           return
         }
         
         const data = await response.json()
-        console.log('✅ Received photo URLs for:', Object.keys(data.photos || {}))
         
         if (data.photos && Object.keys(data.photos).length > 0) {
-          // Log each URL for debugging
-          Object.entries(data.photos).forEach(([name, url]) => {
-            console.log(`  - ${name}: ${url?.substring(0, 80)}...`)
-          })
           setPhotoUrls(data.photos)
-        } else {
-          console.warn('⚠️ No photo URLs received from API. Response:', data)
         }
       } catch (error) {
-        // Handle network errors gracefully
-        if (error instanceof TypeError && error.message === 'Failed to fetch') {
-          console.warn('⚠️ Network error fetching testimonial photos. This may be due to:', {
-            reason: 'API route unavailable or network issue',
-            suggestion: 'Photos will use fallback avatars'
-          })
-        } else {
-          console.error('❌ Error fetching photo URLs:', error)
-        }
-        // Don't set failed photos here - let the image onError handle it
-        // The component will gracefully show fallback avatars
+        // Handle network errors gracefully - show fallback avatars
       }
     }
 
@@ -193,15 +172,9 @@ export default function Testimonials() {
                       alt={testimonial.name}
                       className="w-full h-full object-cover"
                       loading="lazy"
-                      onError={(e) => {
-                        console.error(`❌ Failed to load image for ${testimonial.name}`)
-                        console.error('Image URL:', photoUrls[testimonial.name]?.substring(0, 100))
-                        console.error('Error event:', e)
+                      onError={() => {
                         // Mark this photo as failed to show fallback
                         setFailedPhotos(prev => new Set(prev).add(testimonial.name))
-                      }}
-                      onLoad={() => {
-                        console.log(`✅ Successfully loaded image for ${testimonial.name}`)
                       }}
                     />
                   </div>

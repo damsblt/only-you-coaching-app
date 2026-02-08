@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { db } from '@/lib/db'
+import {
+  sendAdminNewSubscriberEmail,
+  sendClientSubscriptionConfirmationEmail,
+} from '@/lib/emails'
 
 
 // Plan configuration mapping - matches your Stripe product names
@@ -77,6 +81,7 @@ export async function POST(req: NextRequest) {
 
     // Create or retrieve customer
     let customer
+    let userEmail = ''
     try {
       // Try to find existing customer by email from users table
       const { data: userData, error: userError } = await db
@@ -90,7 +95,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'User email not found' }, { status: 400 })
       }
 
-      const userEmail = userData.email
+      userEmail = userData.email
 
       // Try to find existing customer by email
       const customers = await stripe.customers.list({
@@ -303,6 +308,52 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error('Database update error:', error)
       // Don't fail the request, just log the error
+    }
+
+    // ====================================================================
+    // 📧 ENVOI DES EMAILS — Confirmation abonnement
+    // ====================================================================
+    try {
+      const subscriptionStartDate = new Date()
+      const subscriptionEndDate = plan.duration
+        ? new Date(Date.now() + plan.duration * 30 * 24 * 60 * 60 * 1000)
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      const nextPaymentDate = new Date((subscription as any).current_period_end * 1000)
+      const amountPaid = subscription.items.data[0]?.price?.unit_amount || 0
+      const customerEmail = customer.email || userEmail
+      const customerName = customer.name || ''
+
+      // Email 1: Notification admin (nouvel adhérent)
+      await sendAdminNewSubscriberEmail({
+        customerEmail,
+        customerName,
+        planId,
+        amountPaid,
+        currency: 'chf',
+        subscriptionId: subscription.id,
+        startDate: subscriptionStartDate,
+        endDate: subscriptionEndDate,
+        renewalDate: plan.duration ? subscriptionEndDate : null,
+      })
+      console.log('📧 Admin notification email sent')
+
+      // Email 2: Confirmation client
+      await sendClientSubscriptionConfirmationEmail({
+        customerEmail,
+        customerName,
+        planId,
+        amountPaid,
+        currency: 'chf',
+        startDate: subscriptionStartDate,
+        endDate: subscriptionEndDate,
+        renewalDate: plan.duration ? subscriptionEndDate : null,
+        nextPaymentDate,
+        willAutoRenew: !plan.duration,
+      })
+      console.log('📧 Client confirmation email sent')
+    } catch (emailError) {
+      // Ne pas bloquer la souscription si l'email échoue
+      console.error('📧 Error sending subscription emails:', emailError)
     }
 
     return NextResponse.json({ 
