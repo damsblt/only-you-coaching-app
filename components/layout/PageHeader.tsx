@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import S3Image from '@/components/S3Image'
 
 interface PageHeaderProps {
@@ -59,6 +59,11 @@ export default function PageHeader({
   const [videoError, setVideoError] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTablet, setIsTablet] = useState(false)
+  const [imageLoaded, setImageLoaded] = useState(false)
+
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true)
+  }, [])
 
   // Detect mobile and tablet screen sizes
   useEffect(() => {
@@ -106,8 +111,10 @@ export default function PageHeader({
               s3Key={imageS3Key}
               alt={title || 'Page header'}
               fill
-              className="object-cover"
+              className={`object-cover transition-opacity duration-700 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               priority={true}
+              sizes="100vw"
+              onLoad={handleImageLoad}
               style={{
                 objectPosition: imagePosition || ((isMobile || isTablet) ? '35% center' : 'center')
               }}

@@ -13,6 +13,7 @@ interface S3ImageProps {
   height?: number
   style?: React.CSSProperties
   sizes?: string // Pour les images responsives
+  onLoad?: () => void
 }
 
 // Configuration S3
@@ -46,6 +47,7 @@ export default function S3Image({
   height,
   style,
   sizes,
+  onLoad,
   priority = false,
   loading: loadingProp
 }: S3ImageProps & { priority?: boolean; loading?: 'lazy' | 'eager' }) {
@@ -100,6 +102,7 @@ export default function S3Image({
       loading={loadingProp || (priority ? 'eager' : 'lazy')}
       fetchPriority={priority ? 'high' : 'auto'}
       quality={85}
+      onLoad={onLoad}
       onError={(e) => {
         console.error(`[S3Image] Failed to load image: ${s3Key}`, {
           url: imageUrl,
