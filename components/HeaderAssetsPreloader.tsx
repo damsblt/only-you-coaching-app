@@ -39,19 +39,24 @@ function getDirectS3Url(s3Key: string): string {
 }
 
 function preloadImage(s3Key: string): void {
-  const url = getDirectS3Url(s3Key)
+  const rawUrl = getDirectS3Url(s3Key)
   
-  // Précharger l'image dans le navigateur avec priorité haute
-  const img = new Image()
+  // Utiliser l'optimiseur d'images Next.js pour précharger en webp/avif optimisé
+  // au lieu de l'image originale brute (beaucoup plus légère)
+  const optimizedUrl = `/_next/image?url=${encodeURIComponent(rawUrl)}&w=1920&q=85`
+  
+  // Précharger l'image optimisée dans le navigateur avec priorité haute
+  const img = new window.Image()
   img.fetchPriority = 'high'
-  img.src = url
+  img.src = optimizedUrl
   
   // Utiliser aussi un link preload pour optimiser encore plus
   const link = document.createElement('link')
   link.rel = 'preload'
   link.as = 'image'
-  link.href = url
+  link.href = optimizedUrl
   link.fetchPriority = 'high'
+  link.type = 'image/webp'
   document.head.appendChild(link)
 }
 

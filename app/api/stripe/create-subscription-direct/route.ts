@@ -181,42 +181,95 @@ export async function POST(req: NextRequest) {
     }
 
     // Appliquer le code promo si fourni (Stripe API v2023+ utilise `discounts` au lieu de `coupon`)
-    if (promoCode) {
-      // Un coupon Stripe existe déjà, l'utiliser directement
-      subscriptionData.discounts = [{ coupon: promoCode }]
-      subscriptionData.metadata.promo_code = promoCode
-    } else if (promoDetails && promoDetails.code && promoDetails.discountAmount > 0) {
-      // Pas de coupon Stripe existant, en créer un à la volée
-      try {
-        const couponId = `PROMO_${promoDetails.code}_${Date.now()}`
-        
-        const couponData: any = {
-          id: couponId,
-          duration: 'forever', // Applique la réduction sur toute la durée de l'abonnement
-          name: `Promo ${promoDetails.code}`,
-        }
+    if (promoCode || (promoDetails && promoDetails.code && promoDetails.discountAmount > 0)) {
+      let stripeCouponId: string | null = null
 
-        if (promoDetails.discountType === 'percentage') {
-          // Réduction en pourcentage : utiliser la valeur exacte du pourcentage
-          couponData.percent_off = promoDetails.discountValue
-        } else {
-          // Réduction en montant fixe : utiliser amount_off en centimes
-          couponData.amount_off = promoDetails.discountAmount
-          couponData.currency = 'chf'
+      // Étape 1 : Si un coupon Stripe existe déjà (stripe_coupon_id), vérifier qu'il est valide
+      if (promoCode) {
+        try {
+          await stripe.coupons.retrieve(promoCode)
+          stripeCouponId = promoCode
+          console.log(`✅ Coupon Stripe existant trouvé: ${promoCode}`)
+        } catch (retrieveError: any) {
+          console.warn(`⚠️ Coupon Stripe '${promoCode}' introuvable, tentative de création à la volée...`)
+          // Le coupon n'existe pas dans Stripe (mode test vs live), on va le créer
+          stripeCouponId = null
         }
-        
-        const coupon = await stripe.coupons.create(couponData)
-        
-        subscriptionData.discounts = [{ coupon: coupon.id }]
-        subscriptionData.metadata.promo_code = promoDetails.code
-        console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (type: ${promoDetails.discountType}, value: ${promoDetails.discountValue})`)
-      } catch (couponError: any) {
-        console.error('❌ Erreur création coupon Stripe à la volée:', couponError)
-        // BLOQUER le paiement : l'utilisateur voit un prix réduit, on ne doit pas le débiter au plein tarif
-        return NextResponse.json(
-          { error: 'Impossible d\'appliquer le code promo. Veuillez réessayer ou retirer le code promo.' },
-          { status: 500 }
-        )
+      }
+
+      // Étape 2 : Si pas de coupon valide, créer à la volée avec promoDetails
+      if (!stripeCouponId && promoDetails && promoDetails.code) {
+        try {
+          // Utiliser le promoCode original comme ID si possible, sinon générer un nouveau
+          const couponId = promoCode || `PROMO_${promoDetails.code}_${Date.now()}`
+          
+          const couponData: any = {
+            id: couponId,
+            duration: 'forever', // Applique la réduction sur toute la durée de l'abonnement
+            name: `Promo ${promoDetails.code}`,
+          }
+
+          if (promoDetails.discountType === 'percentage') {
+            // Réduction en pourcentage : utiliser la valeur exacte du pourcentage
+            couponData.percent_off = promoDetails.discountValue
+          } else {
+            // Réduction en montant fixe : utiliser amount_off en centimes
+            couponData.amount_off = promoDetails.discountAmount
+            couponData.currency = 'chf'
+          }
+          
+          const coupon = await stripe.coupons.create(couponData)
+          stripeCouponId = coupon.id
+          console.log(`✅ Coupon Stripe créé à la volée: ${coupon.id} (type: ${promoDetails.discountType}, value: ${promoDetails.discountValue})`)
+        } catch (couponError: any) {
+          console.error('❌ Erreur création coupon Stripe à la volée:', couponError)
+          // BLOQUER le paiement : l'utilisateur voit un prix réduit, on ne doit pas le débiter au plein tarif
+          return NextResponse.json(
+            { error: 'Impossible d\'appliquer le code promo. Veuillez réessayer ou retirer le code promo.' },
+            { status: 500 }
+          )
+        }
+      } else if (!stripeCouponId && promoCode && !promoDetails) {
+        // Cas où on a un promoCode Stripe mais pas de promoDetails pour recréer
+        // Essayer de recréer à partir des infos de la base de données
+        try {
+          const promoResult = await db
+            .from('promo_codes')
+            .select('*')
+            .eq('stripe_coupon_id', promoCode)
+            .single()
+          
+          if (promoResult.data) {
+            const pc = promoResult.data
+            const couponData: any = {
+              id: promoCode,
+              duration: 'forever',
+              name: pc.description || `Promo ${pc.code}`,
+            }
+
+            if (pc.discount_type === 'percentage') {
+              couponData.percent_off = pc.discount_value
+            } else {
+              couponData.amount_off = pc.discount_value
+              couponData.currency = 'chf'
+            }
+
+            const coupon = await stripe.coupons.create(couponData)
+            stripeCouponId = coupon.id
+            console.log(`✅ Coupon Stripe recréé depuis la BDD: ${coupon.id}`)
+          }
+        } catch (dbError: any) {
+          console.error('❌ Impossible de recréer le coupon depuis la BDD:', dbError)
+          return NextResponse.json(
+            { error: `Le coupon '${promoCode}' n'existe pas dans Stripe. Synchronisez les coupons via /api/admin/sync-stripe-coupons.` },
+            { status: 500 }
+          )
+        }
+      }
+
+      if (stripeCouponId) {
+        subscriptionData.discounts = [{ coupon: stripeCouponId }]
+        subscriptionData.metadata.promo_code = promoDetails?.code || promoCode || ''
       }
     }
 

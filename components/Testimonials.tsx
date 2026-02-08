@@ -75,16 +75,9 @@ export default function Testimonials() {
       try {
         const names = testimonials.map(t => t.name).join(',')
         
-        // Use environment variable in production, fallback to window.location.origin
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin
-        
-        // Validate baseUrl
-        if (!baseUrl) {
-          console.warn('⚠️ No base URL available for fetching testimonial photos')
-          return
-        }
-        
-        const apiUrl = `${baseUrl}/api/testimonials/photos?names=${encodeURIComponent(names)}`
+        // Toujours utiliser une URL relative pour éviter les problèmes CORS
+        // entre différents déploiements (preview vs production)
+        const apiUrl = `/api/testimonials/photos?names=${encodeURIComponent(names)}`
         
         console.log('📸 Fetching testimonial photos from:', apiUrl)
         
