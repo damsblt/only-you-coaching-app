@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSimpleAuth } from '@/components/providers/SimpleAuthProvider'
-import StripeCheckoutForm from '@/components/stripe/StripeCheckoutForm'
 import PromoCodeInput from '@/components/checkout/PromoCodeInput'
+
+// Dynamic import pour Stripe (lourd, nécessite le navigateur)
+const StripeCheckoutForm = dynamic(() => import('@/components/stripe/StripeCheckoutForm'), {
+  ssr: false,
+  loading: () => <div className="h-48 bg-gray-100 rounded-lg animate-pulse flex items-center justify-center"><span className="text-gray-500">Chargement du formulaire de paiement...</span></div>,
+})
 import { pricingPlans } from '@/data/pricingPlans'
 import { CheckCircle, User, CreditCard, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/Button'

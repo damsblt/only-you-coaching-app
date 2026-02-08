@@ -1,11 +1,23 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { ArrowRight, Heart, Sparkles, Target, BookOpen, HelpCircle, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Section } from '@/components/ui/Section'
 import PageHeader from '@/components/layout/PageHeader'
-import Gallery from '@/components/Gallery'
+
+// Dynamic import pour la galerie (chargement d'images S3)
+const Gallery = dynamic(() => import('@/components/Gallery'), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {[...Array(8)].map((_, i) => (
+        <div key={i} className="w-full h-48 rounded-2xl bg-gray-200 animate-pulse" />
+      ))}
+    </div>
+  ),
+})
 
 interface FAQItem {
   question: string

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
+import { getSiteUrl } from '@/lib/get-site-url'
 
 
 // Plan configuration mapping - matches your Stripe product names
@@ -81,8 +82,8 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/souscriptions/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/souscriptions/personnalise`,
+      success_url: `${getSiteUrl()}/souscriptions/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${getSiteUrl()}/souscriptions/personnalise`,
       metadata: {
         userId: userId,
         planId: planId,

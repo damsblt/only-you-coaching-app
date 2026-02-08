@@ -1,10 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { Play, Clock, Heart, Plus, ArrowRight } from "lucide-react"
 import { AudioCard } from "@/components/audio/AudioCard"
-import { AudioPlayer } from "@/components/audio/AudioPlayer"
 import { Section } from "@/components/ui/Section"
+
+// Dynamic import pour le lecteur audio
+const AudioPlayer = dynamic(() => import("@/components/audio/AudioPlayer").then(mod => ({ default: mod.AudioPlayer })), {
+  ssr: false,
+  loading: () => <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />,
+})
 import { Button } from "@/components/ui/Button"
 import { Audio } from "@/types"
 import ProtectedContent from "@/components/ProtectedContent"
