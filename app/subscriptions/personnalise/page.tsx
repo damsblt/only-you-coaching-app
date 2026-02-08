@@ -29,11 +29,9 @@ function PersonnaliseContent() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user.id })
           })
-          if (response.ok) {
-            console.log('User synced with database')
-          }
+          // User synced successfully
         } catch (error) {
-          console.error('Error syncing user:', error)
+          // Sync error handled silently
         }
       }
     }
@@ -45,7 +43,6 @@ function PersonnaliseContent() {
     const autoCheckout = searchParams.get('autoCheckout')
     
     if (user && planId && autoCheckout === 'true' && !autoCheckoutAttempted) {
-      console.log('Auto-checkout triggered for plan:', planId)
       setAutoCheckoutAttempted(true)
       // Délai pour s'assurer que l'état est mis à jour
       setTimeout(() => {
@@ -55,11 +52,8 @@ function PersonnaliseContent() {
   }, [user, searchParams])
 
   const handleSubscribe = async (planId: string) => {
-    console.log('handleSubscribe called with planId:', planId, 'user:', user?.id)
-    
     if (!user) {
-      console.log('No user found, redirecting to signin for existing users')
-      // Flow 2: Existing user - redirect to signin with planId
+      // Redirect to signin with planId
       router.push(`/auth/signin-simple?planId=${planId}&callbackUrl=${encodeURIComponent('/subscriptions/personnalise')}`)
       return
     }
@@ -76,11 +70,9 @@ function PersonnaliseContent() {
     setSubscriptionLoading(planId)
     
     try {
-      console.log('Redirecting to native checkout for plan:', planId, 'user:', user.id)
-      // Redirect to native checkout page instead of Stripe hosted checkout
+      // Redirect to native checkout page
       router.push(`/checkout?planId=${planId}`)
     } catch (error) {
-      console.error('Subscription error:', error)
       alert('Erreur lors de la redirection vers la page de paiement. Veuillez réessayer.')
     } finally {
       setSubscriptionLoading(null)
