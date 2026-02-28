@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description: "Découvrez le Pilates avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.",
   keywords: "pilates, coaching, méditation, fitness, bien-être, Marie-Line",
   authors: [{ name: "Marie-Line" }],
+  icons: {
+    icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
+    shortcut: "/favicon.jpg",
+    apple: "/favicon.jpg",
+  },
   openGraph: {
     title: "Marie-Line Pilates - Coaching en ligne",
     description: "Découvrez le Pilates avec Marie-Line. Vidéos de coaching, méditations et séances en ligne pour tous les niveaux.",

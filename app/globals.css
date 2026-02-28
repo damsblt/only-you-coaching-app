@@ -445,47 +445,108 @@ nextjs-portal > * {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.9);
+  background: radial-gradient(circle at top, rgba(20, 20, 30, 0.5), rgba(0, 0, 0, 0.82));
+  backdrop-filter: blur(6px);
   z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.3s ease-in;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  pointer-events: none;
+  animation: rotate-hint-fade-in 260ms ease-out;
 }
 
-.rotate-hint-icon {
-  font-size: 4rem;
-  color: white;
-  margin-bottom: 1rem;
-  animation: rotate-pulse 2s ease-in-out infinite;
+.rotate-hint-card {
+  width: min(92vw, 420px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  padding: 1.25rem 1rem 1.1rem;
+  text-align: center;
+  align-items: center;
+}
+
+.rotate-hint-devices {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.rotate-hint-device {
+  width: 24px;
+  height: 44px;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.rotate-hint-device::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 9px;
+  height: 2px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.rotate-hint-device-landscape {
+  transform: rotate(90deg);
+}
+
+.rotate-hint-arrow {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+  font-size: 1.15rem;
+  animation: rotate-hint-shift 1.4s ease-in-out infinite;
 }
 
 .rotate-hint-text {
   color: white;
-  font-size: 1.2rem;
-  text-align: center;
-  padding: 0 2rem;
+  line-height: 1.35;
 }
 
-@keyframes rotate-pulse {
+.rotate-hint-title {
+  margin: 0;
+  font-size: clamp(1.1rem, 4.2vw, 1.3rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.rotate-hint-subtitle {
+  margin: 0.5rem 0 0;
+  font-size: clamp(0.9rem, 3.6vw, 1rem);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+@keyframes rotate-hint-shift {
   0%, 100% {
-    transform: rotate(0deg) scale(1);
+    transform: translateX(0);
   }
-  25% {
-    transform: rotate(90deg) scale(1.1);
-  }
-  75% {
-    transform: rotate(90deg) scale(1.1);
+  50% {
+    transform: translateX(3px);
   }
 }
 
-@keyframes fadeIn {
+@keyframes rotate-hint-fade-in {
   from {
     opacity: 0;
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-hint-arrow {
+    animation: none;
   }
 }
 

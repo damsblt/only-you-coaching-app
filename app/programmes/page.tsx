@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Play, Users, Target, Zap, ArrowRight } from "lucide-react"
+import { Play, Users, Target, Zap, ArrowRight, LayoutDashboard } from "lucide-react"
 import { Section } from "@/components/ui/Section"
 import { Button } from "@/components/ui/Button"
 import ProtectedContent from "@/components/ProtectedContent"
@@ -228,6 +228,19 @@ export default function ProgrammesPage() {
           feature="predefinedPrograms" 
           userId={user?.id}
         >
+          {/* Link to dashboard for logged-in users */}
+          {user && (
+            <div className="mb-8 flex justify-center">
+              <Link
+                href="/tableau-de-bord"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-100 dark:bg-accent-900/30 text-accent-600 dark:text-accent-400 hover:bg-accent-200 dark:hover:bg-accent-800/40 transition-colors"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                Voir mon tableau de bord et ma progression
+              </Link>
+            </div>
+          )}
+
           {/* Region Cards Grid */}
           <div className="mb-16">
             <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-8 text-center">
@@ -302,36 +315,38 @@ export default function ProgrammesPage() {
           </div>
         </ProtectedContent>
 
-        {/* Free Trial CTA Section */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-          <div className="relative bg-gradient-to-br from-accent-500 via-accent-600 to-burgundy-600 rounded-2xl shadow-2xl p-10 md:p-12 mb-12 overflow-hidden">
-            {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-            
-            <div className="relative z-10 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                Découvrez plus avec notre essai gratuit
-              </h2>
+        {/* Free Trial CTA Section (hidden for connected users) */}
+        {!user && (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
+            <div className="relative bg-gradient-to-br from-accent-500 via-accent-600 to-burgundy-600 rounded-2xl shadow-2xl p-10 md:p-12 mb-12 overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
               
-              <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-3xl mx-auto mb-8">
-                Explorez une sélection de nos programmes, vidéos, audios et recettes premium pour vous donner un avant-goût de ce qui vous attend !
-              </p>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <Button
-                  href="/essai-gratuit"
-                  variant="white"
-                  size="lg"
-                  className="group shadow-xl"
-                >
-                  Essayer gratuitement
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
+              <div className="relative z-10 text-center">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                  Découvrez plus avec notre essai gratuit
+                </h2>
+                
+                <p className="text-lg md:text-xl text-white/90 leading-relaxed max-w-3xl mx-auto mb-8">
+                  Explorez une sélection de nos programmes, vidéos, audios et recettes premium pour vous donner un avant-goût de ce qui vous attend !
+                </p>
+                
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <Button
+                    href="/essai-gratuit"
+                    variant="white"
+                    size="lg"
+                    className="group shadow-xl"
+                  >
+                    Essayer gratuitement
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </Section>
     </>
   )

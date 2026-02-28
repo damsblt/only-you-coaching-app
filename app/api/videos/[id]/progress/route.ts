@@ -10,6 +10,10 @@ export async function POST(
     const { id: videoId } = await params
     const body = await request.json()
     const { userId, completed, progressSeconds } = body
+    const normalizedProgressSeconds =
+      progressSeconds === undefined || progressSeconds === null
+        ? 0
+        : Math.max(0, Math.floor(Number(progressSeconds) || 0))
 
     if (!userId) {
       return NextResponse.json(
@@ -25,7 +29,13 @@ export async function POST(
       )
     }
 
-    console.log('📥 Progress API called:', { videoId, userId, completed, progressSeconds })
+    console.log('📥 Progress API called:', {
+      videoId,
+      userId,
+      completed,
+      progressSeconds,
+      normalizedProgressSeconds
+    })
     
     // Check if progress record exists
     const existingProgress = await db
@@ -43,14 +53,19 @@ export async function POST(
 
     if (existingProgress.error || !existingProgress.data) {
       // Create new progress record using insert helper
-      console.log('📝 Creating new progress record:', { userId, videoId, completed, progressSeconds })
+      console.log('📝 Creating new progress record:', {
+        userId,
+        videoId,
+        completed,
+        progressSeconds: normalizedProgressSeconds
+      })
       
       try {
         const result = await insert('user_video_progress', {
           user_id: userId,
           video_id: videoId,
           completed: completed || false,
-          progress_seconds: progressSeconds || 0,
+          progress_seconds: normalizedProgressSeconds,
           last_watched: new Date().toISOString()
         })
 
@@ -76,7 +91,12 @@ export async function POST(
       }
     } else {
       // Update existing progress record
-      console.log('📝 Updating existing progress record:', { userId, videoId, completed, progressSeconds })
+      console.log('📝 Updating existing progress record:', {
+        userId,
+        videoId,
+        completed,
+        progressSeconds: normalizedProgressSeconds
+      })
       
       const updateData: any = {
         last_watched: new Date().toISOString()
@@ -87,7 +107,7 @@ export async function POST(
       }
 
       if (progressSeconds !== undefined) {
-        updateData.progress_seconds = progressSeconds
+        updateData.progress_seconds = normalizedProgressSeconds
       }
 
       try {

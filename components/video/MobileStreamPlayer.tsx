@@ -524,12 +524,18 @@ export default function MobileStreamPlayer({
           {/* Rotate Hint Overlay - Show on mobile when video plays in portrait */}
           {showRotateHint && isPortrait && (
             <div className="rotate-hint-overlay">
-              <div className="rotate-hint-icon">
-                📱➡️📺
-              </div>
-              <div className="rotate-hint-text">
-                <p className="font-bold text-xl mb-2">Tournez votre téléphone</p>
-                <p>Pour une meilleure expérience, visionnez la vidéo en mode paysage</p>
+              <div className="rotate-hint-card">
+                <div className="rotate-hint-devices" aria-hidden="true">
+                  <span className="rotate-hint-device" />
+                  <span className="rotate-hint-arrow">→</span>
+                  <span className="rotate-hint-device rotate-hint-device-landscape" />
+                </div>
+                <div className="rotate-hint-text">
+                  <p className="rotate-hint-title">Tournez votre téléphone</p>
+                  <p className="rotate-hint-subtitle">
+                    Passez en mode paysage pour profiter de la vidéo en plein écran.
+                  </p>
+                </div>
               </div>
             </div>
           )}

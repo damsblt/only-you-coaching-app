@@ -81,6 +81,10 @@ export default function ComputerStreamPlayer({
   const [showScrollIndicator, setShowScrollIndicator] = useState(true)
   const [hasSwiped, setHasSwiped] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const wheelDeltaAccumulatorRef = useRef(0)
+  const wheelCooldownRef = useRef(false)
+  const wheelResetTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const wheelCooldownTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // State for landscape orientation hint
   const [showRotateHint, setShowRotateHint] = useState(false)
@@ -90,6 +94,10 @@ export default function ComputerStreamPlayer({
   const MIN_SWIPE_DISTANCE = 50
   // Maximum horizontal movement to consider it a vertical swipe
   const MAX_HORIZONTAL_MOVEMENT = 50
+  // Wheel/trackpad threshold for desktop navigation
+  const WHEEL_NAV_THRESHOLD = 45
+  const WHEEL_NAV_COOLDOWN_MS = 450
+  const WHEEL_ACCUMULATOR_RESET_MS = 180
 
   // Detect mobile device
   useEffect(() => {
@@ -620,6 +628,65 @@ export default function ComputerStreamPlayer({
     setTouchEndX(0)
   }
 
+  const handleWheelNavigation = (e: React.WheelEvent<HTMLDivElement>) => {
+    const hasFinePointer =
+      typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches
+    if (!hasFinePointer) return
+    if (!onNext && !onPrevious) return
+    if (e.ctrlKey || e.metaKey) return
+
+    const target = e.target as HTMLElement | null
+    if (
+      target?.closest(
+        'input, button, select, textarea, [role="slider"], [data-ignore-wheel-nav="true"]'
+      )
+    ) {
+      return
+    }
+
+    e.preventDefault()
+
+    if (wheelCooldownRef.current) return
+
+    // Normalize delta across devices (trackpad vs mouse wheel)
+    const deltaMultiplier =
+      e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1
+    const normalizedDeltaY = e.deltaY * deltaMultiplier
+    if (Math.abs(normalizedDeltaY) < 0.5) return
+
+    wheelDeltaAccumulatorRef.current += normalizedDeltaY
+
+    if (wheelResetTimeoutRef.current) {
+      clearTimeout(wheelResetTimeoutRef.current)
+    }
+    wheelResetTimeoutRef.current = setTimeout(() => {
+      wheelDeltaAccumulatorRef.current = 0
+    }, WHEEL_ACCUMULATOR_RESET_MS)
+
+    if (Math.abs(wheelDeltaAccumulatorRef.current) < WHEEL_NAV_THRESHOLD) {
+      return
+    }
+
+    if (wheelDeltaAccumulatorRef.current > 0 && onNext) {
+      onNext()
+    } else if (wheelDeltaAccumulatorRef.current < 0 && onPrevious) {
+      onPrevious()
+    } else {
+      wheelDeltaAccumulatorRef.current = 0
+      return
+    }
+
+    wheelDeltaAccumulatorRef.current = 0
+    wheelCooldownRef.current = true
+
+    if (wheelCooldownTimeoutRef.current) {
+      clearTimeout(wheelCooldownTimeoutRef.current)
+    }
+    wheelCooldownTimeoutRef.current = setTimeout(() => {
+      wheelCooldownRef.current = false
+    }, WHEEL_NAV_COOLDOWN_MS)
+  }
+
   // Prevent body scroll when on mobile
   useEffect(() => {
     if (isMobile) {
@@ -630,6 +697,17 @@ export default function ComputerStreamPlayer({
       }
     }
   }, [isMobile])
+
+  useEffect(() => {
+    return () => {
+      if (wheelResetTimeoutRef.current) {
+        clearTimeout(wheelResetTimeoutRef.current)
+      }
+      if (wheelCooldownTimeoutRef.current) {
+        clearTimeout(wheelCooldownTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Hide scroll indicator after 5 seconds or after first swipe
   useEffect(() => {
@@ -711,6 +789,7 @@ export default function ComputerStreamPlayer({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onWheel={handleWheelNavigation}
       style={{ 
         touchAction: isMobile ? 'pan-y' : 'auto',
         ...(isMobile && isFullscreen ? {
@@ -924,12 +1003,18 @@ export default function ComputerStreamPlayer({
           {/* Rotate Hint Overlay - Show on mobile when video plays in portrait */}
           {showRotateHint && isMobile && isPortrait && (
             <div className="rotate-hint-overlay">
-              <div className="rotate-hint-icon">
-                📱➡️📺
-              </div>
-              <div className="rotate-hint-text">
-                <p className="font-bold text-xl mb-2">Tournez votre téléphone</p>
-                <p>Pour une meilleure expérience, visionnez la vidéo en mode paysage</p>
+              <div className="rotate-hint-card">
+                <div className="rotate-hint-devices" aria-hidden="true">
+                  <span className="rotate-hint-device" />
+                  <span className="rotate-hint-arrow">→</span>
+                  <span className="rotate-hint-device rotate-hint-device-landscape" />
+                </div>
+                <div className="rotate-hint-text">
+                  <p className="rotate-hint-title">Tournez votre téléphone</p>
+                  <p className="rotate-hint-subtitle">
+                    Passez en mode paysage pour profiter de la vidéo en plein écran.
+                  </p>
+                </div>
               </div>
             </div>
           )}

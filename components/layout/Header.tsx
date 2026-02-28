@@ -160,6 +160,12 @@ export function Header() {
     }
   }
 
+  const vidSubItems = [
+    ...(user ? [{ name: "Mon tableau de bord", href: "/tableau-de-bord" }] : []),
+    { name: "Bibliothèque de Vidéos", href: "/bibliotheque-videos" },
+    { name: "Programmes Prédéfinis", href: "/programmes" }
+  ]
+
   const navigation = [
     { name: "ACCUEIL", href: "/" },
     { 
@@ -179,10 +185,7 @@ export function Header() {
     { 
       name: "VIDÉOS", 
       href: "/videos",
-      subItems: [
-        { name: "Bibliothèque de Vidéos", href: "/bibliotheque-videos" },
-        { name: "Programmes Prédéfinis", href: "/programmes" }
-      ]
+      subItems: vidSubItems
     },
     { 
       name: "AUDIOS", 
