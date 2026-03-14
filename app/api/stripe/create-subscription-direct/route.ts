@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     const hostname = req.headers.get('host') || ''
     const stripe = getStripe(hostname)
-    const { planId, userId, paymentMethodId, promoCode, promoDetails } = await req.json()
+    const { planId, userId, paymentMethodId, promoCode, promoDetails, idempotencyKey } = await req.json()
     
     if (!userId || !paymentMethodId) {
       return NextResponse.json({ error: 'User ID and Payment Method ID required' }, { status: 400 })
@@ -117,6 +117,24 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error('Customer creation error:', error)
       return NextResponse.json({ error: 'Failed to create customer' }, { status: 500 })
+    }
+
+    // Vérifier qu'aucun abonnement actif n'existe déjà pour ce client (active, trialing, past_due)
+    const existingSubscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'all',
+      limit: 10,
+    })
+    const hasActiveSubscription = existingSubscriptions.data.some(
+      sub => ['active', 'trialing', 'past_due'].includes(sub.status)
+    )
+    if (hasActiveSubscription) {
+      const activeSub = existingSubscriptions.data.find(s => ['active', 'trialing', 'past_due'].includes(s.status))
+      console.warn(`⚠️ Customer ${customer.id} already has subscription: ${activeSub?.id} (${activeSub?.status})`)
+      return NextResponse.json(
+        { error: 'Vous avez déjà un abonnement actif. Pour modifier votre abonnement, contactez-nous.' },
+        { status: 400 }
+      )
     }
 
     // Attach the payment method to the customer
@@ -283,8 +301,12 @@ export async function POST(req: NextRequest) {
       subscriptionData.cancel_at = cancelAtTimestamp
     }
 
-    // Create subscription
-    const subscription = await stripe.subscriptions.create(subscriptionData)
+    // Create subscription avec clé d'idempotence (évite doubles créations en cas de retry/double-clic)
+    const createOptions: { idempotencyKey?: string } = {}
+    if (idempotencyKey) {
+      createOptions.idempotencyKey = idempotencyKey
+    }
+    const subscription = await stripe.subscriptions.create(subscriptionData, createOptions)
 
     // Update user subscription in database
     try {

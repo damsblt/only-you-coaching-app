@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripe } from '@/lib/stripe'
 import { getSiteUrl } from '@/lib/get-site-url'
+import { db } from '@/lib/db'
 
 
 // Plan configuration mapping - matches your Stripe product names
@@ -56,6 +57,26 @@ export async function POST(req: NextRequest) {
     
     if (!plan) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
+    }
+
+    // Vérifier qu'aucun abonnement actif n'existe déjà (même logique que create-subscription-direct)
+    const { data: userData } = await db.from('users').select('email').eq('id', userId).single()
+    if (userData?.email) {
+      const customers = await stripe.customers.list({ email: userData.email, limit: 1 })
+      if (customers.data.length > 0) {
+        const existingSubs = await stripe.subscriptions.list({
+          customer: customers.data[0].id,
+          status: 'all',
+          limit: 10,
+        })
+        const hasActive = existingSubs.data.some(s => ['active', 'trialing', 'past_due'].includes(s.status))
+        if (hasActive) {
+          return NextResponse.json(
+            { error: 'Vous avez déjà un abonnement actif. Pour modifier votre abonnement, contactez-nous.' },
+            { status: 400 }
+          )
+        }
+      }
     }
 
     // Fetch products from Stripe to find the matching price

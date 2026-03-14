@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { loadStripe } from '@stripe/stripe-js'
 import type { Stripe as StripeJS } from '@stripe/stripe-js'
 import {
@@ -75,6 +75,10 @@ function PaymentForm({
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
+  const isSubmittingRef = useRef(false)
+  const idempotencyKeyRef = useRef(
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `sub_${Date.now()}_${Math.random().toString(36).slice(2)}`
+  )
 
   useEffect(() => {
     // Component is ready when Stripe and Elements are loaded
@@ -90,6 +94,9 @@ function PaymentForm({
       return
     }
 
+    // Verrou anti-double-clic (synchrone)
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
     setIsProcessing(true)
     setError(null)
 
@@ -97,6 +104,7 @@ function PaymentForm({
 
     if (!cardElement) {
       setError('Élément de carte non trouvé')
+      isSubmittingRef.current = false
       setIsProcessing(false)
       return
     }
@@ -111,6 +119,7 @@ function PaymentForm({
       if (pmError) {
         setError(pmError.message || 'Erreur lors de la création de la méthode de paiement')
         onError(pmError.message || 'Erreur lors de la création de la méthode de paiement')
+        isSubmittingRef.current = false
         setIsProcessing(false)
         return
       }
@@ -124,6 +133,7 @@ function PaymentForm({
       setError(errorMessage)
       onError(errorMessage)
     } finally {
+      isSubmittingRef.current = false
       setIsProcessing(false)
     }
   }
@@ -139,6 +149,7 @@ function PaymentForm({
           paymentMethodId,
           promoCode: promoCode || null,
           promoDetails: promoDetails || null,
+          idempotencyKey: idempotencyKeyRef.current,
         }),
       })
 
