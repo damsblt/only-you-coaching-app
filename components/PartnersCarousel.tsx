@@ -38,6 +38,11 @@ const partners: Partner[] = [
     name: "Nusand",
     s3Key: "Photos/logos partenaires/nusand.jpg",
     alt: "Logo Nusand"
+  },
+  {
+    name: "SWICA",
+    s3Key: "Photos/logos partenaires/SWICA_Logo_Label_CMYK_Gruen.png",
+    alt: "Logo SWICA"
   }
 ]
 
