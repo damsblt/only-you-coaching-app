@@ -91,6 +91,11 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
     setCurrentPage((prev) => Math.min(totalPages - 1, prev + step))
   }, [step, totalPages])
 
+  // Always land at the top when changing page (or zoom)
+  useEffect(() => {
+    pagesScrollRef.current?.scrollTo({ top: 0, left: 0 })
+  }, [currentPage, zoom])
+
   const canGoPrev = currentPage > 0
   const canGoNext = currentPage < totalPages - step
 
@@ -219,8 +224,8 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
           }`}
         >
           <div
-            className={`flex items-start justify-center gap-0 sm:gap-3 ${
-              isZoomedIn ? '' : 'h-full max-h-full w-full max-w-full'
+            className={`flex justify-center gap-3 sm:gap-4 ${
+              isZoomedIn ? 'items-start' : 'h-full max-h-full items-center'
             }`}
           >
             {displayPages.map((pageIndex, idx) => (
@@ -229,9 +234,8 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
                 className={`
                   relative overflow-hidden bg-[#F5E6E0] shadow-2xl
                   rounded-lg sm:rounded-xl
-                  ${showTwoPages ? 'h-full max-h-full w-1/2' : ''}
-                  ${!showTwoPages && !isZoomedIn ? 'h-full max-h-full w-full' : ''}
-                  ${showTwoPages && idx === 1 ? 'border-l border-black/10' : ''}
+                  ${isZoomedIn ? '' : 'h-full max-h-full w-auto'}
+                  ${showTwoPages && idx === 1 ? '' : ''}
                 `}
               >
                 {imageErrors.has(pageIndex) ? (
@@ -245,12 +249,15 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
                     src={images[pageIndex]}
                     alt={`${title} — page ${pageIndex + 1}`}
                     className={`block select-none object-contain ${
-                      isZoomedIn ? 'h-auto w-auto' : 'h-full max-h-full w-auto max-w-full'
+                      isZoomedIn
+                        ? 'h-auto w-auto'
+                        : showTwoPages
+                          ? 'h-full max-h-full w-auto max-w-[min(100%,46vw)]'
+                          : 'h-full max-h-full w-auto max-w-full'
                     }`}
                     style={
                       isZoomedIn
                         ? {
-                            // Real size increase (layout grows) so overflow scroll reveals the top
                             width: `min(92vw, ${Math.round(680 * zoom)}px)`,
                           }
                         : undefined
