@@ -59,8 +59,8 @@ export default function RecettesPage() {
       <PageHeader
         imageS3Key="Photos/Illustration/brooke-lark-jUPOXXRNdcA-unsplash.jpg"
         title="Mes Recettes"
-        subtitle="Découvrez une collection de recettes saines et délicieuses pour accompagner votre parcours fitness"
-        height="fullScreen"
+        subtitle="Livrets de recettes saines pour accompagner votre parcours"
+        height="large"
       />
       <Section 
         gradient="soft" 
@@ -70,20 +70,15 @@ export default function RecettesPage() {
           feature="recipes" 
           userId={user?.id}
         >
-          {/* Introduction */}
-          <div className="mb-12 text-center">
-            <p className="text-lg text-gray-700 dark:text-gray-300 max-w-3xl mx-auto">
-              Notre collection de recettes nutritives est conçue pour compléter votre programme d'entraînement. 
-              Découvrez des plats équilibrés et savoureux qui vous aideront à maintenir une alimentation saine 
-              tout au long de votre parcours vers une meilleure santé.
-            </p>
-          </div>
-
-          {/* Recipes Grid */}
           <div className="mb-16">
-            <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-8 text-center">
-              Toutes les Recettes
-            </h2>
+            <div className="mb-8 text-center max-w-2xl mx-auto">
+              <h2 className="text-3xl font-bold text-accent-500 dark:text-accent-400 mb-3">
+                Nos livrets
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300">
+                Ouvrez un livret et parcourez les pages comme un magazine — idéal sur téléphone comme sur ordinateur.
+              </p>
+            </div>
             {recipes.length > 0 ? (
               <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
                 {recipes.map((recipe) => (
