@@ -17,13 +17,26 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
   const [showThumbs, setShowThumbs] = useState(false)
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const containerRef = useRef<HTMLDivElement>(null)
+  const pagesScrollRef = useRef<HTMLDivElement>(null)
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
 
   const totalPages = images.length
-  // Two-page spread only on large screens, at default zoom
-  const showTwoPages = isWide && zoom <= 1 && totalPages > 1
+  // Two-page spread only on large screens at fit zoom
+  const showTwoPages = isWide && zoom === 1 && totalPages > 1
   const step = showTwoPages ? 2 : 1
+  const isZoomedIn = zoom > 1
+
+  const setZoomAndScrollTop = useCallback((next: number | ((z: number) => number)) => {
+    setZoom((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next
+      // After zoom-in, pin to top so titles aren't cropped
+      requestAnimationFrame(() => {
+        pagesScrollRef.current?.scrollTo({ top: 0, left: 0 })
+      })
+      return value
+    })
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
@@ -159,20 +172,23 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
           <p className="text-xs text-white/60">{pageLabel}</p>
         </div>
 
-        {/* Zoom — desktop only */}
+        {/* Zoom — desktop only. Resizes the page (no CSS scale) so the top stays visible. */}
         <div className="hidden sm:flex items-center gap-1">
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.max(0.75, z - 0.25))}
-            disabled={zoom <= 0.75}
+            onClick={() => setZoomAndScrollTop((z) => Math.max(1, z - 0.25))}
+            disabled={zoom <= 1}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 transition-colors"
             aria-label="Zoom arrière"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
+          <span className="min-w-[2.75rem] text-center text-xs text-white/70">
+            {Math.round(zoom * 100)}%
+          </span>
           <button
             type="button"
-            onClick={() => setZoom((z) => Math.min(2, z + 0.25))}
+            onClick={() => setZoomAndScrollTop((z) => Math.min(2, z + 0.25))}
             disabled={zoom >= 2}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-40 transition-colors"
             aria-label="Zoom avant"
@@ -190,25 +206,31 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
         />
       </div>
 
-      {/* Pages — min-h-0 is critical so flex child can shrink and fit */}
+      {/* Pages — min-h-0 so flex child can shrink; overflow scroll only when zoomed */}
       <div
-        className={`relative min-h-0 flex-1 ${zoom > 1 ? 'overflow-auto' : 'overflow-hidden'}`}
+        ref={pagesScrollRef}
+        className={`relative min-h-0 flex-1 ${isZoomedIn ? 'overflow-auto' : 'overflow-hidden'}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="flex h-full w-full items-center justify-center p-2 sm:p-4">
+        <div
+          className={`flex w-full justify-center p-2 sm:p-4 ${
+            isZoomedIn ? 'items-start min-h-min' : 'h-full items-center'
+          }`}
+        >
           <div
-            className="flex h-full max-h-full w-full max-w-full items-center justify-center gap-0 sm:gap-3 transition-transform duration-200 origin-center"
-            style={zoom !== 1 ? { transform: `scale(${zoom})` } : undefined}
+            className={`flex items-start justify-center gap-0 sm:gap-3 ${
+              isZoomedIn ? '' : 'h-full max-h-full w-full max-w-full'
+            }`}
           >
             {displayPages.map((pageIndex, idx) => (
               <div
                 key={pageIndex}
                 className={`
-                  relative flex h-full max-h-full max-w-full items-center justify-center
-                  overflow-hidden bg-[#F5E6E0] shadow-2xl
+                  relative overflow-hidden bg-[#F5E6E0] shadow-2xl
                   rounded-lg sm:rounded-xl
-                  ${showTwoPages ? 'w-1/2' : 'w-full'}
+                  ${showTwoPages ? 'h-full max-h-full w-1/2' : ''}
+                  ${!showTwoPages && !isZoomedIn ? 'h-full max-h-full w-full' : ''}
                   ${showTwoPages && idx === 1 ? 'border-l border-black/10' : ''}
                 `}
               >
@@ -222,7 +244,17 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
                   <img
                     src={images[pageIndex]}
                     alt={`${title} — page ${pageIndex + 1}`}
-                    className="max-h-full max-w-full h-auto w-auto object-contain select-none"
+                    className={`block select-none object-contain ${
+                      isZoomedIn ? 'h-auto w-auto' : 'h-full max-h-full w-auto max-w-full'
+                    }`}
+                    style={
+                      isZoomedIn
+                        ? {
+                            // Real size increase (layout grows) so overflow scroll reveals the top
+                            width: `min(92vw, ${Math.round(680 * zoom)}px)`,
+                          }
+                        : undefined
+                    }
                     draggable={false}
                     loading={Math.abs(pageIndex - currentPage) <= 2 ? 'eager' : 'lazy'}
                     onError={() => handleImageError(pageIndex)}
