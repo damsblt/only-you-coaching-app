@@ -55,7 +55,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-white transition-colors">
         <ErrorBoundary>
           <Providers>
-            <div className="relative flex flex-col min-h-screen overflow-x-hidden overflow-y-auto">
+            <div data-app-shell className="relative flex flex-col min-h-screen overflow-x-hidden overflow-y-auto">
               <HeaderAssetsPreloader />
               <Header />
               <main className="flex-1">

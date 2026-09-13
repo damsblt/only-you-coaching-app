@@ -33,12 +33,40 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
     return () => mq.removeEventListener('change', update)
   }, [])
 
-  // Lock background scroll while open
+  // Lock ALL scroll containers (html, body, app shell) — body alone is not enough
   useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const html = document.documentElement
+    const body = document.body
+    const shell = document.querySelector('[data-app-shell]') as HTMLElement | null
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      shellOverflow: shell?.style.overflow ?? '',
+      scrollY: window.scrollY,
+    }
+
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    if (shell) shell.style.overflow = 'hidden'
+
+    // Freeze scroll position so the page behind doesn't jump
+    body.style.position = 'fixed'
+    body.style.top = `-${prev.scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+
     return () => {
-      document.body.style.overflow = prev
+      html.style.overflow = prev.htmlOverflow
+      body.style.overflow = prev.bodyOverflow
+      body.style.position = ''
+      body.style.top = ''
+      body.style.left = ''
+      body.style.right = ''
+      body.style.width = ''
+      if (shell) shell.style.overflow = prev.shellOverflow
+      window.scrollTo(0, prev.scrollY)
     }
   }, [])
 
@@ -108,13 +136,13 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex flex-col bg-[#2a2438]"
+      className="fixed inset-0 z-[200] flex flex-col bg-[#2a2438]"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       {/* Top bar — minimal */}
-      <header className="relative z-20 flex items-center gap-3 px-3 py-3 sm:px-5 pt-[max(0.75rem,env(safe-area-inset-top))] bg-[#39334D]/95 backdrop-blur-md text-white">
+      <header className="relative z-20 flex shrink-0 items-center gap-3 px-3 py-3 sm:px-5 pt-[max(0.75rem,env(safe-area-inset-top))] bg-[#39334D]/95 backdrop-blur-md text-white">
         {onClose && (
           <button
             type="button"
@@ -131,7 +159,7 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
           <p className="text-xs text-white/60">{pageLabel}</p>
         </div>
 
-        {/* Zoom — desktop only, tucked to the side */}
+        {/* Zoom — desktop only */}
         <div className="hidden sm:flex items-center gap-1">
           <button
             type="button"
@@ -155,41 +183,37 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
       </header>
 
       {/* Progress */}
-      <div className="h-0.5 w-full bg-white/10">
+      <div className="h-0.5 w-full shrink-0 bg-white/10">
         <div
           className="h-full bg-[#D4888C] transition-[width] duration-300 ease-out"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Pages */}
+      {/* Pages — min-h-0 is critical so flex child can shrink and fit */}
       <div
-        className="relative flex-1 overflow-hidden touch-pan-y"
+        className={`relative min-h-0 flex-1 ${zoom > 1 ? 'overflow-auto' : 'overflow-hidden'}`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4 overflow-auto">
+        <div className="flex h-full w-full items-center justify-center p-2 sm:p-4">
           <div
-            className="flex items-stretch justify-center gap-0 sm:gap-3 transition-transform duration-200 origin-center"
-            style={{ transform: `scale(${zoom})` }}
+            className="flex h-full max-h-full w-full max-w-full items-center justify-center gap-0 sm:gap-3 transition-transform duration-200 origin-center"
+            style={zoom !== 1 ? { transform: `scale(${zoom})` } : undefined}
           >
             {displayPages.map((pageIndex, idx) => (
               <div
                 key={pageIndex}
                 className={`
-                  relative overflow-hidden bg-[#F5E6E0] shadow-2xl
+                  relative flex h-full max-h-full max-w-full items-center justify-center
+                  overflow-hidden bg-[#F5E6E0] shadow-2xl
                   rounded-lg sm:rounded-xl
+                  ${showTwoPages ? 'w-1/2' : 'w-full'}
                   ${showTwoPages && idx === 1 ? 'border-l border-black/10' : ''}
                 `}
-                style={{
-                  width: showTwoPages
-                    ? 'min(42vw, 520px)'
-                    : 'min(100vw - 1rem, 720px)',
-                  maxHeight: showThumbs ? 'calc(100dvh - 11rem)' : 'calc(100dvh - 7.5rem)',
-                }}
               >
                 {imageErrors.has(pageIndex) ? (
-                  <div className="flex aspect-[3/4] w-full items-center justify-center p-6 text-center">
+                  <div className="flex aspect-[3/4] w-full max-w-md items-center justify-center p-6 text-center">
                     <p className="text-sm text-[#39334D]/70">
                       Impossible de charger la page {pageIndex + 1}
                     </p>
@@ -198,7 +222,7 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
                   <img
                     src={images[pageIndex]}
                     alt={`${title} — page ${pageIndex + 1}`}
-                    className="block h-full w-full max-h-[inherit] object-contain"
+                    className="max-h-full max-w-full h-auto w-auto object-contain select-none"
                     draggable={false}
                     loading={Math.abs(pageIndex - currentPage) <= 2 ? 'eager' : 'lazy'}
                     onError={() => handleImageError(pageIndex)}
@@ -209,7 +233,7 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
           </div>
         </div>
 
-        {/* Side arrows — larger hit area, soft brand chrome */}
+        {/* Side arrows */}
         {canGoPrev && (
           <button
             type="button"
@@ -234,7 +258,7 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
       </div>
 
       {/* Bottom navigation */}
-      <footer className="relative z-20 border-t border-white/10 bg-[#39334D]/95 backdrop-blur-md px-3 py-3 sm:px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="relative z-20 shrink-0 border-t border-white/10 bg-[#39334D]/95 backdrop-blur-md px-3 py-3 sm:px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-3xl items-center gap-3">
           <button
             type="button"
@@ -271,7 +295,6 @@ export default function RecipeBookletViewer({ images, title, onClose }: RecipeBo
           </button>
         </div>
 
-        {/* Horizontal thumbnail strip */}
         {showThumbs && totalPages > 1 && (
           <div className="mx-auto mt-3 max-w-4xl overflow-x-auto pb-1 scrollbar-thin">
             <div className="flex gap-2 px-1">
